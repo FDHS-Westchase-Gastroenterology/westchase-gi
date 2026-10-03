@@ -19,6 +19,9 @@ interface RecordRead {
   readonly record: FullRecord | null;
   /** Ask again, which is what Retry does after a read that failed. */
   readonly retry: () => void;
+  /** Read again after a change the line's version does not carry (a note),
+      keeping what is on screen until the new read lands. */
+  readonly refresh: () => void;
   /** Let go of the read. The sheet calls this once it has finished leaving,
       not the moment it is asked to close: while it exits it still shows the
       record it opened with. */
@@ -63,9 +66,13 @@ export function useRecordRead(line: Readonly<HomeLine> | null, shownId: string |
     setAttempt((count) => count + 1);
   }
 
+  function refresh(): void {
+    setAttempt((count) => count + 1);
+  }
+
   function release(): void {
     setRead(null);
   }
 
-  return { outcome, record, retry, release };
+  return { outcome, record, retry, refresh, release };
 }

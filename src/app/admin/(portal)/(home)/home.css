@@ -4174,6 +4174,42 @@ a.appt-phone {
   font-size: 0.8125rem;
 }
 
+/* A request's record (issue #356, P3): where the appointment would be,
+   a dashed box holding its place, the preference inside, at the latest
+   note's corners and inset. */
+.wgi-sheet-unbooked {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin: 0;
+  border: 1px dashed var(--color-line-2);
+  border-radius: 8px;
+  padding: 0.75rem 0.875rem;
+  color: var(--wgi-muted-ink);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.wgi-sheet-unbooked > svg {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  color: var(--wgi-icon-ink);
+}
+
+/* The record card opened from the request's foot is a popover beside the
+   sheet, not a card to drag off its row: its head is plain, and with no
+   full-record toggle its foot holds the one command at its right. */
+.wgi-sheet-card .wgi-record-head {
+  cursor: auto;
+  touch-action: auto;
+  user-select: auto;
+}
+
+.wgi-sheet-card .wgi-record-foot {
+  justify-content: flex-end;
+}
+
 /* Add a note: the composer in a popover over the foot, above the sheet
    that holds the button, as the history popover is. */
 .wgi-note-positioner {

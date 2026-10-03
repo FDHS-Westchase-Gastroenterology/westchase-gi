@@ -8,7 +8,6 @@ import { bookFromCard } from "./booking-actions";
 import type { CardBookOutcome } from "./booking-actions";
 import { startWasTaken } from "./card-booking-model";
 import type { CardBookCommand } from "./card-booking-model";
-import type { HomeLine } from "./home-line";
 
 /* Book from the record card (issue #344, Figma section 09e). The toast
    follows the attempt the way Save's does — "Booking…", then the scheduled
@@ -27,7 +26,8 @@ function booked(result: CardBookOutcome): result is { readonly ok: true } {
 }
 
 export function useCardBooking(
-  line: Readonly<HomeLine>,
+  /** Who the toast names once the booking lands. */
+  name: string,
   handlers: Readonly<{ onBooked: () => void; onTaken: () => void }>,
 ) {
   const router = useRouter();
@@ -50,7 +50,7 @@ export function useCardBooking(
       testId: BOOK_TOAST_TEST_ID,
       ...SETTLED_TOAST,
       loading: "Booking…",
-      success: { message: `${line.name} is Scheduled.`, ...SETTLED_TOAST },
+      success: { message: `${name} is Scheduled.`, ...SETTLED_TOAST },
     });
 
     startTransition(async () => {

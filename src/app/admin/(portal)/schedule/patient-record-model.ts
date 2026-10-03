@@ -116,6 +116,14 @@ export function patientStanding(
   };
 }
 
+/** "Not booked yet. Prefers either office, any time." — the request
+    record's appointments, from the line's "Either office · Any time". */
+export function notBookedText(pref: string): string {
+  const [place = "", time = ""] = pref.split(" · ");
+  const office = place === "Either office" ? "either office" : place;
+  return `Not booked yet. Prefers ${office}, ${time.toLowerCase()}.`;
+}
+
 /** "Website request · Aug 10 · booked the same day". */
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the request record carries workflow history entries whose types cannot be made readonly
 export function cameToUs(record: FullRecord): string {

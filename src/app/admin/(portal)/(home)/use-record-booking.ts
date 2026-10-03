@@ -1,5 +1,7 @@
 import { useEffect, useReducer, useRef } from "react";
 
+import type { RequestLocation } from "@/lib/portal/contracts";
+
 import {
   addMonths,
   bookCommandFor,
@@ -7,20 +9,30 @@ import {
   bookingStripLine,
   initialBooking,
 } from "./card-booking-model";
-import type { BookingEvent, StripAction } from "./card-booking-model";
-import type { HomeLine } from "./home-line";
+import type { BookingEvent, BookingSubject, StripAction } from "./card-booking-model";
 import { useDayPopover } from "./parts/booking-day-popover";
 import { useCardBooking } from "./use-card-booking";
 import { useCardMonth } from "./use-card-month";
 
 /* The record card's booking (issue #344): a request linked to a patient
-   books straight into the schedule. This holds what the card's booking
+   books straight into the schedule. The Schedule's request record (issue
+   #356) books a requester no patient is linked to yet; the server
+   registers them from the request as Book lands (booking-actions.ts). Its
+   patient record books a patient another visit with no request at all.
+   This holds what the card's booking
    month, strip and Book share — the draft, the month read, the day
    popover's handle and the Book attempt — and reads the month only while
    the card is booking. */
 
 export function useRecordBooking(
-  line: Readonly<HomeLine>,
+  subject: Readonly<
+    BookingSubject & {
+      /** Who the toast names. */
+      name: string;
+      /** The office the month opens on. */
+      location: RequestLocation;
+    }
+  >,
   options: Readonly<{
     /** The card is booking a linked patient: read the month. */
     active: boolean;
@@ -29,18 +41,19 @@ export function useRecordBooking(
     onBooked: () => void;
   }>,
 ) {
-  const { patientId } = line;
+  const { patientId } = subject;
   const [draft, dispatch] = useReducer(bookingReducer, options.today, initialBooking);
   const month = useCardMonth({
     month: draft.month,
     typeId: draft.typeId,
-    location: line.location,
-    patientId: options.active ? patientId : null,
+    location: subject.location,
+    active: options.active,
+    patientId,
   });
   const popover = useDayPopover();
   /* The day whose popover goes back up once Book lets go of the card. */
   const reopen = useRef<string | null>(null);
-  const book = useCardBooking(line, {
+  const book = useCardBooking(subject.name, {
     onBooked: options.onBooked,
     onTaken: () => {
       /* The start went to someone else: strike it, re-read, and put the
@@ -59,14 +72,7 @@ export function useRecordBooking(
     popover.openNow(day);
   }, [book.pending, popover]);
 
-  const command =
-    patientId === null
-      ? null
-      : bookCommandFor({ ...draft, typeId: month.typeId }, month.availability, {
-          id: line.id,
-          version: line.version,
-          patientId,
-        });
+  const command = bookCommandFor({ ...draft, typeId: month.typeId }, month.availability, subject);
 
   return {
     draft,

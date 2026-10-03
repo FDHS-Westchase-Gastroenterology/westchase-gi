@@ -65,6 +65,23 @@ function useReleasedHistory() {
 /* The patient's message under its quote rule, two lines until asked;
    "Show all" appears only when the clamp actually hides something. */
 export function PatientMessage({ message }: Readonly<{ message: string }>) {
+  return (
+    <section className="wgi-sheet-section" aria-labelledby="wgi-sheet-message-label">
+      <h3 id="wgi-sheet-message-label" className="wgi-sheet-label">
+        Patient&rsquo;s message
+      </h3>
+      {message === "" ? (
+        <p className="wgi-sheet-empty">No note was included with this request.</p>
+      ) : (
+        <MessageQuote message={message} />
+      )}
+    </section>
+  );
+}
+
+/* The quote itself, which the Schedule's request record sets under how
+   the request came in (issue #356). */
+export function MessageQuote({ message }: Readonly<{ message: string }>) {
   const [open, setOpen] = useState(false);
   const [clipped, setClipped] = useState(false);
   const text = useRef<HTMLParagraphElement>(null);
@@ -83,38 +100,29 @@ export function PatientMessage({ message }: Readonly<{ message: string }>) {
   }, [open]);
 
   return (
-    <section className="wgi-sheet-section" aria-labelledby="wgi-sheet-message-label">
-      <h3 id="wgi-sheet-message-label" className="wgi-sheet-label">
-        Patient&rsquo;s message
-      </h3>
-      {message === "" ? (
-        <p className="wgi-sheet-empty">No note was included with this request.</p>
-      ) : (
-        <blockquote className="wgi-sheet-message">
-          <p
-            ref={text}
-            id="wgi-sheet-message-text"
-            data-open={open || undefined}
-            data-ui-redact="patient-message"
-          >
-            {message}
-          </p>
-          {clipped || open ? (
-            <button
-              type="button"
-              className="wgi-sheet-more"
-              aria-expanded={open}
-              aria-controls="wgi-sheet-message-text"
-              onClick={() => {
-                setOpen(!open);
-              }}
-            >
-              {open ? "Show less" : "Show all"}
-            </button>
-          ) : null}
-        </blockquote>
-      )}
-    </section>
+    <blockquote className="wgi-sheet-message">
+      <p
+        ref={text}
+        id="wgi-sheet-message-text"
+        data-open={open || undefined}
+        data-ui-redact="patient-message"
+      >
+        {message}
+      </p>
+      {clipped || open ? (
+        <button
+          type="button"
+          className="wgi-sheet-more"
+          aria-expanded={open}
+          aria-controls="wgi-sheet-message-text"
+          onClick={() => {
+            setOpen(!open);
+          }}
+        >
+          {open ? "Show less" : "Show all"}
+        </button>
+      ) : null}
+    </blockquote>
   );
 }
 

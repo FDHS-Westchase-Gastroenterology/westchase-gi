@@ -159,21 +159,30 @@ export function bookingReducer(
 /* ---- What Book sends ---- */
 
 export interface CardBookCommand {
-  readonly patientId: string;
+  /** Null books the requester, whom the server registers from the request. */
+  readonly patientId: string | null;
   readonly providerId: string;
   readonly locationId: string;
   readonly appointmentTypeId: string;
   readonly expectedTypeVersion: number;
   readonly start: { readonly date: string; readonly time: string };
-  readonly sourceRequestId: string;
-  readonly requestVersion: number;
+  /** Null books a patient another visit, with no request behind it. */
+  readonly sourceRequestId: string | null;
+  readonly requestVersion: number | null;
+}
+
+/** Who Book is for: a patient, a request's requester, or both. */
+export interface BookingSubject {
+  readonly patientId: string | null;
+  /** The request the booking answers; null for a patient's next visit. */
+  readonly request: { readonly id: string; readonly version: number } | null;
 }
 
 /** The `book` command a complete draft means, or null while Book waits. */
 export function bookCommandFor(
   draft: Readonly<BookingDraft>,
   availability: Readonly<MonthAvailability> | null,
-  request: Readonly<{ id: string; version: number; patientId: string }>,
+  subject: Readonly<BookingSubject>,
 ): CardBookCommand | null {
   if (
     availability === null ||
@@ -183,18 +192,19 @@ export function bookCommandFor(
     draft.day < availability.today ||
     draft.providerId === "" ||
     draft.locationId === "" ||
-    !timeWithinDay(draft.time)
+    !timeWithinDay(draft.time) ||
+    (subject.patientId === null && subject.request === null)
   )
     return null;
   return {
-    patientId: request.patientId,
+    patientId: subject.patientId,
     providerId: draft.providerId,
     locationId: draft.locationId,
     appointmentTypeId: draft.typeId,
     expectedTypeVersion: availability.appointmentType.version,
     start: { date: draft.day, time: draft.time },
-    sourceRequestId: request.id,
-    requestVersion: request.version,
+    sourceRequestId: subject.request?.id ?? null,
+    requestVersion: subject.request?.version ?? null,
   };
 }
 

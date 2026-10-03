@@ -18,12 +18,13 @@ import {
 } from "@/app/admin/(portal)/(home)/record-sheet-frame";
 import { useRecordRead } from "@/app/admin/(portal)/(home)/use-record-read";
 import { recordSections } from "@/app/admin/(portal)/requests/record-sections";
-import { Calendar, ChevronRight, Plus } from "@/components/icons";
+import { Calendar, ChevronRight } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { PatientVisit } from "@/lib/portal/patients/contracts";
 
+import { PatientRecordFoot } from "./patient-booking-card";
 import {
   birthLabel,
   cameToUs,
@@ -38,7 +39,6 @@ import {
   visitWord,
 } from "./patient-record-model";
 import type { VisitGroups } from "./patient-record-model";
-import { RecordNoteComposer } from "./record-note-composer";
 import { readSchedulePatient } from "./week-actions";
 import type {
   ScheduleClinicalList,
@@ -134,7 +134,6 @@ export function PatientRecordSheet({
   onOpenChange,
   onClosed,
   onVisits,
-  onBook,
   returnFocus,
 }: Readonly<{
   /** The patient the address names; null closes the sheet. */
@@ -146,8 +145,6 @@ export function PatientRecordSheet({
   onClosed: () => void;
   /** The appointments of the patient on screen, which the grid outlines. */
   onVisits: (ids: ReadonlySet<string>) => void;
-  /** Books the patient another appointment. */
-  onBook?: (record: SchedulePatientRecord, instant: boolean) => void;
   returnFocus: () => HTMLElement | null;
 }>) {
   /* The id stays while the sheet leaves, so its exit plays on the record it
@@ -172,12 +169,7 @@ export function PatientRecordSheet({
       finalFocus={returnFocus}
     >
       {outcome?.ok === true ? (
-        <PatientRecordContent
-          record={outcome.record}
-          reads={reads}
-          onChanged={refresh}
-          onBook={onBook}
-        />
+        <PatientRecordContent record={outcome.record} reads={reads} onChanged={refresh} />
       ) : (
         <PatientRecordWaiting named={named} outcome={outcome} onRetry={retry} />
       )}
@@ -246,12 +238,10 @@ function PatientRecordContent({
   record,
   reads,
   onChanged,
-  onBook,
 }: Readonly<{
   record: SchedulePatientRecord;
   reads: number;
   onChanged: () => void;
-  onBook?: (record: SchedulePatientRecord, instant: boolean) => void;
 }>) {
   const { patient, visits, requestLine } = record;
   const groups = useMemo(() => visitGroups(visits), [visits]);
@@ -311,23 +301,7 @@ function PatientRecordContent({
           </dl>
         </TabsContent>
       </div>
-      <footer className="wgi-sheet-foot">
-        {onBook === undefined ? null : (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={(event) => {
-              onBook(record, event.detail === 0);
-            }}
-          >
-            <Plus data-icon="inline-start" aria-hidden="true" />
-            Book another
-          </Button>
-        )}
-        {requestLine === null ? null : (
-          <RecordNoteComposer requestId={requestLine.id} onAdded={onChanged} />
-        )}
-      </footer>
+      <PatientRecordFoot record={record} onChanged={onChanged} />
     </Tabs>
   );
 }

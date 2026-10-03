@@ -15,13 +15,13 @@ import {
 import type { ReactNode, RefObject } from "react";
 import { toast } from "sonner";
 
-import { FullRecordSheet } from "@/app/admin/(portal)/(home)/full-record-sheet";
 import type { HomeLine } from "@/app/admin/(portal)/(home)/home-line";
 import { AddRequestDialog } from "@/app/admin/(portal)/add-appointment-dialog";
 import type { AddRequestDialogHandle } from "@/app/admin/(portal)/add-appointment-dialog";
 import type { FoundPerson } from "@/lib/portal/patients/contracts";
 
 import { PatientRecordSheet } from "./patient-record-sheet";
+import { RequestRecordSheet } from "./request-record-sheet";
 import { requestPrefill } from "./schedule-search-model";
 import { readWeekRecordLine } from "./week-actions";
 import type { RecordHint } from "./week-card-parts";
@@ -89,12 +89,22 @@ interface RecordState {
   /** Where focus goes when the record closes: an appointment on the grid, or the search field (null). */
   readonly origin: Readonly<RefObject<string | null>>;
   readonly onVisits: (ids: ReadonlySet<string>) => void;
+  /** The request on screen was booked: its record becomes the patient's. */
+  readonly toPatient: (patient: RecordHint) => void;
 }
 
 /* The sheet of the record the address names. It reads the address, so it
    sits under its own Suspense boundary and the views around it never wait
    on it. */
-function AddressedRecord({ shown, setShown, hint, instant, origin, onVisits }: RecordState) {
+function AddressedRecord({
+  shown,
+  setShown,
+  hint,
+  instant,
+  origin,
+  onVisits,
+  toPatient,
+}: RecordState) {
   const router = useRouter();
   const params = useSearchParams();
   const requestId = params.get("request");
@@ -119,16 +129,21 @@ function AddressedRecord({ shown, setShown, hint, instant, origin, onVisits }: R
         window.history.replaceState(null, "", recordHref("request", null));
         return;
       }
+      /* A request with a patient is that patient's record. */
+      if (read.patientId !== null) {
+        toPatient({ id: read.patientId, name: read.name, phone: read.phoneDigits });
+        return;
+      }
       setShown(read);
     });
     return () => {
       live = false;
     };
-  }, [requestId, shown, setShown]);
+  }, [requestId, shown, setShown, toPatient]);
 
   return (
     <>
-      <FullRecordSheet
+      <RequestRecordSheet
         line={line}
         instant={instant}
         onOpenChange={(open) => {
@@ -137,7 +152,29 @@ function AddressedRecord({ shown, setShown, hint, instant, origin, onVisits }: R
         onClosed={() => {
           router.refresh();
         }}
-        returnFocus={returnFocus}
+        /* The card saved or booked. A booked request now has its patient,
+           and the record on screen becomes theirs; a saved call is the
+           same request a step further on, read again. */
+        onChanged={(id) => {
+          startTransition(async () => {
+            const read = await readWeekRecordLine(id).catch(() => null);
+            if (
+              read === null ||
+              new URLSearchParams(window.location.search).get("request") !== id
+            ) {
+              return;
+            }
+            if (read.patientId !== null) {
+              toPatient({ id: read.patientId, name: read.name, phone: read.phoneDigits });
+              return;
+            }
+            setShown(read);
+          });
+        }}
+        returnFocus={() =>
+          /* Booked into the patient's record: focus moves into that sheet. */
+          new URLSearchParams(window.location.search).has("patient") ? null : returnFocus()
+        }
       />
       <PatientRecordSheet
         patientId={requestId === null ? patientId : null}
@@ -173,6 +210,14 @@ export function SchedulePeople({
     setVisits((current) =>
       current.size === ids.size && [...ids].every((id) => current.has(id)) ? current : ids,
     );
+  }, []);
+
+  const toPatient = useCallback((patient: RecordHint) => {
+    /* One record gives way to the other in place, without the sheets'
+       travel: the person on screen is the same. */
+    setInstant(true);
+    setHint(patient);
+    window.history.replaceState(null, "", recordHref("patient", patient.id));
   }, []);
 
   const value = useMemo<SchedulePeopleValue>(
@@ -211,6 +256,7 @@ export function SchedulePeople({
           instant={instant}
           origin={origin}
           onVisits={showVisits}
+          toPatient={toPatient}
         />
       </Suspense>
       <AddRequestDialog

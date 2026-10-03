@@ -224,24 +224,30 @@ function RecordFoot({
   fullOpen,
   onOpenFull,
   children,
-}: Readonly<{ fullOpen: boolean; onOpenFull: (instant: boolean) => void; children: ReactNode }>) {
+}: Readonly<{
+  fullOpen: boolean;
+  onOpenFull: ((instant: boolean) => void) | undefined;
+  children: ReactNode;
+}>) {
   return (
     <div className="wgi-record-foot">
-      <button
-        type="button"
-        className="wgi-record-full"
-        /* The sheet's toggle: the card detaches into the sheet's
+      {onOpenFull === undefined ? null : (
+        <button
+          type="button"
+          className="wgi-record-full"
+          /* The sheet's toggle: the card detaches into the sheet's
            companion, so the foot that opened it also hides it. */
-        aria-expanded={fullOpen}
-        aria-controls={fullOpen ? "wgi-full-record" : undefined}
-        onClick={(event) => {
-          /* A click with no pointer behind it (Enter or Space) has detail 0. */
-          onOpenFull(event.detail === 0);
-        }}
-      >
-        {fullOpen ? "Hide full record" : "Open full record"}
-        <ChevronGlyph size={14} />
-      </button>
+          aria-expanded={fullOpen}
+          aria-controls={fullOpen ? "wgi-full-record" : undefined}
+          onClick={(event) => {
+            /* A click with no pointer behind it (Enter or Space) has detail 0. */
+            onOpenFull(event.detail === 0);
+          }}
+        >
+          {fullOpen ? "Hide full record" : "Open full record"}
+          <ChevronGlyph size={14} />
+        </button>
+      )}
       {children}
     </div>
   );
@@ -261,28 +267,39 @@ function SaveButton({
 
 export function RecordCard({
   line,
-  fullOpen,
+  fullOpen = false,
   dragHandleProps,
+  answer: firstAnswer = null,
+  booksRequester = false,
   onClose,
   onOpenFull,
   onSettled,
 }: Readonly<{
   line: Readonly<HomeLine>;
   /** This record's full-record sheet is open beside the card. */
-  fullOpen: boolean;
+  fullOpen?: boolean;
   /** The head's grab surface, from use-card-detach.ts. */
-  dragHandleProps: Pick<ComponentProps<"div">, "onPointerDown">;
+  dragHandleProps?: Pick<ComponentProps<"div">, "onPointerDown">;
+  /** The answer the card opens on; Book appointment opens it booking. */
+  answer?: CardAnswer | null;
+  /** Books a requester no patient is linked to yet, as the Schedule's
+      request record does (issue #356): the server registers them from the
+      request as Book lands. Home hands an unlinked booking off instead. */
+  booksRequester?: boolean;
   onClose: () => void;
   /** Toggles the full record — opens it, or hides it when it already shows
       this record. `instant` when the press came from the keyboard: the
-      sheet then opens or closes without motion. */
-  onOpenFull: (instant: boolean) => void;
+      sheet then opens or closes without motion. A card opened from the
+      full record has no toggle. */
+  onOpenFull?: (instant: boolean) => void;
   onSettled: (id: string) => void;
 }>) {
   /* Practice-local today, read once per render so the bounds, the horizon
      check and the calendar agree even across midnight. */
   const today = practiceLocalDay(0);
-  const [draft, dispatch] = useReducer(cardReducer, INITIAL_DRAFT);
+  const [draft, dispatch] = useReducer(cardReducer, firstAnswer, (answer) =>
+    answer === null ? INITIAL_DRAFT : cardReducer(INITIAL_DRAFT, { type: "answer", answer, today }),
+  );
   const commit = useRecordCommit(line, () => {
     onSettled(line.id);
     onClose();
@@ -292,15 +309,23 @@ export function RecordCard({
   /* A request linked to a patient books straight into the schedule
      (issue #344): its month shows the open starts, and Book replaces Save.
      An unlinked request keeps the day and time Save hands to scheduling. */
-  const booking = line.patientId !== null && needsTime(answer);
-  const plan = useRecordBooking(line, {
-    active: booking,
-    today,
-    onBooked: () => {
-      onSettled(line.id);
-      onClose();
+  const booking = (line.patientId !== null || booksRequester) && needsTime(answer);
+  const plan = useRecordBooking(
+    {
+      name: line.name,
+      location: line.location,
+      patientId: line.patientId,
+      request: { id: line.id, version: line.version },
     },
-  });
+    {
+      active: booking,
+      today,
+      onBooked: () => {
+        onSettled(line.id);
+        onClose();
+      },
+    },
+  );
 
   const note = cardNoteFor(line.status);
   const mode = note !== null ? "note" : booking ? "book" : "save";

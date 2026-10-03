@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireRole } from "@/lib/portal/auth";
 import type { RequestLocation } from "@/lib/portal/contracts";
+import { patientForRequest } from "@/lib/portal/patients/register";
 import type { SchedulingFailureCode } from "@/lib/portal/scheduling/contracts";
 import type { MonthAvailability } from "@/lib/portal/scheduling/read-contracts";
 import { executeSchedulingOperation } from "@/lib/portal/scheduling/service";
@@ -17,7 +18,22 @@ import type { CardBookCommand, CardType } from "./card-booking-model";
    types and the open starts per provider for the chosen one — and the
    scheduling `book` command carrying the request it came from. Both
    return outcomes rather than throwing, so a throw on the client is only
-   ever the transport. */
+   ever the transport.
+
+   The Schedule's request record (issue #356) books a person known only by
+   their request: its month is read with no patient, and its Book sends no
+   patient either. The server then books the patient linked to the request,
+   registering the requester from the request row first when there is none
+   (lib/portal/patients/register.ts). A request that is gone answers
+   `not_found`; a registration that could not be written answers
+   `unavailable`, which the card offers to try again. A retry under the
+   same key finds the request already linked and books the same patient,
+   so the scheduling command it sends is the one the key first carried.
+
+   The patient record's Book another (issue #356) books a known patient
+   with no request behind it, the way the Schedule's open time does: the
+   command carries the patient and no source request. A command with
+   neither is refused as invalid. */
 
 export type CardMonthOutcome =
   | {
@@ -33,7 +49,8 @@ export async function readCardMonth(
     /** Null on the first read: the server picks the default type. */
     appointmentTypeId: string | null;
     location: RequestLocation;
-    patientId: string;
+    /** Null for a requester not registered yet: no patient's visits to avoid. */
+    patientId: string | null;
   }>,
 ): Promise<CardMonthOutcome> {
   const session = await requireRole("staff", { unauthenticated: "throw" });
@@ -80,14 +97,28 @@ export async function bookFromCard(
   input: Readonly<{ idempotencyKey: string; command: CardBookCommand }>,
 ): Promise<CardBookOutcome> {
   const session = await requireRole("staff", { unauthenticated: "throw" });
-  const outcome = await executeSchedulingOperation(serviceClient(), session.id, {
+  const db = serviceClient();
+  const { sourceRequestId } = input.command;
+  let { patientId } = input.command;
+  if (patientId === null) {
+    if (sourceRequestId === null) return { ok: false, code: "invalid_command" };
+    const patient = await patientForRequest(db, session.id, sourceRequestId);
+    if (!patient.ok)
+      return {
+        ok: false,
+        code: patient.code === "request_not_found" ? "not_found" : "unavailable",
+      };
+    patientId = patient.patientId;
+  }
+  const outcome = await executeSchedulingOperation(db, session.id, {
     action: "command",
     idempotencyKey: input.idempotencyKey,
-    command: { kind: "book", ...input.command },
+    command: { kind: "book", ...input.command, patientId },
   });
   if (!outcome.ok) return { ok: false, code: outcome.code };
   revalidatePath("/admin");
+  revalidatePath("/admin/schedule");
   revalidatePath("/admin/requests");
-  revalidatePath(`/admin/requests/${input.command.sourceRequestId}`);
+  if (sourceRequestId !== null) revalidatePath(`/admin/requests/${sourceRequestId}`);
   return { ok: true };
 }
