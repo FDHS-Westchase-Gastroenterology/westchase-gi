@@ -193,16 +193,21 @@ test("a person known only by a request books from their record and becomes a pat
     await expect(page).toHaveURL(new RegExp(`[?&]request=${requestId}`, "u"));
     await expect(sheet.getByRole("tab")).toHaveCount(0);
 
+    /* The swap happens inside the page: a full reload would drop this mark. */
+    await page.evaluate(() => {
+      document.documentElement.dataset.sameDocument = "";
+    });
     await sheet.getByRole("button", { name: "Book appointment" }).click();
     const card = page.locator(".wgi-sheet-card");
     await card.getByLabel("Visit type").selectOption(fixture.typeId);
     await pickFirstStart(page, card);
     await card.getByRole("button", { name: "Book", exact: true }).click();
 
-    /* The record on screen becomes the new patient's. */
+    /* The record on screen becomes the new patient's, in the same document. */
     await expect(sheet.getByRole("tab", { name: "Visits" })).toBeVisible();
     await expect(page).toHaveURL(/[?&]patient=/u);
     await expect(page).not.toHaveURL(/[?&]request=/u);
+    await expect(page.locator("html[data-same-document]")).toHaveCount(1);
 
     const links = await db
       .from("patient_request_links")

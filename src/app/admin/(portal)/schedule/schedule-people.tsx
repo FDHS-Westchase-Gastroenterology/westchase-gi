@@ -202,13 +202,19 @@ export function SchedulePeople({
     );
   }, []);
 
-  const toPatient = useCallback((patient: RecordHint) => {
-    /* One record gives way to the other in place, without the sheets'
-       travel: the person on screen is the same. */
-    setInstant(true);
-    setHint(patient);
-    window.history.replaceState(null, "", recordHref("patient", patient.id));
-  }, []);
+  const toPatient = useCallback(
+    (patient: RecordHint) => {
+      /* One record gives way to the other in place, without the sheets'
+         travel: the person on screen is the same. The swap goes through the
+         router rather than the history API: a booking has just refreshed
+         the page, and an address changed under that refresh makes its
+         answer mismatch the page, which Next settles with a full reload. */
+      setInstant(true);
+      setHint(patient);
+      router.replace(recordHref("patient", patient.id), { scroll: false });
+    },
+    [router],
+  );
 
   const value = useMemo<SchedulePeopleValue>(
     () => ({
