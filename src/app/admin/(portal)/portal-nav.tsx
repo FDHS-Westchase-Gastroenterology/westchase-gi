@@ -13,6 +13,8 @@ import {
   Settings,
 } from "@/components/icons";
 
+import { RailTip } from "./portal-sidebar";
+
 // Five destinations per layout, each its own list (issue #327, Figma section
 // 08 option 2; Schedule from issue #343). The desktop rail gives the five work
 // Pages the same row and moves Settings and Help to the account footer; the
@@ -61,24 +63,26 @@ export function PortalNav({
 
           return (
             <li key={item.href}>
-              <Link
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                aria-label={showBadge ? `${item.label}, ${waitingCount} waiting` : item.label}
-                className="portal-nav-link"
-              >
-                <Icon className="portal-nav-icon" />
-                <span>{item.label}</span>
-                {showBadge ? (
-                  <span
-                    data-testid="nav-waiting-badge"
-                    aria-hidden="true"
-                    className="portal-nav-count"
-                  >
-                    {waitingCount > 99 ? "99+" : waitingCount}
-                  </span>
-                ) : null}
-              </Link>
+              <RailTip label={item.label}>
+                <Link
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  aria-label={showBadge ? `${item.label}, ${waitingCount} waiting` : item.label}
+                  className="portal-nav-link"
+                >
+                  <Icon className="portal-nav-icon" />
+                  <span className="portal-rail-label">{item.label}</span>
+                  {showBadge ? (
+                    <span
+                      data-testid="nav-waiting-badge"
+                      aria-hidden="true"
+                      className="portal-nav-count"
+                    >
+                      {waitingCount > 99 ? "99+" : waitingCount}
+                    </span>
+                  ) : null}
+                </Link>
+              </RailTip>
             </li>
           );
         })}
@@ -88,21 +92,20 @@ export function PortalNav({
 }
 
 // Settings and Help in the desktop account footer: the small-link style of
-// View website and Sign out, current in on-dark ink with no fill.
+// View website and Sign out, current in on-dark ink with no fill. On the
+// Compact rail each is an icon named by its tooltip.
 export function PortalAccountLinks() {
   const pathname = usePathname();
 
   return [SETTINGS, HELP].map((item) => {
     const Icon = item.icon;
     return (
-      <Link
-        key={item.href}
-        href={item.href}
-        aria-current={isActive(pathname, item.href) ? "page" : undefined}
-      >
-        <Icon className="h-4 w-4" />
-        {item.label}
-      </Link>
+      <RailTip key={item.href} label={item.label}>
+        <Link href={item.href} aria-current={isActive(pathname, item.href) ? "page" : undefined}>
+          <Icon className="h-4 w-4" />
+          <span className="portal-rail-label">{item.label}</span>
+        </Link>
+      </RailTip>
     );
   });
 }

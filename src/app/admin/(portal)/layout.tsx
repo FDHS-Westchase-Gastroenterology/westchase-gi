@@ -16,6 +16,7 @@ import { serviceClient } from "@/lib/portal/server";
 
 import { PortalAccountLinks, PortalNav } from "./portal-nav";
 import { PortalReleaseProvider, PortalReleaseUtility } from "./portal-release-briefing";
+import { PortalSidebar, RailTip, SidebarToggle } from "./portal-sidebar";
 
 import "./wgi-paints.css";
 
@@ -23,6 +24,17 @@ import "./wgi-paints.css";
 // With Settings and Help in its account footer, becomes four thumb-reachable
 // Destinations on mobile. The navigation stays put while the
 // Appointment-request canvas changes, preserving location and task continuity.
+// Below 1366px wide it folds to an icon rail (portal-sidebar.tsx).
+
+/** The rail's avatar: the first letters of the first two names. */
+function initialsOf(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+}
 
 export default async function PortalLayout({
   children,
@@ -57,7 +69,7 @@ export default async function PortalLayout({
             Skip to staff portal content
           </a>
 
-          <aside className="portal-sidebar print-hide" aria-label="Portal workspace">
+          <PortalSidebar>
             <Link
               href="/admin"
               className="portal-sidebar-brand"
@@ -66,7 +78,7 @@ export default async function PortalLayout({
               <span className="portal-sidebar-mark" aria-hidden="true">
                 W
               </span>
-              <span>
+              <span className="portal-rail-hidden">
                 <strong>Westchase Gastroenterology</strong>
                 <small>Staff portal</small>
               </span>
@@ -75,8 +87,12 @@ export default async function PortalLayout({
             <PortalNav layout="sidebar" waitingCount={waitingCount} />
             <PortalNav layout="bar" waitingCount={waitingCount} />
 
+            <SidebarToggle />
             <div className="portal-sidebar-account">
               <p className="portal-sidebar-person">
+                <span className="portal-sidebar-initials" aria-hidden="true">
+                  {initialsOf(session.displayName)}
+                </span>
                 <span data-testid="session-user">{session.displayName}</span>
                 <small className="portal-sidebar-person-meta">
                   <span className="capitalize">{session.role}</span>
@@ -88,19 +104,23 @@ export default async function PortalLayout({
               </p>
               <div className="portal-sidebar-account-actions">
                 <PortalAccountLinks />
-                <Link href="/">
-                  <ExternalLink className="h-4 w-4" />
-                  View website
-                </Link>
+                <RailTip label="View website">
+                  <Link href="/">
+                    <ExternalLink className="h-4 w-4" />
+                    <span className="portal-rail-label">View website</span>
+                  </Link>
+                </RailTip>
                 <form action={logoutAction}>
-                  <button type="submit">
-                    <LogOut className="h-4 w-4" />
-                    Sign out
-                  </button>
+                  <RailTip label="Sign out">
+                    <button type="submit">
+                      <LogOut className="h-4 w-4" />
+                      <span className="portal-rail-label">Sign out</span>
+                    </button>
+                  </RailTip>
                 </form>
               </div>
             </div>
-          </aside>
+          </PortalSidebar>
 
           <div className="portal-stage">
             <header className="portal-mobile-header print-hide">
