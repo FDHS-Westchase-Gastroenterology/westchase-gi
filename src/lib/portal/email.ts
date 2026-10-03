@@ -1,5 +1,6 @@
 export type PortalEmailPurpose =
   | "appointment_notification"
+  | "appointment_notification_test"
   | "recipient_confirmation"
   | "staff_invite";
 

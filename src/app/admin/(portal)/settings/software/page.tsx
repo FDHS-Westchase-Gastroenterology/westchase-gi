@@ -6,21 +6,19 @@ import {
   inviteMaintainer,
   revokeMaintainer,
 } from "@/app/admin/(portal)/settings/actions";
-import { Check } from "@/components/icons";
-import { buttonVariants } from "@/components/ui/button-variants";
+import { Check, ChevronRight, Plus } from "@/components/icons";
 import { requireRole } from "@/lib/portal/auth";
 import { getMaintainerAccessModel } from "@/lib/portal/maintainers";
 import {
+  ATTENTION_HEADING,
+  MAINTAINER_ACCESS_ROW,
   MAINTAINER_DISCLOSURE_INTRO,
-  MAINTAINER_DISCLOSURE_SUMMARY,
   MAINTAINER_GRANT_ACCESS,
   PROVIDER_LINK_REL,
   PROVIDER_LINK_TARGET,
-  REVIEW_FLYERS_HREF,
-  STAFF_PRACTICE_CONTROLS,
-  STAFF_REQUEST_CHANGE,
-  STAFF_SECTION_HEADINGS,
-  STAFF_WEBSITE_DOES,
+  SOFTWARE_INTRO,
+  SOFTWARE_ROWS,
+  SOFTWARE_RUNS_HEADING,
   WEBSITE_CAPABILITIES,
   WEBSITE_CHANGE_HREF,
   WEBSITE_MAINTAINER_SERVICES,
@@ -30,16 +28,14 @@ import {
 
 import { MaintainerAccess } from "./maintainer-access";
 
-const SECTION_LABEL =
-  "text-[0.82rem] font-bold tracking-[0.06em] text-[var(--color-muted-ink)] uppercase";
-const SECTION_BODY = "mt-3 max-w-[70ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]";
-const PROVIDER_LINK_CLASS =
-  "mt-1 flex min-h-11 w-fit items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2";
+import "@/app/admin/(portal)/settings/settings.css";
 
 function ProviderLink({
   id,
+  children,
 }: Readonly<{
   id: "github" | "vercel" | "supabase" | "porkbun";
+  children: string;
 }>) {
   const link = websiteProviderLink(id);
   return (
@@ -48,147 +44,140 @@ function ProviderLink({
       href={link.href}
       target={PROVIDER_LINK_TARGET}
       rel={PROVIDER_LINK_REL}
-      className={PROVIDER_LINK_CLASS}
+      aria-label={link.name}
+      className="settings-software-link"
     >
-      {link.name}
+      {children}
+      <ChevronRight aria-hidden="true" className="size-3.5" />
     </a>
   );
 }
 
+/* Settings › Software (issue #355, Figma St7): who runs the clinic's website
+   and staff portal, and what is still unfinished. One card names what the
+   software runs and who holds each account; maintainer access opens from its
+   own row, so most staff never see the provider consoles. */
 export default async function AdminSettingsSoftwarePage() {
   const session = await requireRole("staff");
   const model = await getMaintainerAccessModel();
   const attentionItems = websiteAttentionItems(model.state);
+  const isAdmin = session.role === "admin";
 
   return (
     <>
-      <PortalPageHeader title="Software" />
-      <section
-        data-testid="managed-product"
-        aria-labelledby="website-heading"
-        className="portal-panel mt-6 p-6 sm:p-8"
-      >
-        <div data-testid="website-staff-layer">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <h2
-              id="website-heading"
-              className="text-[1.3rem] leading-tight font-black text-[var(--color-ink)]"
-            >
-              Clinic website
-            </h2>
-            <Link
-              href={WEBSITE_CHANGE_HREF}
-              data-testid="request-website-change"
-              data-slot="button"
-              className={buttonVariants()}
-            >
-              Request a website change
-            </Link>
-          </div>
+      <PortalPageHeader
+        title="Software"
+        actions={
+          <Link
+            href={WEBSITE_CHANGE_HREF}
+            data-testid="request-website-change"
+            className="wgi-settings-command"
+          >
+            <Plus aria-hidden="true" className="size-4" />
+            Request a website change
+          </Link>
+        }
+      />
+      <div className="wgi-settings mt-6 flex flex-col gap-4">
+        <p className="text-[0.875rem] leading-5 text-(--wgi-muted-ink)">{SOFTWARE_INTRO}</p>
 
-          <section className="mt-6" aria-labelledby="what-website-does-heading">
-            <h3 id="what-website-does-heading" className={SECTION_LABEL}>
-              {STAFF_SECTION_HEADINGS["what-website-does"]}
-            </h3>
-            <p className={SECTION_BODY}>{STAFF_WEBSITE_DOES}</p>
-            <ul className="mt-3 space-y-2 text-[0.92rem] text-[var(--color-ink)]">
+        <section
+          data-testid="managed-product"
+          aria-labelledby="software-runs-heading"
+          className="settings-software"
+        >
+          <div className="settings-software-runs">
+            <h2 id="software-runs-heading" className="settings-software-heading">
+              {SOFTWARE_RUNS_HEADING}
+            </h2>
+            <ul className="settings-software-capabilities">
               {WEBSITE_CAPABILITIES.map((capability) => (
-                <li key={capability} className="flex gap-2.5">
-                  <Check
-                    aria-hidden="true"
-                    className="mt-0.5 h-4 w-4 flex-none text-[var(--color-teal-ink)]"
-                  />
+                <li key={capability}>
+                  <Check aria-hidden="true" className="size-4" />
                   {capability}
                 </li>
               ))}
             </ul>
-          </section>
-
-          <section className="mt-6" aria-labelledby="what-practice-controls-heading">
-            <h3 id="what-practice-controls-heading" className={SECTION_LABEL}>
-              {STAFF_SECTION_HEADINGS["what-practice-controls"]}
-            </h3>
-            <p className={SECTION_BODY}>{STAFF_PRACTICE_CONTROLS}</p>
-          </section>
-
-          <section
-            className="mt-6"
-            aria-labelledby="still-needs-attention-heading"
-            data-testid="website-attention"
-          >
-            <h3 id="still-needs-attention-heading" className={SECTION_LABEL}>
-              {STAFF_SECTION_HEADINGS["still-needs-attention"]}
-            </h3>
-            <div className="mt-3 rounded-[var(--radius)] border border-[var(--color-line-2)] bg-[var(--color-amber-soft)] p-4">
-              <ul className="max-w-[70ch] list-disc space-y-2 pl-5 text-[0.9rem] leading-relaxed text-[var(--color-ink)]">
-                {attentionItems.map((item) => (
-                  <li key={item.id}>{item.text}</li>
-                ))}
-              </ul>
-            </div>
-          </section>
-
-          <section className="mt-6" aria-labelledby="how-to-request-change-heading">
-            <h3 id="how-to-request-change-heading" className={SECTION_LABEL}>
-              {STAFF_SECTION_HEADINGS["how-to-request-change"]}
-            </h3>
-            <p className={SECTION_BODY}>{STAFF_REQUEST_CHANGE}</p>
-            <Link
-              href={REVIEW_FLYERS_HREF}
-              className="mt-4 flex min-h-11 w-fit items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-            >
-              Print review flyers
-            </Link>
-          </section>
-        </div>
-
-        <details
-          data-testid="maintainer-details"
-          className="website-maintainer-details mt-8 border-t border-[var(--color-line)] pt-6"
-        >
-          <summary className="min-h-11 cursor-pointer py-2 text-left font-bold text-[var(--color-ink)]">
-            {MAINTAINER_DISCLOSURE_SUMMARY}
-          </summary>
-
-          <div className="mt-4">
-            <p className="max-w-[70ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-              {MAINTAINER_DISCLOSURE_INTRO}
-            </p>
-
-            <dl className="mt-5 max-w-[70ch] space-y-4 text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-              {WEBSITE_MAINTAINER_SERVICES.map((service) => (
-                <div key={service.id}>
-                  <dt className="font-bold text-[var(--color-ink)]">{service.title}</dt>
-                  <dd>
-                    {service.body}
-                    {service.linkId !== null ? <ProviderLink id={service.linkId} /> : null}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-
-            <p className="mt-5 max-w-[70ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-              {MAINTAINER_GRANT_ACCESS}
-            </p>
-
-            <div className="mt-6 border-t border-[var(--color-line)] pt-6">
-              <MaintainerAccess
-                model={model}
-                isAdmin={session.role === "admin"}
-                actions={
-                  session.role === "admin"
-                    ? {
-                        inviteMaintainer,
-                        cancelMaintainerInvite,
-                        revokeMaintainer,
-                      }
-                    : undefined
-                }
-              />
-            </div>
           </div>
-        </details>
-      </section>
+
+          <dl className="contents">
+            {SOFTWARE_ROWS.map((row) => (
+              <div key={row.id} data-row={row.id} className="settings-software-row">
+                <dt className="settings-software-label">{row.label}</dt>
+                <dd className="settings-software-value">{row.value}</dd>
+                <dd className="settings-software-trailing">
+                  {row.linkId === null ? (
+                    row.note
+                  ) : (
+                    <ProviderLink id={row.linkId}>Open</ProviderLink>
+                  )}
+                </dd>
+              </div>
+            ))}
+          </dl>
+
+          <details data-testid="maintainer-details" className="settings-software-details">
+            <summary className="settings-software-row">
+              <span className="settings-software-label">{MAINTAINER_ACCESS_ROW.label}</span>
+              <span className="settings-software-value">{MAINTAINER_ACCESS_ROW.value}</span>
+              <span aria-hidden="true" className="settings-software-trailing">
+                <span className="settings-software-link">
+                  <span className="settings-software-when-closed">Manage</span>
+                  <span className="settings-software-when-open">Hide</span>
+                  <ChevronRight className="settings-software-chevron size-3.5" />
+                </span>
+              </span>
+            </summary>
+
+            <div className="settings-software-maintainers">
+              <p>{MAINTAINER_DISCLOSURE_INTRO}</p>
+              <dl className="settings-software-services">
+                {WEBSITE_MAINTAINER_SERVICES.map((service) => (
+                  <div key={service.id}>
+                    <dt>{service.title}</dt>
+                    <dd>
+                      {service.body}
+                      {service.linkId === "porkbun" || service.linkId === "supabase" ? (
+                        <>
+                          {" "}
+                          <ProviderLink id={service.linkId}>Open</ProviderLink>
+                        </>
+                      ) : null}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+              <p>{MAINTAINER_GRANT_ACCESS}</p>
+              <div className="settings-software-access">
+                <MaintainerAccess
+                  model={model}
+                  isAdmin={isAdmin}
+                  actions={
+                    isAdmin
+                      ? { inviteMaintainer, cancelMaintainerInvite, revokeMaintainer }
+                      : undefined
+                  }
+                />
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <section
+          data-testid="website-attention"
+          aria-labelledby="still-needs-attention-heading"
+          className="settings-attention"
+        >
+          <h2 id="still-needs-attention-heading" className="settings-attention-heading">
+            {ATTENTION_HEADING} · {attentionItems.length}
+          </h2>
+          <ul>
+            {attentionItems.map((item) => (
+              <li key={item.id}>{item.text}</li>
+            ))}
+          </ul>
+        </section>
+      </div>
     </>
   );
 }

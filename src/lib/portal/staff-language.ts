@@ -112,7 +112,7 @@ export function helpOutageCopy(phoneDisplay: string, textDisplay: string): strin
 }
 
 export const RECIPIENTS_INTRO =
-  "Everyone on this list gets an email when a patient requests an appointment. The emails are a heads-up. The portal is the record, so a missed email does not drop the request.";
+  "These addresses get an email when a patient sends a request from the website. Every request is on Home whether or not the email arrives.";
 
 export const RECIPIENT_CONFIRMATION_BODY = [
   "A Westchase GI portal administrator added this address to appointment request notifications.",

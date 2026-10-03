@@ -25,6 +25,7 @@ contracts are not yet on `main`.
 | See month availability | One summary per practice date: open count, booked share, seen visits, closed days, and per-provider openings | Connected: `/admin/schedule` month view with the day preview, the week view (`week_schedule`), and the Day view (`day_schedule`): one column per working provider, open time that books, and the no-providers empty state | [Scheduling](#scheduling) |
 | Book and manage appointments | Availability, conflict checks, booking, rescheduling, cancellation, arrival/outcomes, and Undo | Connected on the week and Day views: the appointment card checks in, reschedules, cancels and marks no-show or complete, and the open-time card books a found patient. On the Day view a visit also moves by dragging it to open time (`can_place` while it is in the air, then `reschedule`). On both views every landed command, and the Day view's booking, move and Check in, offer Undo for 15 minutes (`undoAppointmentChange`). Remaining: appointment history | [Scheduling](#scheduling) |
 | Schedule from an intake request | One operation updates both the reservation and its reviewed request | Connected: the Home record card and the Schedule's request record book from the card's month (`month_availability`, then one `book` with `sourceRequestId`). An unlinked requester is registered and linked as the booking lands. The Day view's appointment card cancels a request's visit to Call again or Request closed and Undoes it; its drag reschedules both. Remaining: the Home card's own reschedule and cancel | [Requests and appointments](#requests-and-appointments) |
+| Run the practice's accounts and alerts | Staff invites and roles, notification addresses with a test send, and website maintainers, each audited and admin-only (#355) | Connected: the Settings window's Practice and About groups (`/admin/settings/staff`, `/notifications`, `/software`). Staff read all three panes with no edit controls, and the server refuses their writes | [Settings: Practice and About](#settings-practice-and-about) |
 | See what staff did | One newest-first Activity log over appointment, schedule, request, patient, sign-in and settings history, with chip, provider, date and search filters and role scoping (#357) | Connected: `/admin/audit` reads `readActivityPage` with the category and appointment chips, provider, date range and search, scrolls into the next page, phrases every row, and expands a row into its detail; front desk gets no Settings chip and no Technical record | [Activity log](#activity-log) |
 | Read the request queue | Complete filtered results, counts, attention order, and Previous/Next | Existing screens already use the complete reads; preserve them when changing filters or paging | [Worklists](#worklists) |
 | Record billing, when used | Patient-owned charges, payments recorded elsewhere, refunds, adjustments, and corrections | Optional ledger screens, role-aware actions, and reconciliation | [Billing](#billing) |
@@ -301,6 +302,46 @@ reorder with Undo, a closed day and its reopening, and staff reading every pane 
 controls. [e2e/boundaries/scheduling-settings.spec.ts](e2e/boundaries/scheduling-settings.spec.ts)
 covers each refusal against the database.
 
+### Settings: Practice and About
+
+Staff access, Notifications and Software call the server actions in
+[settings/actions.ts](src/app/admin/(portal)/settings/actions.ts). Each requires an administrator
+session; [settings/mutations/route.ts](src/app/admin/(portal)/settings/mutations/route.ts) is the
+same set behind one JSON `POST` with an `action` name. Every write lands one audit row.
+
+| Pane | Action (`route` name) | Inputs and result |
+| --- | --- | --- |
+| Staff access | `inviteStaff` (`staff.invite`) | `email`, `role`; `displayName` is optional and defaults to the address's local part. Without a deliverable mailbox the result carries a one-time setup link, which the pane shows once. |
+| Staff access | `resendStaffInvite` (`staff.invite.resend`) | `id` (the account's user id); replaces the pending link and invalidates the earlier one. |
+| Staff access | `changeStaffRole` (`staff.role`) | `userId`, `role`. |
+| Staff access | `deactivateStaff` (`staff.deactivate`) | `id`. An onboarded account is signed out and refused; a pending invite is cancelled, its account deleted, and the address can be invited again. |
+| Notifications | `addNotificationRecipient` (`recipient.add`), `removeNotificationRecipient` (`recipient.remove`) | `email`, optional `label` and `active`; removal takes `id`. |
+| Notifications | `toggleNotificationRecipient` (`recipient.toggle`), `updateRecipientLabel` | `recipientId` with `active` or `label`. Pausing an address offers Undo by sending the opposite `active`. |
+| Notifications | `sendTestNotification` (`recipient.test`) | No input. Sends the sample request email to every address that is on and returns `recipientCount` and the provider's `accepted` count. The audit row (`recipients.test_send`) records the count and recipient ids, never the addresses. |
+| Software | `inviteMaintainer`, `cancelMaintainerInvite`, `revokeMaintainer` (`maintainer.*`) | Unchanged; the facts on the pane come from [website-custody.ts](src/lib/portal/website-custody.ts). |
+
+| Code | Status | Meaning |
+| --- | --- | --- |
+| `invalid` | 400 | The input failed its contract. |
+| `forbidden` | 403 | A staff session; the panes render read-only for staff and the server refuses anyway. |
+| `not_found` | 404 | The address or account is gone; the pane refreshes. |
+| `conflict` | 409 | The address is already on the list, or a staff account already uses it. |
+| `none_on` | 409 | The test send has no address that is on. The pane disables the button and says why. |
+| `limit` | 429 | Three test sends per administrator per 10 minutes. |
+| `unavailable` | 503 | The provider or database failed; the pane keeps its state and says so. |
+
+A test send the provider does not accept (`accepted: 0`) is a success with nothing delivered; the
+pane says the email couldn't be sent and that requests still arrive on Home.
+
+Acceptance: [e2e/portal/admin-ux.spec.ts](e2e/portal/admin-ux.spec.ts) covers the dialogs,
+pausing and Undo, the test send, inviting, resending, cancelling and re-inviting a pending account,
+and deactivation. [e2e/portal/admin-server.spec.ts](e2e/portal/admin-server.spec.ts) covers the
+staff refusals and the audit rows.
+[e2e/boundaries/notification-test.spec.ts](e2e/boundaries/notification-test.spec.ts) covers the
+test send's recipients, `none_on`, the rate limit and its audit row, and
+[e2e/boundaries/recipients.spec.ts](e2e/boundaries/recipients.spec.ts) the recipient list's
+database refusals.
+
 ### Day hours
 
 The Day view's Hours sheet (`day-hours-sheet.tsx`, admins only, today and later) changes a
@@ -557,7 +598,8 @@ a separate integration.
 
 The automated examples live in [e2e/portal](e2e/portal) and [e2e/boundaries](e2e/boundaries):
 `patients.spec.ts`, `scheduling.spec.ts`, `appointment-handoff.spec.ts`, `billing.spec.ts`,
-`clinical.spec.ts`, `worklists.spec.ts`, `find-people.spec.ts`, and `schedule-people.spec.ts`. Read them with the matching contracts. A real
+`clinical.spec.ts`, `worklists.spec.ts`, `find-people.spec.ts`, `schedule-people.spec.ts`,
+`admin-ux.spec.ts`, and `notification-test.spec.ts`. Read them with the matching contracts. A real
 staff-session API test establishes server behavior; a completed frontend still needs its authored
 screen path tested. Do not treat opening a dialog or receiving an API success as full UI acceptance.
 

@@ -152,6 +152,7 @@ export const AUDIT_ACTIONS = {
   RECIPIENTS_ADD: "recipients.add",
   RECIPIENTS_REMOVE: "recipients.remove",
   RECIPIENTS_TOGGLE: "recipients.toggle",
+  RECIPIENTS_TEST_SEND: "recipients.test_send",
   STAFF_INVITE: "staff.invite",
   STAFF_ONBOARD: "staff.onboard",
   STAFF_PASSWORD_RESET: "staff.password_reset",
@@ -169,6 +170,12 @@ export const AUDIT_ACTIONS = {
   ...RELEASE_AUDIT_ACTIONS,
 } as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
+
+/** How often one admin may send the test new-request email from Settings › Notifications. */
+export const NOTIFICATION_TEST_RATE_LIMIT = {
+  limit: 3,
+  windowSeconds: 10 * 60,
+} as const;
 
 /** JS-enabled submissions POST JSON here. */
 export const INTAKE_API = "/api/requests";

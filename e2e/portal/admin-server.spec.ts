@@ -496,7 +496,7 @@ test.describe("portal management server boundaries", () => {
     });
 
     const missingRecipientId = randomUUID();
-    const missingToggle = await mutate(staffPage, "recipient.toggle", {
+    const missingToggle = await mutate(adminPage, "recipient.toggle", {
       recipientId: missingRecipientId,
       active: false,
     });
@@ -527,7 +527,24 @@ test.describe("portal management server boundaries", () => {
     recipientId = recipientRow.id;
     auditEntityIds.add(recipientRow.id);
 
-    const toggledRecipient = await mutate(staffPage, "recipient.toggle", {
+    // Pausing an address is a settings change, so it is admin-only like adding and removing.
+    const deniedToggle = await mutate(staffPage, "recipient.toggle", {
+      recipientId: recipientRow.id,
+      active: false,
+    });
+    expect(deniedToggle.status).toBe(403);
+    expect(recipientRow.active).toBe(true);
+    const recipientAfterDeniedToggle = await db
+      .from("notification_recipients")
+      .select("active")
+      .eq("id", recipientRow.id)
+      .single();
+    expect(recipientAfterDeniedToggle.data?.active).toBe(true);
+
+    const deniedTestSend = await mutate(staffPage, "recipient.test", {});
+    expect(deniedTestSend.status).toBe(403);
+
+    const toggledRecipient = await mutate(adminPage, "recipient.toggle", {
       recipientId: recipientRow.id,
       active: false,
     });
@@ -684,7 +701,7 @@ test.describe("portal management server boundaries", () => {
     assertAudit("staff.role", targetProfileId, SEED_ADMIN_EMAIL);
     assertAudit("staff.deactivate", targetProfileId, SEED_ADMIN_EMAIL);
     assertAudit("recipients.add", recipientId, SEED_ADMIN_EMAIL);
-    assertAudit("recipients.toggle", recipientId, staffEmail);
+    assertAudit("recipients.toggle", recipientId, SEED_ADMIN_EMAIL);
     assertAudit("recipients.remove", recipientId, SEED_ADMIN_EMAIL);
 
     if (!adminPage) throw new Error("Admin session is unavailable");
@@ -721,6 +738,113 @@ test.describe("portal management server boundaries", () => {
       await expect(auditRow).toContainText("Outcome unconfirmed");
     } finally {
       await db.from("audit_log").delete().eq("id", externalAuditRow.id);
+    }
+  });
+
+  test("VAL-ADMIN-023: cancelling a pending invite removes the account, and a cancelled address can be invited again", async () => {
+    test.setTimeout(90_000);
+    if (adminPage === null) throw new Error("VAL-ADMIN-009 did not leave an admin page");
+    const page = adminPage;
+    const legacyEmail = `portal-legacy-${runId}@example.test`;
+    const profileIds = new Set<string>();
+    const userIds = new Set<string>();
+
+    async function profilesFor(email: string) {
+      const { data, error } = await db
+        .from("staff_profiles")
+        .select("id, user_id, email, role, active, onboarded_at")
+        .eq("email", email);
+      expect(error).toBeNull();
+      return requireDecoded(
+        z.array(staffProfileRowSchema).safeParse(data ?? []),
+        "Legacy invite profiles could not be decoded",
+      );
+    }
+
+    async function authUserExists(userId: string) {
+      const { data } = await db.auth.admin.getUserById(userId);
+      return data.user !== null;
+    }
+
+    try {
+      // An invite cancelled before cancelling removed accounts left an
+      // Inactive, never-onboarded profile holding the address.
+      const legacy = await db.auth.admin.createUser({ email: legacyEmail, email_confirm: false });
+      expect(legacy.error).toBeNull();
+      const legacyUserId = z.string().parse(legacy.data.user?.id);
+      userIds.add(legacyUserId);
+      const legacyProfile = await db
+        .from("staff_profiles")
+        .insert({
+          user_id: legacyUserId,
+          email: legacyEmail,
+          display_name: "TEST Legacy Invite",
+          role: "staff",
+          active: false,
+          onboarded_at: null,
+        })
+        .select("id")
+        .single();
+      expect(legacyProfile.error).toBeNull();
+      profileIds.add(z.string().parse(legacyProfile.data?.id));
+
+      // Inviting the address again clears that leftover instead of conflicting.
+      fallbackSetupUrl(await mutate(page, "staff.invite", { email: legacyEmail, role: "staff" }));
+      const reinvited = (await profilesFor(legacyEmail)).at(0);
+      if (reinvited === undefined) throw new Error("The re-invite left no profile");
+      profileIds.add(reinvited.id);
+      userIds.add(reinvited.user_id);
+      expect(reinvited.user_id).not.toBe(legacyUserId);
+      expect(reinvited.active).toBe(true);
+      expect(reinvited.onboarded_at).toBeNull();
+      expect(await authUserExists(legacyUserId)).toBe(false);
+
+      // Cancelling the pending invite deletes the account outright and audits
+      // It as a cancelled invite.
+      const cancelled = await mutate(page, "staff.deactivate", { id: reinvited.user_id });
+      expect(cancelled.status).toBe(200);
+      expect(cancelled.body.ok).toBe(true);
+      expect(await profilesFor(legacyEmail)).toHaveLength(0);
+      expect(await authUserExists(reinvited.user_id)).toBe(false);
+      const { data: audits, error: auditError } = await db
+        .from("audit_log")
+        .select("actor_email, action, detail")
+        .eq("entity_id", reinvited.id)
+        .eq("action", "staff.deactivate");
+      expect(auditError).toBeNull();
+      const cancelAudits = requireDecoded(
+        z.array(auditRowSchema.pick({ actor_email: true, detail: true })).safeParse(audits ?? []),
+        "Cancelled-invite audit rows could not be decoded",
+      );
+      expect(cancelAudits).toHaveLength(1);
+      expect(cancelAudits[0]?.actor_email.toLowerCase()).toBe(SEED_ADMIN_EMAIL.toLowerCase());
+      expect(cancelAudits[0]?.detail).toEqual({
+        from: true,
+        to: false,
+        onboarded: false,
+        invite_cancelled: true,
+      });
+
+      // The freed address takes a fresh invite.
+      fallbackSetupUrl(await mutate(page, "staff.invite", { email: legacyEmail, role: "staff" }));
+      const fresh = (await profilesFor(legacyEmail)).at(0);
+      if (fresh === undefined) throw new Error("The fresh invite left no profile");
+      profileIds.add(fresh.id);
+      userIds.add(fresh.user_id);
+
+      // Someone who finished setup keeps their address after deactivation.
+      const kept = await mutate(page, "staff.invite", { email: targetEmail, role: "staff" });
+      expect(kept.status).toBe(409);
+      expect(kept.body.ok).toBe(false);
+    } finally {
+      await db
+        .from("audit_log")
+        .delete()
+        .in("entity_id", [...profileIds]);
+      await db.from("staff_profiles").delete().eq("email", legacyEmail);
+      for (const userId of userIds) {
+        await db.auth.admin.deleteUser(userId);
+      }
     }
   });
 

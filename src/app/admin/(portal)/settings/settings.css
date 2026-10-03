@@ -844,6 +844,385 @@ button.settings-closure:focus-visible {
   font-weight: 600;
 }
 
+/* ---- Staff access and Notifications tables (issue #355, St4 and St6) ---- */
+
+/* One white card: a small-caps head, then rows on one grid. Each surface
+   names its columns; the last column holds the row's ••• menu. */
+.settings-table {
+  overflow: clip;
+  border: 1px solid var(--wgi-rule);
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.settings-staff {
+  --table-columns: minmax(0, 1fr) 12.5rem 12rem 2rem;
+}
+
+.settings-recipients {
+  --table-columns: minmax(0, 1fr) 6.5rem 2rem;
+}
+
+.settings-table-head,
+.settings-table-row {
+  display: grid;
+  grid-template-columns: var(--table-columns);
+  align-items: center;
+  column-gap: 1rem;
+  padding-inline: 1.25rem 1rem;
+}
+
+.settings-table-head {
+  min-height: 2.25rem;
+  border-bottom: 1px solid var(--wgi-rule);
+  background: var(--wgi-surface);
+  color: var(--wgi-muted-ink);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.settings-table-row {
+  min-height: 3.75rem;
+  padding-block: 0.625rem;
+}
+
+.settings-table-row + .settings-table-row {
+  box-shadow: inset 0 1px 0 var(--wgi-rule);
+}
+
+.settings-table-name {
+  color: var(--wgi-name-ink);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.25rem;
+}
+
+/* A paused address keeps its row and greys back: still listed, not sent. */
+.settings-table-row.is-paused .settings-table-name {
+  color: var(--wgi-muted-ink);
+  font-weight: 600;
+}
+
+.settings-table-row.is-paused .settings-avatar {
+  background: var(--color-slate-100);
+  color: var(--color-slate-400);
+}
+
+/* A just-sent invite settles into the list from a few pixels down. */
+.settings-table-row.is-new {
+  transition:
+    opacity var(--motion-base-duration) var(--motion-standard),
+    transform var(--motion-base-duration) var(--motion-standard);
+
+  @starting-style {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.settings-avatar.is-pending {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--color-slate-300);
+  color: var(--wgi-muted-ink);
+  /* The dashed ring reads "not yet": an invite nobody has accepted. */
+  outline: 1px dashed var(--color-slate-400);
+  outline-offset: -1px;
+}
+
+.settings-avatar.is-mail {
+  background: var(--color-slate-50);
+  box-shadow: inset 0 0 0 1px var(--wgi-rule);
+  color: var(--color-navy-700);
+}
+
+.settings-role-pill {
+  display: inline-flex;
+  min-height: 1.75rem;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  background: var(--color-slate-100);
+  padding-inline: 0.75rem;
+  color: var(--color-navy-800);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.settings-role-pill.is-menu {
+  padding-inline-end: 0.5rem;
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.settings-role-pill.is-menu:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .settings-role-pill.is-menu:hover,
+  .settings-role-pill.is-menu[data-popup-open] {
+    background: var(--color-slate-200);
+  }
+}
+
+.settings-dialog-lead {
+  margin-top: 0.25rem;
+  color: var(--wgi-muted-ink);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.settings-empty {
+  border: 1px dashed var(--wgi-rule);
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+/* ---- The request email, as it arrives (St6) ---- */
+
+.settings-email {
+  display: grid;
+  grid-template-columns: minmax(0, 26.25rem) minmax(0, 1fr);
+  align-items: center;
+  gap: 1.75rem;
+  border: 1px solid var(--wgi-rule);
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 1.25rem 1.25rem 1.25rem 1.25rem;
+}
+
+/* Below the md width the preview and its explanation stack, so a phone never scrolls sideways. */
+@media (width < 48rem) {
+  .settings-email {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+  }
+}
+
+.settings-email-preview {
+  overflow: clip;
+  border: 1px solid var(--wgi-rule);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: var(--wgi-card-shadow);
+}
+
+.settings-email-fields {
+  display: grid;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--wgi-rule);
+  background: var(--wgi-surface);
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.settings-email-fields > div {
+  display: grid;
+  grid-template-columns: 3.375rem minmax(0, 1fr);
+}
+
+.settings-email-fields dt {
+  color: var(--wgi-muted-ink);
+}
+
+.settings-email-fields dd {
+  overflow: hidden;
+  color: var(--color-navy-800);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-email-body {
+  padding: 0.875rem 1rem 1rem;
+  color: var(--wgi-name-ink);
+  font-size: 0.8125rem;
+  line-height: 1.5rem;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+/* ---- Software (St7) ---- */
+
+.settings-software {
+  overflow: clip;
+  border: 1px solid var(--wgi-rule);
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.settings-software-runs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.25rem 1.5rem 1.125rem;
+}
+
+.settings-software-heading {
+  color: var(--wgi-name-ink);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.25rem;
+}
+
+.settings-software-capabilities {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 1.25rem;
+  row-gap: 0.25rem;
+  color: var(--color-navy-800);
+  font-size: 0.875rem;
+}
+
+.settings-software-capabilities > li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.settings-software-capabilities svg {
+  color: var(--color-teal-700);
+}
+
+.settings-software-row {
+  display: grid;
+  min-height: 2.75rem;
+  grid-template-columns: 12rem minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 1rem;
+  border-top: 1px solid var(--wgi-rule);
+  padding: 0.5rem 1.5rem;
+  font-size: 0.875rem;
+}
+
+.settings-software-label {
+  color: var(--wgi-muted-ink);
+}
+
+.settings-software-value {
+  color: var(--wgi-name-ink);
+  font-weight: 600;
+}
+
+.settings-software-trailing {
+  color: var(--wgi-muted-ink);
+  text-align: end;
+}
+
+.settings-software-link {
+  display: inline-flex;
+  min-height: 1.75rem;
+  align-items: center;
+  gap: 0.125rem;
+  border-radius: 6px;
+  color: var(--wgi-link-ink);
+  font-weight: 600;
+}
+
+a.settings-software-link:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  a.settings-software-link:hover,
+  .settings-software-details > summary:hover .settings-software-link {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+}
+
+/* Maintainer access is a disclosure whose summary is the row itself. */
+.settings-software-details > summary {
+  cursor: pointer;
+  list-style: none;
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.settings-software-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-software-details > summary:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: -2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .settings-software-details > summary:hover {
+    background: var(--wgi-surface);
+  }
+}
+
+.settings-software-details[open] .settings-software-when-closed,
+.settings-software-details:not([open]) .settings-software-when-open {
+  display: none;
+}
+
+.settings-software-chevron {
+  transition: transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+.settings-software-details[open] .settings-software-chevron {
+  transform: rotate(90deg);
+}
+
+.settings-software-maintainers {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  border-top: 1px solid var(--wgi-rule);
+  background: var(--wgi-surface);
+  padding: 1.25rem 1.5rem 1.5rem;
+  color: var(--color-navy-800);
+  font-size: 0.875rem;
+  line-height: 1.375rem;
+}
+
+.settings-software-maintainers > p {
+  max-width: 70ch;
+}
+
+.settings-software-services {
+  display: grid;
+  max-width: 70ch;
+  gap: 0.75rem;
+}
+
+.settings-software-services dt {
+  color: var(--wgi-name-ink);
+  font-weight: 700;
+}
+
+.settings-software-access {
+  border-top: 1px solid var(--wgi-rule);
+  padding-top: 1.25rem;
+}
+
+.settings-attention {
+  border: 1px solid color-mix(in srgb, var(--wgi-attention-ink) 22%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--wgi-attention-fill) 55%, #ffffff);
+  padding: 1rem 1.25rem;
+  color: var(--color-navy-800);
+  font-size: 0.8125rem;
+  line-height: 1.5rem;
+}
+
+.settings-attention-heading {
+  color: var(--wgi-attention-ink);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.5rem;
+}
+
+.settings-attention > ul {
+  list-style: disc;
+  padding-inline-start: 1rem;
+}
+
 /* Rows, chips and text commands press as a deeper tint, the portal's press
    for anything wider than a small button. Last in the file, so a press
    outranks the hover tint under the same pointer. */
@@ -853,7 +1232,9 @@ button.settings-closure:focus-visible {
 .settings-type-pill:not([data-disabled]):active,
 .settings-icon-choice:not([data-pressed]):active,
 button.settings-closure:active,
-.settings-location-map:active .settings-location-maps-chip {
+.settings-location-map:active .settings-location-maps-chip,
+.settings-role-pill.is-menu:active,
+.settings-software-details > summary:active {
   background: var(--color-slate-100);
 }
 

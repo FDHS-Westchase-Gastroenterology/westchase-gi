@@ -354,8 +354,12 @@ async function assertNoHorizontalOverflow(page, label) {
 async function redactPortalData(page) {
   await page.addStyleTag({
     content: `
+      /* A list laid out with display: contents draws no box to filter, so its rows blur too. */
       [data-testid="recipient-list"],
+      [data-testid="recipient-list"] > *,
+      [data-testid="notification-preview"] [data-ui-redact],
       [data-testid="staff-list"],
+      [data-testid="staff-list"] > *,
       [data-testid="audit-table"] tbody,
       [data-testid="release-engagement-table"] tbody,
       [data-testid="release-engagement-cards"],
