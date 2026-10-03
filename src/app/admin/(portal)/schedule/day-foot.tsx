@@ -2,7 +2,7 @@
 
 import type { RefObject } from "react";
 
-import { Keycap } from "./schedule-shortcuts";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
 
 /* The row under the day's grid (issue #351; Figma S5 and its keyboard
    frame): who is not working, on the right, and, once someone has pressed
@@ -23,21 +23,21 @@ export function DayFoot({ hints, offLine, shortcutsRef, onShortcuts }: DayFootPr
       {hints ? (
         <p className="wgi-dayview-hints">
           <span className="wgi-dayview-hint">
-            <span className="wgi-shortcuts-caps" aria-hidden="true">
-              <Keycap>↑</Keycap>
-              <Keycap>↓</Keycap>
-            </span>
+            <KbdGroup aria-hidden="true">
+              <Kbd>↑</Kbd>
+              <Kbd>↓</Kbd>
+            </KbdGroup>
             <span className="sr-only">Up and down arrows:</span> Move through the day
           </span>
           <span className="wgi-dayview-hint">
-            <span className="wgi-shortcuts-caps" aria-hidden="true">
-              <Keycap>←</Keycap>
-              <Keycap>→</Keycap>
-            </span>
+            <KbdGroup aria-hidden="true">
+              <Kbd>←</Kbd>
+              <Kbd>→</Kbd>
+            </KbdGroup>
             <span className="sr-only">Left and right arrows:</span> Change provider
           </span>
           <span className="wgi-dayview-hint">
-            <Keycap>Return</Keycap> Open
+            <Kbd>Return</Kbd> Open
           </span>
           <button
             ref={shortcutsRef}
@@ -46,9 +46,9 @@ export function DayFoot({ hints, offLine, shortcutsRef, onShortcuts }: DayFootPr
             aria-haspopup="dialog"
             onClick={onShortcuts}
           >
-            <span className="wgi-shortcuts-caps" aria-hidden="true">
-              <Keycap>?</Keycap>
-            </span>
+            <KbdGroup aria-hidden="true">
+              <Kbd>?</Kbd>
+            </KbdGroup>
             All shortcuts
           </button>
         </p>

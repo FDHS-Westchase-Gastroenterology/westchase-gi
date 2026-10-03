@@ -581,64 +581,21 @@
 
 /* ---------- Keycaps and the shortcuts list ---------- */
 
-.wgi-keycap {
-  display: inline-grid;
-  min-width: 22px;
-  height: 22px;
-  box-sizing: border-box;
-  place-items: center;
-  padding: 0 5px;
-  border: 1px solid var(--color-slate-300);
-  border-radius: 4px;
-  background: #fff;
-  box-shadow: 0 1px 0 var(--color-slate-300);
+/* The keys and the list are the Kbd and Popover recipes (ui/kbd.tsx,
+   ui/popover.tsx), which carry their paper and the popover's motion. The
+   Figma frame sets keys and the list's title in the name ink. */
+.wgi-schedule [data-slot="kbd"],
+.wgi-shortcuts [data-slot="kbd"],
+.wgi-shortcuts [data-slot="popover-title"] {
   color: var(--wgi-name-ink);
-  font-family: inherit;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  line-height: 1;
 }
 
-.wgi-shortcuts-caps {
-  display: inline-flex;
-  gap: 4px;
-}
-
-/* About the frame's 378px, radius 16, on the popover layer the click
-   card uses. */
+/* About the frame's 378px, on the popover layer the click card uses. */
 .wgi-shortcuts {
   width: 23.625rem;
   max-width: calc(100vw - 1.5rem);
   box-sizing: border-box;
   padding: 18px 0 8px;
-  border: 1px solid var(--wgi-rule);
-  border-radius: 16px;
-  background: #fff;
-  color: var(--color-body);
-  box-shadow: var(--shadow-popover);
-  outline: none;
-  transform-origin: var(--transform-origin);
-  /* Scale and fade from "All shortcuts" on the base beat of the standard
-     curve; the exit takes the fast beat. Both read the registry. */
-  transition:
-    transform var(--motion-base-duration) var(--motion-standard),
-    opacity var(--motion-base-duration) var(--motion-standard);
-}
-
-.wgi-shortcuts[data-starting-style],
-.wgi-shortcuts[data-ending-style] {
-  opacity: 0;
-  transform: scale(0.95);
-}
-
-.wgi-shortcuts[data-ending-style] {
-  transition-duration: var(--motion-fast-duration);
-}
-
-/* Opened with ? or by Base UI's keyboard paths: no animation. */
-.wgi-shortcuts[data-instant],
-.wgi-shortcuts[data-keyed] {
-  transition-duration: 0ms;
 }
 
 .wgi-shortcuts-head {
@@ -646,15 +603,6 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 14px 6px 20px;
-}
-
-.wgi-shortcuts-title {
-  margin: 0;
-  color: var(--wgi-name-ink);
-  font-family: inherit;
-  font-size: 1rem;
-  font-weight: 700;
-  line-height: 22px;
 }
 
 .wgi-shortcuts-close {

@@ -1,9 +1,11 @@
 "use client";
 
-import { Popover } from "@base-ui/react/popover";
 import { useRouter } from "next/navigation";
 import { useEffect, useEffectEvent } from "react";
-import type { ReactNode, RefObject } from "react";
+import type { RefObject } from "react";
+
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { Popover, PopoverClose, PopoverContent, PopoverTitle } from "@/components/ui/popover";
 
 /* The Schedule's single-key shortcuts and the list that names them (issue
    #351; Figma S5 shortcuts frame). Day, Week and Month all answer them:
@@ -70,10 +72,6 @@ export function useScheduleShortcuts(targets: Readonly<ShortcutTargets>, onHelp:
 
 /* ---- The list ---- */
 
-export function Keycap({ children }: Readonly<{ children: ReactNode }>) {
-  return <kbd className="wgi-keycap">{children}</kbd>;
-}
-
 interface Shortcut {
   readonly keys: readonly string[];
   readonly does: string;
@@ -127,55 +125,51 @@ export interface ShortcutsListProps {
 
 export function ShortcutsList({ open, onOpenChange, anchor, side, keyed }: ShortcutsListProps) {
   return (
-    <Popover.Root
+    <Popover
       open={open}
       onOpenChange={(next) => {
         onOpenChange(next);
       }}
     >
-      <Popover.Portal>
-        <Popover.Positioner
-          className="wgi-week-card-positioner"
-          anchor={anchor}
-          side={side}
-          align={side === "top" ? "start" : "end"}
-          alignOffset={side === "top" ? -23 : 0}
-          sideOffset={side === "top" ? 12 : 8}
-          collisionPadding={12}
-        >
-          <Popover.Popup className="wgi-shortcuts" data-keyed={keyed || undefined}>
-            <header className="wgi-shortcuts-head">
-              <Popover.Title className="wgi-shortcuts-title">Keyboard shortcuts</Popover.Title>
-              <Popover.Close className="wgi-shortcuts-close" aria-label="Close">
-                <Keycap>Esc</Keycap>
-                <span aria-hidden="true">Close</span>
-              </Popover.Close>
-            </header>
-            {GROUPS.map((group) => (
-              <section key={group.title} className="wgi-shortcuts-group">
-                <h2 className="wgi-shortcuts-group-title">{group.title}</h2>
-                <dl className="wgi-shortcuts-rows">
-                  {group.shortcuts.map((shortcut) => (
-                    <div key={shortcut.does} className="wgi-shortcuts-row">
-                      <dt className="wgi-shortcuts-keys">
-                        <span className="sr-only">
-                          {shortcut.keys.map((key) => SPOKEN.get(key) ?? key).join(", ")}
-                        </span>
-                        <span className="wgi-shortcuts-caps" aria-hidden="true">
-                          {shortcut.keys.map((key) => (
-                            <Keycap key={key}>{key}</Keycap>
-                          ))}
-                        </span>
-                      </dt>
-                      <dd className="wgi-shortcuts-does">{shortcut.does}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </section>
-            ))}
-          </Popover.Popup>
-        </Popover.Positioner>
-      </Popover.Portal>
-    </Popover.Root>
+      <PopoverContent
+        className="wgi-shortcuts"
+        motion={keyed ? "none" : "wgi"}
+        anchor={anchor}
+        side={side}
+        align={side === "top" ? "start" : "end"}
+        alignOffset={side === "top" ? -23 : 0}
+        sideOffset={side === "top" ? 12 : 8}
+      >
+        <header className="wgi-shortcuts-head">
+          <PopoverTitle>Keyboard shortcuts</PopoverTitle>
+          <PopoverClose className="wgi-shortcuts-close" aria-label="Close">
+            <Kbd>Esc</Kbd>
+            <span aria-hidden="true">Close</span>
+          </PopoverClose>
+        </header>
+        {GROUPS.map((group) => (
+          <section key={group.title} className="wgi-shortcuts-group">
+            <h2 className="wgi-shortcuts-group-title">{group.title}</h2>
+            <dl className="wgi-shortcuts-rows">
+              {group.shortcuts.map((shortcut) => (
+                <div key={shortcut.does} className="wgi-shortcuts-row">
+                  <dt className="wgi-shortcuts-keys">
+                    <span className="sr-only">
+                      {shortcut.keys.map((key) => SPOKEN.get(key) ?? key).join(", ")}
+                    </span>
+                    <KbdGroup aria-hidden="true">
+                      {shortcut.keys.map((key) => (
+                        <Kbd key={key}>{key}</Kbd>
+                      ))}
+                    </KbdGroup>
+                  </dt>
+                  <dd className="wgi-shortcuts-does">{shortcut.does}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        ))}
+      </PopoverContent>
+    </Popover>
   );
 }
