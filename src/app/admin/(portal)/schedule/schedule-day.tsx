@@ -171,6 +171,8 @@ export function ScheduleDayView({ view, admin }: Readonly<{ view: ScheduleDay; a
               onReschedule={(id) => {
                 setKeyed(false);
                 setOpening(id);
+                // The visit may sit below the fold; bring it into view so the card opens beside it.
+                document.getElementById(`${baseId}-${id}`)?.scrollIntoView({ block: "nearest" });
                 card.open(`${baseId}-${id}`);
               }}
             />
