@@ -629,3 +629,216 @@ button.settings-hours-chip:active {
   width: min(92vw, 34rem);
   max-height: min(92dvh, 46rem);
 }
+
+/* ---- Locations ---- */
+
+.settings-locations {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.settings-location {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  overflow: clip;
+  border: 1px solid var(--wgi-rule);
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.settings-location-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.125rem 1.25rem 1rem;
+}
+
+.settings-location-pin {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--color-teal-50);
+  color: var(--color-teal-700);
+}
+
+.settings-location-name {
+  color: var(--wgi-name-ink);
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.5rem;
+}
+
+.settings-location-address-line {
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+}
+
+.settings-location-edit {
+  font-size: 0.875rem;
+}
+
+/* The map picture is a still of the office's streets, kept in public/,
+   so no map key reaches the browser. The whole picture opens the place. */
+.settings-location-map {
+  position: relative;
+  display: block;
+  height: 140px;
+  overflow: clip;
+  border-top: 1px solid var(--wgi-rule);
+  background: var(--wgi-band);
+}
+
+.settings-location-map:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: -2px;
+}
+
+.settings-location-map-picture {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+}
+
+.settings-location-maps-chip {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border: 1px solid var(--wgi-rule);
+  border-radius: 9999px;
+  background: #ffffff;
+  padding: 0.375rem 0.75rem 0.375rem 0.625rem;
+  box-shadow: 0 1px 3px rgb(15 31 51 / 0.1);
+  color: var(--wgi-link-ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .settings-location-map:hover .settings-location-maps-chip {
+    background: var(--color-slate-50);
+  }
+}
+
+.settings-location-row {
+  display: flex;
+  min-height: 3rem;
+  align-items: center;
+  gap: 0.75rem;
+  border-top: 1px solid var(--wgi-rule);
+  padding: 0.5rem 1.25rem;
+  font-size: 0.875rem;
+}
+
+.settings-location-label {
+  flex: 0 0 auto;
+  margin-inline-end: auto;
+  color: var(--wgi-muted-ink);
+}
+
+.settings-location-value {
+  color: var(--wgi-name-ink);
+  font-weight: 600;
+  text-align: end;
+}
+
+.settings-location-avatar {
+  display: inline-flex;
+  width: 1.75rem;
+  height: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+  border-radius: 9999px;
+  background: var(--color-navy-100);
+  color: var(--color-navy-800);
+  font-size: 0.625rem;
+  font-weight: 700;
+}
+
+.settings-location-avatar + .settings-location-avatar {
+  margin-inline-start: -0.375rem;
+}
+
+.settings-closures {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  color: var(--wgi-name-ink);
+  font-weight: 600;
+}
+
+.settings-closures > li + li::before {
+  padding-inline: 0.25rem;
+  color: var(--wgi-muted-ink);
+  content: "·";
+}
+
+button.settings-closure {
+  border-radius: 6px;
+  padding-inline: 0.125rem;
+  font-weight: 600;
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+button.settings-closure:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: 1px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button.settings-closure:hover {
+    background: var(--wgi-hover);
+  }
+}
+
+.settings-location-displaced {
+  padding: 0 1.25rem 1rem;
+}
+
+/* The office editor: the address on one line, then a row per weekday. */
+.portal-confirm-dialog.settings-location-editor {
+  width: min(92vw, 36rem);
+  max-height: min(92dvh, 52rem);
+}
+
+.settings-location-address {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 5.5rem 7.5rem;
+  gap: 0.75rem;
+}
+
+.settings-office-hours {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-office-day {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.settings-office-day + .settings-office-day {
+  border-top: 1px solid var(--wgi-rule);
+}
+
+.settings-office-day-name {
+  min-width: 6rem;
+  color: var(--wgi-name-ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+}

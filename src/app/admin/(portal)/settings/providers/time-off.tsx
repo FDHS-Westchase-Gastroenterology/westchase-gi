@@ -1,10 +1,10 @@
 "use client";
 
 import { CalendarOffIcon } from "lucide-react";
-import Link from "next/link";
 import { useRef, useState } from "react";
 
-import { dayHref, endMinute, practiceMinute } from "@/app/admin/(portal)/schedule/week-calendar";
+import { endMinute, practiceMinute } from "@/app/admin/(portal)/schedule/week-calendar";
+import { Displaced } from "@/app/admin/(portal)/settings/displaced";
 import {
   timeOffDetail,
   upcomingTimeOff,
@@ -16,11 +16,10 @@ import {
   dateRange,
   datesBetween,
   reasonLabel,
-  shortDate,
   timeOffDays,
 } from "@/app/admin/(portal)/settings/settings-model";
 import type { SettingsSend } from "@/app/admin/(portal)/settings/use-settings-command";
-import { ChevronDown, Ellipsis, Plus, X } from "@/components/icons";
+import { ChevronDown, Ellipsis, Plus } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { CalendarSpan } from "@/components/ui/calendar";
 import {
@@ -48,8 +47,7 @@ import type {
    beside its link: a month to pick the run of days (or one day and its
    hours), the reason, and before anything is saved a dry run that says how
    many booked appointments the time would cover. Time off never cancels
-   them; once it is added they are listed here, each a link to its day on
-   the schedule, so staff can choose new times. */
+   them; once it is added they are listed here (displaced.tsx). */
 
 const QUARTERS = Array.from({ length: (24 * 60) / QUARTER_HOUR + 1 }, (_, i) => i * QUARTER_HOUR);
 
@@ -282,50 +280,6 @@ function AddTimeOff({
   );
 }
 
-function Displaced({
-  conflicts,
-  onDismiss,
-}: Readonly<{
-  conflicts: readonly SettingsConflict[];
-  onDismiss: () => void;
-}>) {
-  return (
-    <div role="status" className="settings-notice flex flex-col gap-2">
-      <div className="flex items-start gap-2">
-        <p className="grow font-semibold">
-          {conflicts.length === 1
-            ? "1 booked appointment falls in this time off. Choose a new time for it."
-            : `${String(conflicts.length)} booked appointments fall in this time off. Choose new times for them.`}
-        </p>
-        <button
-          type="button"
-          aria-label="Dismiss"
-          className="settings-notice-close"
-          onClick={onDismiss}
-        >
-          <X aria-hidden="true" className="size-3.5" />
-        </button>
-      </div>
-      <ul className="flex flex-col gap-1">
-        {conflicts.map((conflict) => (
-          <li key={conflict.id}>
-            <Link href={dayHref(conflict.date)} className="settings-notice-link">
-              <span>
-                {shortDate(conflict.date)} · {clockOf(practiceMinute(conflict.startsAt))}–
-                {clockOf(endMinute(conflict.endsAt))}
-              </span>
-              <span data-ui-redact className="font-semibold">
-                {conflict.patientListName}
-              </span>
-              <span>{conflict.appointmentType}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 export function TimeOff({
   provider,
   settings,
@@ -386,6 +340,11 @@ export function TimeOff({
       </div>
       {displaced.length > 0 ? (
         <Displaced
+          message={
+            displaced.length === 1
+              ? "1 booked appointment falls in this time off. Choose a new time for it."
+              : `${String(displaced.length)} booked appointments fall in this time off. Choose new times for them.`
+          }
           conflicts={displaced}
           onDismiss={() => {
             setDisplaced([]);

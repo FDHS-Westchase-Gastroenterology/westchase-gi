@@ -403,13 +403,15 @@ function CalendarSpan({
    cell is the one staff clicked. The month follows a picked day (an
    outside day at the grid's edge opens its month) and otherwise stays
    where staff navigated it; that sync is a during-render derivation, not
-   an effect. */
+   an effect. Days already taken (an office's closed days) are struck
+   through and can't be picked. */
 function CalendarDay({
   className,
   day,
   min,
   max,
   disabled,
+  off = [],
   onChange,
 }: Readonly<{
   /** The surface's class on the root (Home's `wgi-editor-cal`). */
@@ -419,9 +421,12 @@ function CalendarDay({
   min: string;
   max: string;
   disabled: boolean;
+  /** Days already taken, struck through and disabled. */
+  off?: readonly string[];
   onChange: (day: string) => void;
 }>) {
   const selected = dayToDate(day);
+  const taken = off.map((each) => parseDay(each));
   const first = parseDay(min);
   const last = parseDay(max);
   const [month, setMonth] = useState(() => selected ?? first);
@@ -443,7 +448,9 @@ function CalendarDay({
       onMonthChange={setMonth}
       startMonth={first}
       endMonth={last}
-      disabled={disabled ? true : { before: first, after: last }}
+      disabled={disabled ? true : [{ before: first, after: last }, ...taken]}
+      modifiers={{ off: taken }}
+      modifiersClassNames={{ off: "is-off" }}
       selected={selected}
       onSelect={(date) => {
         onChange(dateToDay(date));
