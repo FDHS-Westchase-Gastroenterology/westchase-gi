@@ -407,56 +407,18 @@
 
 /* ---------- The day preview ---------- */
 
-/* The positioner is a box at the day, not a surface; the popup takes
-   its own pointer. */
-.wgi-day-preview-positioner {
-  pointer-events: none;
-}
-
+/* H1's preview on the recipe's card paint (ui/popover): 280 wide, radius
+   12, white, its own deeper lift. */
 .wgi-day-preview {
   width: 17.5rem;
   max-width: calc(100vw - 1.5rem);
   box-sizing: border-box;
   padding: 14px 16px 4px;
-  border: 1px solid var(--wgi-rule);
   border-radius: 12px;
   background: #fff;
-  color: var(--color-body);
   box-shadow:
     0 10px 14px rgb(17 43 64 / 32%),
     0 1px 1px rgb(17 43 64 / 12%);
-  outline: none;
-  pointer-events: auto;
-  transform-origin: var(--transform-origin);
-  /* Scale and fade from the day on the base beat of the standard curve;
-     the exit takes the fast beat. Both read the registry. */
-  transition:
-    transform var(--motion-base-duration) var(--motion-standard),
-    opacity var(--motion-base-duration) var(--motion-standard);
-}
-
-.wgi-day-preview[data-starting-style],
-.wgi-day-preview[data-ending-style] {
-  opacity: 0;
-  transform: scale(0.95);
-}
-
-.wgi-day-preview[data-ending-style] {
-  transition-duration: var(--motion-fast-duration);
-}
-
-/* Keyboard-initiated opens and closes never animate: Base UI's own
-   data-instant, and data-keyed when focus opened it. */
-.wgi-day-preview[data-instant],
-.wgi-day-preview[data-keyed] {
-  transition-duration: 0ms;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .wgi-day-preview[data-starting-style],
-  .wgi-day-preview[data-ending-style] {
-    transform: none;
-  }
 }
 
 .wgi-day-preview-arrow {
@@ -500,6 +462,8 @@
 
 .wgi-day-preview-title {
   margin: 0;
+  font-family: inherit;
+  line-height: inherit;
   color: var(--wgi-name-ink);
   font-size: 0.9375rem;
   font-weight: 700;

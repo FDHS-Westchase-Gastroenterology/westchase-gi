@@ -3,6 +3,8 @@
 import type { RefObject } from "react";
 
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { PopoverTrigger } from "@/components/ui/popover";
+import type { PopoverHandle } from "@/components/ui/popover";
 
 /* The row under the day's grid (issue #351; Figma S5 and its keyboard
    frame): who is not working, on the right, and, once someone has pressed
@@ -13,10 +15,12 @@ export interface DayFootProps {
   readonly hints: boolean;
   readonly offLine: string | null;
   readonly shortcutsRef: RefObject<HTMLButtonElement | null>;
-  readonly onShortcuts: () => void;
+  /** "All shortcuts" is the list's trigger. */
+  readonly shortcutsHandle: PopoverHandle<undefined>;
 }
 
-export function DayFoot({ hints, offLine, shortcutsRef, onShortcuts }: DayFootProps) {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- Base UI handles carry store member types that cannot be made readonly
+export function DayFoot({ hints, offLine, shortcutsRef, shortcutsHandle }: DayFootProps) {
   if (!hints && offLine === null) return null;
   return (
     <div className="wgi-dayview-foot">
@@ -39,18 +43,16 @@ export function DayFoot({ hints, offLine, shortcutsRef, onShortcuts }: DayFootPr
           <span className="wgi-dayview-hint">
             <Kbd>Return</Kbd> Open
           </span>
-          <button
+          <PopoverTrigger
             ref={shortcutsRef}
-            type="button"
+            handle={shortcutsHandle}
             className="wgi-dayview-hint wgi-dayview-hint-button"
-            aria-haspopup="dialog"
-            onClick={onShortcuts}
           >
             <KbdGroup aria-hidden="true">
               <Kbd>?</Kbd>
             </KbdGroup>
             All shortcuts
-          </button>
+          </PopoverTrigger>
         </p>
       ) : null}
       {offLine === null ? null : <p className="wgi-dayview-off">{offLine}</p>}

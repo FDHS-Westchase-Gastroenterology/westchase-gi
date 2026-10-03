@@ -1,9 +1,11 @@
 "use client";
 
-import { Popover } from "@base-ui/react/popover";
 import { Tooltip } from "@base-ui/react/tooltip";
 import Link from "next/link";
 import type { CSSProperties, KeyboardEvent } from "react";
+
+import { PopoverTrigger } from "@/components/ui/popover";
+import type { PopoverHandle } from "@/components/ui/popover";
 
 import { useMinuteClock } from "./minute-clock";
 import type {
@@ -40,7 +42,7 @@ export interface Grid {
   readonly baseId: string;
   readonly tip: Tooltip.Handle<TipPayload>;
   readonly band: Tooltip.Handle<TipPayload>;
-  readonly card: Popover.Handle<WeekCardPayload>;
+  readonly card: PopoverHandle<WeekCardPayload>;
   readonly onKeyed: (keyed: boolean) => void;
 }
 
@@ -257,9 +259,9 @@ function WeekCellTrigger({ grid, cell }: Readonly<{ grid: Grid; cell: WeekCell }
   };
   if (cell.kind === "open")
     return (
-      <Popover.Trigger {...shared} className="wgi-week-open">
+      <PopoverTrigger {...shared} className="wgi-week-open">
         <OpenBody cell={cell} />
-      </Popover.Trigger>
+      </PopoverTrigger>
     );
   const attrs = {
     ...shared,
@@ -270,15 +272,15 @@ function WeekCellTrigger({ grid, cell }: Readonly<{ grid: Grid; cell: WeekCell }
   };
   if (!grid.view.compare)
     return (
-      <Popover.Trigger {...attrs}>
+      <PopoverTrigger {...attrs}>
         <AppointmentBody cell={cell} compare={false} />
-      </Popover.Trigger>
+      </PopoverTrigger>
     );
   return (
     <Tooltip.Trigger
       handle={grid.tip}
       payload={{ lines: cell.tooltip, side: "top" }}
-      render={<Popover.Trigger {...attrs} />}
+      render={<PopoverTrigger {...attrs} />}
     >
       <AppointmentBody cell={cell} compare />
     </Tooltip.Trigger>

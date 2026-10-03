@@ -1,6 +1,5 @@
 "use client";
 
-import { Popover } from "@base-ui/react/popover";
 import { cn } from "cn";
 import { startTransition, useEffect, useId, useState } from "react";
 
@@ -8,6 +7,7 @@ import { formatPhoneForDisplay, telHref } from "@/app/admin/(portal)/requests/fo
 import { Check, ChevronRight, Clock, Ellipsis, MapPin, Phone, User } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Menu, MenuContent, MenuGroup, MenuItem, MenuTrigger } from "@/components/ui/menu";
+import { PopoverTitle } from "@/components/ui/popover";
 
 import type { WeekAppointmentCell } from "./schedule-week-model";
 import { readWeekAppointment, readWeekRecordLine, weekAppointmentCommand } from "./week-actions";
@@ -73,9 +73,9 @@ export function AppointmentCard({
         />
       ) : (
         <>
-          <Popover.Title id={titleId} className="wgi-week-card-name" data-ui-redact="patient-name">
+          <PopoverTitle id={titleId} className="wgi-week-card-name" data-ui-redact="patient-name">
             {cell.name}
-          </Popover.Title>
+          </PopoverTitle>
           {read === null ? (
             <p className="wgi-week-card-quiet" aria-live="polite">
               Reading the appointment…
@@ -141,9 +141,9 @@ function AppointmentDetails({
 
   return (
     <>
-      <Popover.Title id={titleId} className="wgi-week-card-name" data-ui-redact="patient-name">
+      <PopoverTitle id={titleId} className="wgi-week-card-name" data-ui-redact="patient-name">
         {detail.patientName}
-      </Popover.Title>
+      </PopoverTitle>
       <p className="wgi-week-card-kind">
         <span data-slot="badge" className={cn("wgi-badge", BADGE_PAINT[badge.variant])}>
           {badge.label}

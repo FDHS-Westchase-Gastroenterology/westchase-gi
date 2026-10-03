@@ -1,12 +1,17 @@
 "use client";
 
-import { Popover } from "@base-ui/react/popover";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import type { CSSProperties, FocusEvent, KeyboardEvent, MouseEvent } from "react";
 
 import { ChevronLeft, ChevronRight } from "@/components/icons";
+import {
+  createPopoverHandle,
+  Popover,
+  PopoverTrigger,
+  usePopoverHoverIntent,
+} from "@/components/ui/popover";
 
 import { CellBody, DayPreviewPopup, Legend } from "./month-day-preview";
 import type { DayPreview, ScheduleCell, ScheduleMonth } from "./schedule-model";
@@ -48,8 +53,7 @@ const WEEKDAY_NAMES = [
 
 /* How long a pointer rests on a day before its preview opens, and how
    long after one closes the next still opens at once. */
-const REST_DELAY = 400;
-const WARM_GRACE = 300;
+const PREVIEW_INTENT = { rest: 400, warm: 300 } as const;
 
 const DAY_MS = 86_400_000;
 
@@ -74,25 +78,12 @@ export function ScheduleMonthView({ view }: Readonly<{ view: ScheduleMonth }>) {
     ? null
     : (days.find((cell) => cell.kind !== "closed")?.date ?? null);
   const [active, setActive] = useState(() => days.find((cell) => cell.today)?.date ?? firstDay);
-  const [handle] = useState(() => Popover.createHandle<DayPreview>());
-  /* Warm: a preview is open, or one closed within the grace — the next
-     day opens without the rest delay. */
-  const [warm, setWarm] = useState(false);
-  const cool = useRef<number | undefined>(undefined);
+  const [handle] = useState(() => createPopoverHandle<DayPreview>());
+  /* Rest, warmth, and keyed opens that appear and leave at once. */
+  const intent = usePopoverHoverIntent(handle, PREVIEW_INTENT);
   /* The preview follows focus only while focus opened it; a hovered one
      is left to its own dismissal. */
   const byFocus = useRef(false);
-  /* Opened or moved from the keyboard: the preview appears and leaves at
-     once (Base UI marks only its own keyboard paths data-instant, not
-     handle.open). */
-  const [keyed, setKeyed] = useState(false);
-
-  useEffect(
-    () => () => {
-      window.clearTimeout(cool.current);
-    },
-    [],
-  );
 
   const columns: CSSProperties & Record<`--${string}`, string> = {
     "--schedule-columns": view.columns
@@ -141,8 +132,7 @@ export function ScheduleMonthView({ view }: Readonly<{ view: ScheduleMonth }>) {
     setActive(cell.date);
     if (cell.kind === "future" && event.currentTarget.matches(":focus-visible")) {
       byFocus.current = true;
-      setKeyed(true);
-      handle.open(event.currentTarget.id);
+      intent.openNow(event.currentTarget.id);
     } else if (byFocus.current && handle.isOpen) handle.close();
   }
 
@@ -192,14 +182,13 @@ export function ScheduleMonthView({ view }: Readonly<{ view: ScheduleMonth }>) {
         </div>
       );
     return (
-      <Popover.Trigger
+      <PopoverTrigger
         key={cell.date}
         role="gridcell"
         {...shared}
+        {...intent.triggerProps}
         handle={handle}
         payload={cell.preview}
-        openOnHover
-        delay={warm ? 0 : REST_DELAY}
         nativeButton={false}
         render={<div />}
         data-tone={cell.tone}
@@ -212,7 +201,7 @@ export function ScheduleMonthView({ view }: Readonly<{ view: ScheduleMonth }>) {
         }}
       >
         <CellBody cell={cell} narrow={narrow} />
-      </Popover.Trigger>
+      </PopoverTrigger>
     );
   }
 
@@ -281,28 +270,17 @@ export function ScheduleMonthView({ view }: Readonly<{ view: ScheduleMonth }>) {
         </div>
         <Legend />
       </div>
-      <Popover.Root
+      <Popover
         handle={handle}
         onOpenChange={(open, details) => {
-          window.clearTimeout(cool.current);
-          if (open) {
-            if (details.reason !== "imperative-action") {
-              byFocus.current = false;
-              setKeyed(false);
-            }
-            setWarm(true);
-            return;
-          }
-          byFocus.current = false;
-          cool.current = window.setTimeout(() => {
-            setWarm(false);
-          }, WARM_GRACE);
+          intent.onOpenChange(open, details);
+          if (!open || details.reason !== "imperative-action") byFocus.current = false;
         }}
       >
         {({ payload }) =>
-          payload === undefined ? null : <DayPreviewPopup preview={payload} keyed={keyed} />
+          payload === undefined ? null : <DayPreviewPopup preview={payload} keyed={intent.keyed} />
         }
-      </Popover.Root>
+      </Popover>
     </section>
   );
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import { Popover } from "@base-ui/react/popover";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ComponentType, FocusEvent, KeyboardEvent, ReactNode, SVGProps } from "react";
 
@@ -20,6 +19,15 @@ import {
   Undo2,
   Voicemail,
 } from "@/components/icons";
+import {
+  createPopoverHandle,
+  Popover,
+  PopoverArrow,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+  usePopoverHoverIntent,
+} from "@/components/ui/popover";
 import {
   ScrollArea,
   ScrollAreaThumb,
@@ -80,13 +88,16 @@ interface Opened {
 
 /* How long a pointer rests on a row before its popover opens, and how long
    after one closes the next still opens at once. */
-const REST_DELAY = 400;
-const WARM_GRACE = 300;
+const ROW_INTENT = { rest: 400, warm: 300 } as const;
 /* The popover sits beside the sheet only when the room to the sheet's
    left holds it; narrower, it drops below its row. */
 const SIDE_ROOM = 332;
 
 const SHEET_SURFACE = ".wgi-sheet-surface";
+/* Beside the sheet it stays on the left and shifts along it; below its
+   row it may flip above. */
+const HISTORY_LEFT = { side: "none", align: "shift", fallbackAxisSide: "none" } as const;
+const HISTORY_BELOW = { side: "flip", align: "shift", fallbackAxisSide: "none" } as const;
 
 /* The popover's anchor: the sheet's left edge at the row's height, so the
    popover stands clear of the sheet with its arrow level with the row.
@@ -121,58 +132,53 @@ function HistoryPopup({ opened }: Readonly<{ opened: Opened }>) {
   const { side, anchor } = useAnchor(triggerId);
   const { detail } = row;
   return (
-    <Popover.Portal>
-      <Popover.Positioner
-        anchor={anchor}
-        side={side}
-        align="center"
-        sideOffset={12}
-        collisionPadding={12}
-        arrowPadding={14}
-        collisionAvoidance={
-          side === "left"
-            ? { side: "none", align: "shift", fallbackAxisSide: "none" }
-            : { side: "flip", align: "shift", fallbackAxisSide: "none" }
-        }
-        className="wgi-history-positioner"
-      >
-        {/* The row keeps focus: the popover is read, not worked in, and
-            focus staying on the list keeps its keys the list's. */}
-        <Popover.Popup className="wgi-popover wgi-history-popover" initialFocus={false}>
-          <Popover.Arrow className="wgi-history-arrow" />
-          <Popover.Title className="wgi-history-heading">
-            <RowIcon icon={row.icon} />
-            {detail.heading}
-          </Popover.Title>
-          {detail.byline === null ? null : <p className="wgi-history-byline">{detail.byline}</p>}
-          {detail.body === null ? null : detail.note ? (
-            /* A long note scrolls inside the popover and stops there; the
-               history behind it does not move. */
-            <div
-              className="wgi-history-note"
-              tabIndex={0}
-              role="region"
-              aria-label="Note text"
-              data-ui-redact="staff-note"
-            >
-              {detail.body}
+    /* The row keeps focus: the popover is read, not worked in, and focus
+       staying on the list keeps its keys the list's. */
+    <PopoverContent
+      className="wgi-history-popover"
+      positionerClassName="wgi-history-positioner"
+      paint="card"
+      anchor={anchor}
+      side={side}
+      align="center"
+      sideOffset={12}
+      collisionPadding={12}
+      arrowPadding={14}
+      collisionAvoidance={side === "left" ? HISTORY_LEFT : HISTORY_BELOW}
+      initialFocus={false}
+    >
+      <PopoverArrow className="wgi-history-arrow" />
+      <PopoverTitle className="wgi-history-heading">
+        <RowIcon icon={row.icon} />
+        {detail.heading}
+      </PopoverTitle>
+      {detail.byline === null ? null : <p className="wgi-history-byline">{detail.byline}</p>}
+      {detail.body === null ? null : detail.note ? (
+        /* A long note scrolls inside the popover and stops there; the
+           history behind it does not move. */
+        <div
+          className="wgi-history-note"
+          tabIndex={0}
+          role="region"
+          aria-label="Note text"
+          data-ui-redact="staff-note"
+        >
+          {detail.body}
+        </div>
+      ) : (
+        <p className="wgi-history-body">{detail.body}</p>
+      )}
+      {detail.facts.length === 0 ? null : (
+        <dl className="wgi-history-facts">
+          {detail.facts.map((fact) => (
+            <div key={fact.key}>
+              <dt>{fact.key}</dt>
+              <dd>{fact.value}</dd>
             </div>
-          ) : (
-            <p className="wgi-history-body">{detail.body}</p>
-          )}
-          {detail.facts.length === 0 ? null : (
-            <dl className="wgi-history-facts">
-              {detail.facts.map((fact) => (
-                <div key={fact.key}>
-                  <dt>{fact.key}</dt>
-                  <dd>{fact.value}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-        </Popover.Popup>
-      </Popover.Positioner>
-    </Popover.Portal>
+          ))}
+        </dl>
+      )}
+    </PopoverContent>
   );
 }
 
@@ -198,11 +204,10 @@ export function RecordHistory({
   rowCount,
 }: Readonly<{ days: readonly HistoryDay[]; rowCount: number }>) {
   const baseId = useId();
-  const [handle] = useState(() => Popover.createHandle<Opened>());
-  /* Warm: a popover is open, or one closed within the grace — the next row
-     opens without the rest delay. */
-  const [warm, setWarm] = useState(false);
-  const cool = useRef<number | undefined>(undefined);
+  const [handle] = useState(() => createPopoverHandle<Opened>());
+  /* Rest, and warmth: once one is open, or closed within the grace, the
+     next row opens without the rest delay. */
+  const intent = usePopoverHoverIntent(handle, ROW_INTENT);
   /* The popover follows focus only while focus opened it; a pinned or
      hovered one is left to its own dismissal. */
   const byFocus = useRef(false);
@@ -222,7 +227,6 @@ export function RecordHistory({
     document.addEventListener("keydown", onEscape, true);
     return () => {
       document.removeEventListener("keydown", onEscape, true);
-      window.clearTimeout(cool.current);
     };
   }, [handle]);
 
@@ -283,12 +287,11 @@ export function RecordHistory({
                       const id = `${baseId}-${row.id}`;
                       return (
                         <li key={row.id}>
-                          <Popover.Trigger
+                          <PopoverTrigger
                             handle={handle}
                             payload={{ row, triggerId: id }}
                             id={id}
-                            openOnHover
-                            delay={warm ? 0 : REST_DELAY}
+                            {...intent.triggerProps}
                             className="wgi-history-row"
                             data-emphasis={row.emphasis}
                             data-note={row.detail.note || undefined}
@@ -297,7 +300,7 @@ export function RecordHistory({
                           >
                             <RowIcon icon={row.icon} />
                             <RowText row={row} />
-                          </Popover.Trigger>
+                          </PopoverTrigger>
                         </li>
                       );
                     })}
@@ -311,23 +314,15 @@ export function RecordHistory({
           </ScrollBar>
         </ScrollArea>
       )}
-      <Popover.Root
+      <Popover
         handle={handle}
         onOpenChange={(open, details) => {
-          window.clearTimeout(cool.current);
-          if (open) {
-            if (details.reason !== "imperative-action") byFocus.current = false;
-            setWarm(true);
-            return;
-          }
-          byFocus.current = false;
-          cool.current = window.setTimeout(() => {
-            setWarm(false);
-          }, WARM_GRACE);
+          intent.onOpenChange(open, details);
+          if (!open || details.reason !== "imperative-action") byFocus.current = false;
         }}
       >
         {({ payload }) => (payload === undefined ? null : <HistoryPopup opened={payload} />)}
-      </Popover.Root>
+      </Popover>
     </section>
   );
 }

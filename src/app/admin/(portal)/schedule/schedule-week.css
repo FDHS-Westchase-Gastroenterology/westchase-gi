@@ -681,57 +681,17 @@
 
 /* ---------- The click card ---------- */
 
-/* The card rides above the sticky day heads (z 2), on the popup layer
-   the ui/ menu and tooltip positioners use, so a first-hour visit's card
-   is never cut by the head row. */
-.wgi-week-card-positioner {
-  isolation: isolate;
-  z-index: 50;
-}
-
-/* The appointment card is H3's popover (657:8203): 340 wide, radius 16,
-   the body inset 16 by 18. The open-time and face cards share the shell. */
+/* The appointment card is H3's popover (657:8203) on the recipe's card
+   paint (ui/popover): 340 wide, radius 16, white, the body inset 16 by 18.
+   The open-time and face cards share the shell. */
 .wgi-week-card {
   width: 21.25rem;
   max-width: calc(100vw - 1.5rem);
   box-sizing: border-box;
   padding: 16px 18px;
-  border: 1px solid var(--wgi-rule);
   border-radius: 16px;
   background: #fff;
-  color: var(--color-body);
   box-shadow: var(--shadow-popover);
-  outline: none;
-  transform-origin: var(--transform-origin);
-  /* Scale and fade from the cell on the base beat of the standard curve;
-     the exit takes the fast beat. Both read the registry. */
-  transition:
-    transform var(--motion-base-duration) var(--motion-standard),
-    opacity var(--motion-base-duration) var(--motion-standard);
-}
-
-.wgi-week-card[data-starting-style],
-.wgi-week-card[data-ending-style] {
-  opacity: 0;
-  transform: scale(0.95);
-}
-
-.wgi-week-card[data-ending-style] {
-  transition-duration: var(--motion-fast-duration);
-}
-
-/* Keyboard-initiated opens and closes never animate: Base UI's own
-   data-instant, and data-keyed when Enter or Space opened it. */
-.wgi-week-card[data-instant],
-.wgi-week-card[data-keyed] {
-  transition-duration: 0ms;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .wgi-week-card[data-starting-style],
-  .wgi-week-card[data-ending-style] {
-    transform: none;
-  }
 }
 
 .wgi-week-card :where(a, button, input, textarea, [tabindex]):focus-visible {
@@ -791,6 +751,7 @@
 
 .wgi-week-card-name {
   margin: 0;
+  font-family: inherit;
   color: var(--wgi-name-ink);
   font-size: 1.1875rem;
   font-weight: 700;

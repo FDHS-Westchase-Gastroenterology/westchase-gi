@@ -1,4 +1,4 @@
-import type { Popover as PopoverPrimitive } from "@base-ui/react/popover";
+import type { PopoverChangeDetails } from "@/components/ui/popover";
 
 import type { HomeSheetChangeDetails } from "./parts/sheet";
 
@@ -41,7 +41,7 @@ function focusWithin(selector: string): boolean {
   return active !== null && active.closest(selector) !== null;
 }
 
-export type CardChangeDetails = PopoverPrimitive.Root.ChangeEventDetails;
+export type CardChangeDetails = PopoverChangeDetails;
 
 /** True when the card declines a close: the press, the focus move, or the
     Escape belongs to a surface the card shares the screen with — or the

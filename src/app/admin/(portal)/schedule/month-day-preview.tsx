@@ -1,9 +1,9 @@
 "use client";
 
-import { Popover } from "@base-ui/react/popover";
 import Link from "next/link";
 
 import { ChevronRight } from "@/components/icons";
+import { PopoverArrow, PopoverContent, PopoverTitle } from "@/components/ui/popover";
 
 import type { DayPreview, ScheduleCell } from "./schedule-model";
 
@@ -11,59 +11,60 @@ import type { DayPreview, ScheduleCell } from "./schedule-model";
    that opens beside a future day, and the key under the grid that reads
    the cells' tints. The grid that arranges them is schedule-month.tsx. */
 
+/* Beside its day, flipping to the other side at the edge (HIG Popovers:
+   the arrow points at its source and it never covers it). */
+const PREVIEW_COLLISION = { side: "flip", align: "shift", fallbackAxisSide: "end" } as const;
+
 export function DayPreviewPopup({
   preview,
   keyed,
 }: Readonly<{ preview: DayPreview; keyed: boolean }>) {
+  /* The day keeps focus (the preview holds nothing to press but "Open
+     day"), so nothing moves it in or back. */
   return (
-    <Popover.Portal>
-      <Popover.Positioner
-        side="right"
-        align="center"
-        sideOffset={10}
-        collisionPadding={12}
-        arrowPadding={14}
-        collisionAvoidance={{ side: "flip", align: "shift", fallbackAxisSide: "end" }}
-        className="wgi-day-preview-positioner"
-      >
-        <Popover.Popup
-          className="wgi-day-preview"
-          data-keyed={keyed || undefined}
-          initialFocus={false}
-          finalFocus={false}
-        >
-          <Popover.Arrow className="wgi-day-preview-arrow" />
-          <header className="wgi-day-preview-head">
-            <Popover.Title className="wgi-day-preview-title">{preview.heading}</Popover.Title>
-            <p className="wgi-day-preview-summary">{preview.summary}</p>
-          </header>
-          <ul className="wgi-day-preview-providers">
-            {preview.providers.map((provider) => (
-              <li key={provider.id} className="wgi-day-preview-provider">
-                <div className="wgi-day-preview-line">
-                  <p className="wgi-day-preview-who">
-                    <span className="wgi-day-preview-name">{provider.name}</span>
-                    {provider.locations === "" ? null : (
-                      <span className="wgi-day-preview-where">{provider.locations}</span>
-                    )}
-                  </p>
-                  <span className="wgi-day-preview-status" data-full={provider.full || undefined}>
-                    {provider.status}
-                  </span>
-                </div>
-                {provider.times === "" ? null : (
-                  <p className="wgi-day-preview-times">{provider.times}</p>
+    <PopoverContent
+      className="wgi-day-preview"
+      paint="card"
+      motion={keyed ? "none" : "wgi"}
+      side="right"
+      align="center"
+      sideOffset={10}
+      collisionPadding={12}
+      arrowPadding={14}
+      collisionAvoidance={PREVIEW_COLLISION}
+      initialFocus={false}
+      finalFocus={false}
+    >
+      <PopoverArrow className="wgi-day-preview-arrow" />
+      <header className="wgi-day-preview-head">
+        <PopoverTitle className="wgi-day-preview-title">{preview.heading}</PopoverTitle>
+        <p className="wgi-day-preview-summary">{preview.summary}</p>
+      </header>
+      <ul className="wgi-day-preview-providers">
+        {preview.providers.map((provider) => (
+          <li key={provider.id} className="wgi-day-preview-provider">
+            <div className="wgi-day-preview-line">
+              <p className="wgi-day-preview-who">
+                <span className="wgi-day-preview-name">{provider.name}</span>
+                {provider.locations === "" ? null : (
+                  <span className="wgi-day-preview-where">{provider.locations}</span>
                 )}
-              </li>
-            ))}
-          </ul>
-          <Link href={preview.href} className="wgi-day-preview-open">
-            Open day
-            <ChevronRight width={16} height={16} aria-hidden="true" />
-          </Link>
-        </Popover.Popup>
-      </Popover.Positioner>
-    </Popover.Portal>
+              </p>
+              <span className="wgi-day-preview-status" data-full={provider.full || undefined}>
+                {provider.status}
+              </span>
+            </div>
+            {provider.times === "" ? null : (
+              <p className="wgi-day-preview-times">{provider.times}</p>
+            )}
+          </li>
+        ))}
+      </ul>
+      <Link href={preview.href} className="wgi-day-preview-open">
+        Open day
+        <ChevronRight width={16} height={16} aria-hidden="true" />
+      </Link>
+    </PopoverContent>
   );
 }
 

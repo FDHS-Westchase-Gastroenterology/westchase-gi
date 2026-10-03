@@ -1,7 +1,6 @@
 "use client";
 
-import { Popover } from "@base-ui/react/popover";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 
 import {
   closedReasons,
@@ -13,9 +12,15 @@ import {
   openBlocks,
 } from "@/app/admin/(portal)/(home)/card-booking-days";
 import type { OpenBlock, TakenTime } from "@/app/admin/(portal)/(home)/card-booking-days";
-import { createDayAim } from "@/app/admin/(portal)/(home)/day-popover-aim";
 import { clockLabel } from "@/app/admin/(portal)/(home)/record-card-time";
 import type { CardMonthStatus } from "@/app/admin/(portal)/(home)/use-card-month";
+import {
+  createPopoverHandle,
+  PopoverArrow,
+  PopoverContent,
+  PopoverTitle,
+  usePopoverHoverIntent,
+} from "@/components/ui/popover";
 import type {
   MonthAvailability,
   MonthAvailabilityDay,
@@ -36,53 +41,33 @@ interface DayPayload {
 
 const CARD_SURFACE = ".wgi-record-card";
 
+/* How the day popover follows the pointer (Figma 09f): a pointer resting
+   250ms on a day opens it or moves it there; crossing days on the way to
+   it leaves it where it is, and it outlasts a pointer that left for
+   anywhere else by 150ms (ui/popover's hover intent, with the triangle). */
+const DAY_INTENT = { rest: 250, leave: 150, triangle: true } as const;
+
 /* The handle lives with the card, so a start lost to someone else can
    reopen its day's popover from the booking's own outcome. */
 export function useDayPopover() {
   const baseId = useId();
-  const [handle] = useState(() => Popover.createHandle<DayPayload>());
-  /* The keyboard opened it: no transition, and it follows focus. */
-  const [keyboard, setKeyboard] = useState(false);
-  /* The pointer's aim: crossing days on the way to the popover. */
-  const [aim] = useState(() =>
-    createDayAim(
-      (id) => {
-        setKeyboard(false);
-        handle.open(id);
-      },
-      () => {
-        handle.close();
-      },
-      () => handle.isOpen,
-    ),
-  );
-  useEffect(
-    () => () => {
-      aim.dispose();
-    },
-    [aim],
-  );
+  const [handle] = useState(() => createPopoverHandle<DayPayload>());
+  const intent = usePopoverHoverIntent(handle, DAY_INTENT);
   return useMemo(() => {
     const idFor = (date: string) => `${baseId}-day-${date}`;
     return {
       handle,
-      keyboard,
-      setKeyboard,
-      aim,
+      intent,
       idFor,
       /** Opens a day's popover at once, as if the keyboard had. A day that
          is not a trigger on screen (another month, a locked card) has no
          popover to open. */
       openNow: (date: string) => {
-        if (document.getElementById(idFor(date)) === null) return;
-        setKeyboard(true);
-        handle.open(idFor(date));
+        intent.openNow(idFor(date));
       },
-      close: () => {
-        handle.close();
-      },
+      close: intent.close,
     };
-  }, [aim, baseId, handle, keyboard]);
+  }, [baseId, handle, intent]);
 }
 
 export type DayPopover = ReturnType<typeof useDayPopover>;
@@ -110,6 +95,9 @@ function useAnchor(triggerId: string) {
     [triggerId],
   );
 }
+
+/* Beside the card on either side, never over the month. */
+const DAY_COLLISION = { side: "flip", align: "shift", fallbackAxisSide: "none" } as const;
 
 export interface DayPopupActions {
   /** A start from the popover: the day, the provider and office, the time. */
@@ -274,56 +262,52 @@ export function DayPopup({
   const read = dayOf(availability, date);
   const blocks = read === null ? [] : openBlocks(read, taken);
 
+  /* The day keeps focus: Tab is the way in, the popover's own focus
+     guards placing it next in order after the day. */
   return (
-    <Popover.Portal>
-      <Popover.Positioner
-        anchor={anchor}
-        side="right"
-        align="center"
-        sideOffset={12}
-        collisionPadding={12}
-        arrowPadding={14}
-        collisionAvoidance={{ side: "flip", align: "shift", fallbackAxisSide: "none" }}
-        className="wgi-day-positioner"
-      >
-        {/* The day keeps focus: Tab is the way in (BookingDayButton). */}
-        <Popover.Popup
-          className="wgi-popover wgi-day-popover"
-          initialFocus={false}
-          data-keyboard={popover.keyboard || undefined}
-          onPointerEnter={popover.aim.popupEnter}
-          onPointerLeave={popover.aim.popupLeave}
+    <PopoverContent
+      {...popover.intent.popupProps}
+      className="wgi-day-popover"
+      positionerClassName="wgi-day-positioner"
+      paint="card"
+      motion={popover.intent.keyed ? "none" : "wgi"}
+      anchor={anchor}
+      side="right"
+      align="center"
+      sideOffset={12}
+      collisionPadding={12}
+      arrowPadding={14}
+      collisionAvoidance={DAY_COLLISION}
+      initialFocus={false}
+    >
+      <PopoverArrow className="wgi-history-arrow wgi-day-arrow" />
+      <div className="wgi-day-head">
+        <PopoverTitle className="wgi-day-title">{longDay(date)}</PopoverTitle>
+        <p className="wgi-day-sub">{daySubtitle(read, blocks.length, status)}</p>
+      </div>
+      {read === null ? null : (
+        <DayBody
+          date={date}
+          read={read}
+          blocks={blocks}
+          availability={availability}
+          taken={taken}
+          popover={popover}
+          actions={actions}
+        />
+      )}
+      <div className="wgi-day-foot">
+        <button
+          type="button"
+          className="wgi-day-enter"
+          onClick={() => {
+            actions.onSqueeze(date);
+            popover.close();
+          }}
         >
-          <Popover.Arrow className="wgi-history-arrow wgi-day-arrow" />
-          <div className="wgi-day-head">
-            <Popover.Title className="wgi-day-title">{longDay(date)}</Popover.Title>
-            <p className="wgi-day-sub">{daySubtitle(read, blocks.length, status)}</p>
-          </div>
-          {read === null ? null : (
-            <DayBody
-              date={date}
-              read={read}
-              blocks={blocks}
-              availability={availability}
-              taken={taken}
-              popover={popover}
-              actions={actions}
-            />
-          )}
-          <div className="wgi-day-foot">
-            <button
-              type="button"
-              className="wgi-day-enter"
-              onClick={() => {
-                actions.onSqueeze(date);
-                popover.close();
-              }}
-            >
-              Enter a time…
-            </button>
-          </div>
-        </Popover.Popup>
-      </Popover.Positioner>
-    </Popover.Portal>
+          Enter a time…
+        </button>
+      </div>
+    </PopoverContent>
   );
 }

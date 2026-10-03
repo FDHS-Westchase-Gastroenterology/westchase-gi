@@ -1,6 +1,5 @@
 "use client";
 
-import { Popover } from "@base-ui/react/popover";
 import { createContext, use, useEffect, useMemo, useRef } from "react";
 import type { FocusEvent, KeyboardEvent } from "react";
 import { getDefaultClassNames } from "react-day-picker";
@@ -8,10 +7,10 @@ import type { DayButtonProps } from "react-day-picker";
 
 import { dayAccessibleName, dayIsOpen, dayOf } from "@/app/admin/(portal)/(home)/card-booking-days";
 import type { TakenTime } from "@/app/admin/(portal)/(home)/card-booking-days";
-import { LEAVE_DELAY, REST_DELAY } from "@/app/admin/(portal)/(home)/day-popover-aim";
 import { DAY_POPOVER } from "@/app/admin/(portal)/(home)/sheet-coexistence";
 import type { CardMonthStatus } from "@/app/admin/(portal)/(home)/use-card-month";
 import { Calendar } from "@/components/stock/calendar";
+import { Popover, PopoverTrigger } from "@/components/ui/popover";
 import type { MonthAvailability } from "@/lib/portal/scheduling/read-contracts";
 
 import { DayPopup } from "./booking-day-popover";
@@ -27,7 +26,7 @@ import type { DayPopover, DayPopupActions } from "./booking-day-popover";
 
    - A pointer resting on a day opens it, and resting on another day moves
      it there; crossing days on the way to the popover leaves it where it
-     is, and leaving for elsewhere closes it (day-popover-aim.ts).
+     is, and leaving for elsewhere closes it (ui/popover's hover intent).
    - Keyboard focus on a day opens it at once, with no transition, and it
      follows focus through the grid; Tab moves into its times, Escape
      closes it and leaves focus on the day.
@@ -55,16 +54,6 @@ function dateToDay(date: Date): string {
 
 function parseDay(day: string): Date {
   return new Date(Number(day.slice(0, 4)), Number(day.slice(5, 7)) - 1, Number(day.slice(8, 10)));
-}
-
-/* Moves focus from the day into its popover's first control; Tab from the
-   day is the way in, because the popover is portaled beside the card. */
-function focusPopover(): boolean {
-  const first = document.querySelector<HTMLElement>(
-    `${DAY_POPOVER} button:not(:disabled), ${DAY_POPOVER} [tabindex="0"]`,
-  );
-  first?.focus();
-  return first != null;
 }
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- DayPicker passes DOM button props that cannot be made readonly
@@ -96,18 +85,13 @@ function BookingDayButton({ day, modifiers, ...props }: DayButtonProps) {
   const { onFocus, onKeyDown, onClick, children, ...rest } = props;
 
   return (
-    <Popover.Trigger
+    <PopoverTrigger
       ref={ref}
       handle={popover.handle}
       payload={{ date }}
       id={id}
-      openOnHover
-      delay={REST_DELAY}
-      closeDelay={LEAVE_DELAY}
       {...rest}
-      onPointerEnter={popover.aim.dayEnter}
-      onPointerMove={popover.aim.dayMove}
-      onPointerLeave={popover.aim.dayLeave}
+      {...popover.intent.triggerProps}
       aria-label={name}
       data-open-times={dayIsOpen(read) || undefined}
       data-selected-single={selected || undefined}
@@ -123,12 +107,6 @@ function BookingDayButton({ day, modifiers, ...props }: DayButtonProps) {
           popover.close();
           return;
         }
-        if (event.key === "Tab" && !event.shiftKey && popover.handle.isOpen) {
-          if (focusPopover()) {
-            event.preventDefault();
-            return;
-          }
-        }
         onKeyDown?.(event);
       }}
       onClick={(event) => {
@@ -139,7 +117,7 @@ function BookingDayButton({ day, modifiers, ...props }: DayButtonProps) {
       }}
     >
       <span className="wgi-day-number">{children}</span>
-    </Popover.Trigger>
+    </PopoverTrigger>
   );
 }
 
@@ -189,7 +167,7 @@ export function BookingCalendar({
      that focus opened. */
   // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React focus events carry DOM member types that cannot be made readonly
   function onBlur(event: FocusEvent<HTMLElement>) {
-    if (!popover.keyboard || !popover.handle.isOpen) return;
+    if (!popover.intent.keyed || !popover.handle.isOpen) return;
     const next = event.relatedTarget;
     if (
       next instanceof Element &&
@@ -231,15 +209,7 @@ export function BookingCalendar({
           }}
         />
       </div>
-      <Popover.Root
-        handle={popover.handle}
-        onOpenChange={(open, details) => {
-          popover.aim.openChange(open, details);
-          if (details.isCanceled) return;
-          /* A pointer took over: the next open animates again. */
-          if (open && details.reason !== "imperative-action") popover.setKeyboard(false);
-        }}
-      >
+      <Popover handle={popover.handle} onOpenChange={popover.intent.onOpenChange}>
         {({ payload }) =>
           payload === undefined ? null : (
             <DayPopup
@@ -252,7 +222,7 @@ export function BookingCalendar({
             />
           )
         }
-      </Popover.Root>
+      </Popover>
     </BookingDayContext>
   );
 }

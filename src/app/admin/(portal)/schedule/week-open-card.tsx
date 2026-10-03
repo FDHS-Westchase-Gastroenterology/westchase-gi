@@ -1,11 +1,11 @@
 "use client";
 
-import { Popover } from "@base-ui/react/popover";
 import { startTransition, useEffect, useId, useState } from "react";
 
 import { Clock, MapPin, Search, User } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PopoverTitle } from "@/components/ui/popover";
 
 import type { WeekOpenCell } from "./schedule-week-model";
 import { bookOpenTime, searchWeekPatients } from "./week-actions";
@@ -58,9 +58,9 @@ export function OpenTimeCard({
 
   return (
     <section className="wgi-week-card-body" aria-labelledby={titleId}>
-      <Popover.Title id={titleId} className="wgi-week-card-name">
+      <PopoverTitle id={titleId} className="wgi-week-card-name">
         Book {cell.time}
-      </Popover.Title>
+      </PopoverTitle>
       <ul className="wgi-week-card-facts">
         <li>
           <Clock width={16} height={16} />

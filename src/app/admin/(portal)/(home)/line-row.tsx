@@ -3,13 +3,18 @@
 import { useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 
+import {
+  Popover,
+  POPOVER_SHIFT_ONLY,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { TableCell, TableRow } from "@/components/ui/table";
 
 import type { HomeLine } from "./home-line";
 import type { LandedPhase } from "./landed-request";
 import { LineStatusBadge } from "./parts/badge";
 import { ChevronGlyph, PhoneGlyph } from "./parts/glyphs";
-import { HomePopover, HomePopoverContent, HomePopoverTrigger } from "./parts/popover";
 import { RecordCard } from "./record-card";
 import { cardStaysOpen } from "./sheet-coexistence";
 import { useCardDetach } from "./use-card-detach";
@@ -166,7 +171,7 @@ export function LineRow({
             valid inside a cell where it is not inside a table body. The card
             still anchors to the whole row — or to the frozen rect the detach
             left behind, which keeps the panel still while the row scrolls. */}
-        <HomePopover
+        <Popover
           open={open}
           onOpenChange={(next, details) => {
             /* The card declines a close that belongs to a surface it shares
@@ -185,18 +190,28 @@ export function LineRow({
             onOpenChange(next);
           }}
         >
-          <HomePopoverTrigger
+          <PopoverTrigger
             className="appt-line-trigger"
             aria-label={`Open request for ${line.name}`}
           >
             <ChevronGlyph size={18} />
-          </HomePopoverTrigger>
-          <HomePopoverContent
+          </PopoverTrigger>
+          <PopoverContent
             className="wgi-record-card"
+            paint="card"
             anchor={detach.anchor ?? rowRef}
             side={side}
             align="start"
             sideOffset={8}
+            collisionPadding={8}
+            /* The row supplies the side — the roomier of above and below
+               (preferredSide) — and the positioner only shifts the card
+               into the viewport when it overflows, never flips the side
+               and never shrinks it: the card slides over its anchor row
+               instead of crushing a column. The perpendicular fallback
+               stays off, so the card never lands beside the row where the
+               sidebar is. */
+            collisionAvoidance={POPOVER_SHIFT_ONLY}
             {...detach.popupProps}
           >
             <RecordCard
@@ -209,8 +224,8 @@ export function LineRow({
               onOpenFull={onOpenFull}
               onSettled={onSettled}
             />
-          </HomePopoverContent>
-        </HomePopover>
+          </PopoverContent>
+        </Popover>
       </TableCell>
     </TableRow>
   );
