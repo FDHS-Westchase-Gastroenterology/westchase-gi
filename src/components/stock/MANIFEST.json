@@ -148,5 +148,15 @@
       "dependency": "cn@0.2.6",
       "scope": "cn imports in registry components and examples; source bodies and registry provenance preserved."
     }
+  ],
+  "adoptions": [
+    {
+      "name": "collapsible",
+      "source": "src/components/stock/collapsible.tsx",
+      "target": "src/components/ui/collapsible.tsx",
+      "issue": "#357",
+      "adoptedAt": "2026-10-03",
+      "changes": "Same Base UI parts and slot names; adds a motion axis on the panel (height on the registry's base and fast beats). The staff home's earlier conversion, src/app/admin/(portal)/(home)/parts/collapsible.tsx, is unchanged."
+    }
   ]
 }
