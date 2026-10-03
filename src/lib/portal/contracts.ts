@@ -38,6 +38,26 @@ export function parseStaffRole(raw: string): StaffRole | null {
   return STAFF_ROLES.find((role) => role === raw) ?? null;
 }
 
+/** The first-sign-in tours (staff_tours.tour). Front desk accounts take only their own. */
+export const STAFF_TOURS = ["front_desk", "admin"] as const;
+export type StaffTour = (typeof STAFF_TOURS)[number];
+export const STAFF_TOUR_STATUSES = ["pending", "finished", "skipped"] as const;
+export type StaffTourStatus = (typeof STAFF_TOUR_STATUSES)[number];
+
+/** The tour that starts on a role's first sign-in. */
+export function roleTour(role: StaffRole): StaffTour {
+  return role === "admin" ? "admin" : "front_desk";
+}
+
+/** The tours a role may take: an admin may take both. Mirrors portal_set_staff_tour. */
+export function toursForRole(role: StaffRole): readonly StaffTour[] {
+  return role === "admin" ? STAFF_TOURS : ["front_desk"];
+}
+
+export function parseStaffTour(raw: string): StaffTour | null {
+  return STAFF_TOURS.find((tour) => tour === raw) ?? null;
+}
+
 /** The two one-time-link flows that may set a password (spec: staff onboarding and recovery). */
 export const PASSWORD_AUTH_FLOWS = ["invite", "recovery"] as const;
 export type PasswordAuthFlow = (typeof PASSWORD_AUTH_FLOWS)[number];

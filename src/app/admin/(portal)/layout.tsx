@@ -47,8 +47,9 @@ export default async function PortalLayout({
 
   // The waiting signal travels with the worker: a failed read suppresses the
   // Badge instead of inventing a reassuring zero.
+  // The release briefing waits until no tour is running, so the two never stack.
   const releaseEligible =
-    session.portalTourDismissedAt !== null && isPortalReleaseEligible(session.onboardedAt);
+    session.pendingTour === null && isPortalReleaseEligible(session.onboardedAt);
   const [queueResult, releaseState] = await Promise.all([
     serviceClient()
       .from("requests")

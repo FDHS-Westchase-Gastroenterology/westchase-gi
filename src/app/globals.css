@@ -1566,36 +1566,6 @@
     background: var(--portal-surface);
   }
 
-  .portal-help {
-    overflow: clip;
-    max-width: 60rem;
-    border: 1px solid var(--color-line-2);
-    border-radius: 0.75rem;
-    background: var(--portal-surface);
-  }
-
-  .portal-help-section {
-    padding: clamp(1.5rem, 3vw, 2rem);
-  }
-
-  .portal-help-section + .portal-help-section {
-    border-top: 1px solid var(--color-line);
-  }
-
-  .portal-help-tour {
-    background: var(--color-mint);
-  }
-
-  /* First-login tour: the dialog arrives with a short, calm rise (180ms,
-     strong ease-out) — the rare-tier motion budget, state-conveying only. */
-  .tour-dialog[open] {
-    --overlay-rise: 8px;
-    animation: overlay-rise 180ms var(--ease-out-quint) both;
-  }
-  .tour-dialog[open]::backdrop {
-    animation: overlay-dim 150ms ease-out both;
-  }
-
   /* One reduced-motion block for the overlay entrances and their reveals:
      every entrance stops entirely and the surface appears in place. Sits
      after every call site above, so source order keeps it winning. */
@@ -1604,9 +1574,7 @@
     .language-dialog[open]::backdrop,
     .pc-dialog[open] .pc-shell,
     .pc-dialog[open]::backdrop,
-    .pc-hint,
-    .tour-dialog[open],
-    .tour-dialog[open]::backdrop {
+    .pc-hint {
       animation: none;
     }
 
@@ -1647,12 +1615,6 @@
     .portal-submit-label {
       opacity: 0.55;
       filter: blur(2px);
-    }
-  }
-
-  @media (max-width: 639px) {
-    .portal-help-section {
-      padding: 1.5rem;
     }
   }
 

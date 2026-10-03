@@ -35,7 +35,15 @@ const TABLES = [
       ["created_at", TS],
       ["updated_at", TS],
       ["onboarded_at", TS],
-      ["portal_tour_dismissed_at", TS],
+    ],
+  ],
+  [
+    "staff_tours",
+    [
+      ["staff_user_id", U],
+      ["tour", TX],
+      ["status", TX],
+      ["recorded_at", TS],
     ],
   ],
   [

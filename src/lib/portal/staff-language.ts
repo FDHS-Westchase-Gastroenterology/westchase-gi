@@ -77,40 +77,6 @@ export function oldestNewRequestAction(input: {
   };
 }
 
-export const HELP_LINKS = {
-  appointments: { href: "/admin/requests", label: "Requests" },
-  printPacket: {
-    href: "/admin/requests/print",
-    label: "Prepare the current New-request packet",
-  },
-  openAppointments: { href: "/admin/requests", label: "Open Requests" },
-  home: { href: "/admin", label: "Return to Home" },
-  settings: { href: "/admin/settings/notifications", label: "Settings" },
-  activity: { href: "/admin/audit", label: "Activity log" },
-  website: { href: "/admin/settings/software", label: "Website" },
-} as const;
-
-export const HELP_QUEUE_ARRIVAL =
-  "When a patient fills out the appointment form on the website, in any of the five languages, their appointment request is saved to the practice's database.";
-export const HELP_QUEUE_OPEN = "Open";
-export const HELP_QUEUE_RECORD =
-  "to see it. Notification emails are a heads-up. If every email were missed, the request would still be in the queue. These are appointment requests, not booked appointments. Someone still calls the patient to schedule.";
-
-export const HELP_CONTACTED_STATUS =
-  "Someone has called the patient at least once: reached them, left a voicemail, or got no answer. Staff set a call-again time so the queue can bring the request back. Home flags Contacted requests that are missing a time so staff can correct them.";
-
-export const HELP_NOTIFICATION_LEAD = "The addresses listed under";
-export const HELP_NOTIFICATION_TRUTH =
-  "get a short email when a new appointment request arrives. That email is a heads-up. It says a request is waiting and links back here. The portal is the record. Anyone on staff can pause a recipient, for example when going on vacation. Adding or removing addresses is an administrator task.";
-
-export const HELP_ACTIVITY_LEAD = "Every access change is recorded in the";
-export const HELP_ACTIVITY_TRUTH =
-  "from the desktop task rail or the mobile account menu. That log shows who made the change.";
-
-export function helpOutageCopy(phoneDisplay: string, textDisplay: string): string {
-  return `If the portal will not load or an appointment request seems missing, call or text the office line first. The website lists the office call number ${phoneDisplay} and the text number ${textDisplay}. Then tell the website maintainer what you saw. Sign out when you step away from a shared computer.`;
-}
-
 export const RECIPIENTS_INTRO =
   "These addresses get an email when a patient sends a request from the website. Every request is on Home whether or not the email arrives.";
 
@@ -134,25 +100,15 @@ export const FORBIDDEN_ABSOLUTE_CLAIMS = [
   "can never lose",
 ] as const;
 
-export function allStaffLanguageText(phoneDisplay: string, textDisplay: string): string {
+export function allStaffLanguageText(): string {
   return [
     signInIdentifierField(false).label,
     signInIdentifierField(true).label,
     START_OLDEST_REQUEST_LABEL,
     OPEN_NEW_REQUESTS_LABEL,
-    HELP_QUEUE_ARRIVAL,
-    HELP_QUEUE_OPEN,
-    HELP_QUEUE_RECORD,
-    HELP_CONTACTED_STATUS,
-    HELP_NOTIFICATION_LEAD,
-    HELP_NOTIFICATION_TRUTH,
-    HELP_ACTIVITY_LEAD,
-    HELP_ACTIVITY_TRUTH,
-    helpOutageCopy(phoneDisplay, textDisplay),
     RECIPIENTS_INTRO,
     RECIPIENT_CONFIRMATION_BODY,
     RECENT_WORK_INTRO,
-    ...Object.values(HELP_LINKS).map((link) => `${link.label} ${link.href}`),
   ].join("\n");
 }
 

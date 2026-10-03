@@ -7,6 +7,7 @@ import type { RefObject } from "react";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Popover, PopoverClose, PopoverContent, PopoverTitle } from "@/components/ui/popover";
 import type { PopoverChangeDetails, PopoverHandle } from "@/components/ui/popover-behavior";
+import { SCHEDULE_SHORTCUTS, spokenKeys } from "@/lib/portal/schedule-shortcut-list";
 
 /* The Schedule's single-key shortcuts and the list that names them (issue
    #351; Figma S5 shortcuts frame). Day, Week and Month all answer them:
@@ -83,49 +84,6 @@ export function useScheduleShortcuts(targets: Readonly<ShortcutTargets>, onHelp:
 
 /* ---- The list ---- */
 
-interface Shortcut {
-  readonly keys: readonly string[];
-  readonly does: string;
-}
-
-const GROUPS: readonly { readonly title: string; readonly shortcuts: readonly Shortcut[] }[] = [
-  {
-    title: "In the day",
-    shortcuts: [
-      { keys: ["↑", "↓"], does: "Earlier or later for this provider" },
-      { keys: ["←", "→"], does: "Same time, next provider" },
-      { keys: ["Return"], does: "Open the appointment or book the time" },
-      { keys: ["Esc"], does: "Close what is open" },
-    ],
-  },
-  {
-    title: "Days and views",
-    shortcuts: [
-      { keys: ["T"], does: "Today" },
-      { keys: ["J", "K"], does: "Next or previous day, week or month" },
-      { keys: ["D", "W", "M"], does: "Day, week or month" },
-    ],
-  },
-  {
-    title: "Anywhere",
-    shortcuts: [
-      { keys: ["/"], does: "Search patients" },
-      { keys: ["Tab"], does: "Next area: toolbar, day, sidebar" },
-      { keys: ["?"], does: "This list" },
-    ],
-  },
-];
-
-/** The spoken name of a key, where its glyph says nothing to a screen reader. */
-const SPOKEN: ReadonlyMap<string, string> = new Map([
-  ["↑", "Up arrow"],
-  ["↓", "Down arrow"],
-  ["←", "Left arrow"],
-  ["→", "Right arrow"],
-  ["/", "Slash"],
-  ["?", "Question mark"],
-]);
-
 export interface ShortcutsListProps {
   readonly open: boolean;
   // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- Base UI event details carry platform member types that cannot be made readonly
@@ -166,16 +124,14 @@ export function ShortcutsList({
             <span aria-hidden="true">Close</span>
           </PopoverClose>
         </header>
-        {GROUPS.map((group) => (
+        {SCHEDULE_SHORTCUTS.map((group) => (
           <section key={group.title} className="wgi-shortcuts-group">
             <h2 className="wgi-shortcuts-group-title">{group.title}</h2>
             <dl className="wgi-shortcuts-rows">
               {group.shortcuts.map((shortcut) => (
                 <div key={shortcut.does} className="wgi-shortcuts-row">
                   <dt className="wgi-shortcuts-keys">
-                    <span className="sr-only">
-                      {shortcut.keys.map((key) => SPOKEN.get(key) ?? key).join(", ")}
-                    </span>
+                    <span className="sr-only">{spokenKeys(shortcut.keys)}</span>
                     <KbdGroup aria-hidden="true">
                       {shortcut.keys.map((key) => (
                         <Kbd key={key}>{key}</Kbd>
