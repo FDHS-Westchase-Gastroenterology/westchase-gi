@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import {
   appointmentStatusSchema,
+  appointmentTypeIconSchema,
   providerExceptionSchema,
   providerHoursSchema,
   schedulingFailureSchema,
@@ -43,17 +44,23 @@ const typeDatabaseSchema = summaryRow
     duration_minutes: z.number().int().positive(),
     buffer_before_minutes: z.number().int().nonnegative(),
     buffer_after_minutes: z.number().int().nonnegative(),
+    sort_order: z.number().int().positive().nullable().default(null),
+    icon: appointmentTypeIconSchema.nullable().default(null),
   })
   .transform((row) => ({
     ...summary(row),
     durationMinutes: row.duration_minutes,
     bufferBeforeMinutes: row.buffer_before_minutes,
     bufferAfterMinutes: row.buffer_after_minutes,
+    sortOrder: row.sort_order,
+    icon: row.icon,
   }));
+/* A settings command records each weekly window's id and each time off's reason; the provider
+   record keeps the fields the configuration read has always returned. */
 const providerDatabaseSchema = z.object({
   provider: summaryDatabaseSchema,
-  hours: z.array(providerHoursSchema),
-  exceptions: z.array(providerExceptionSchema),
+  hours: z.array(providerHoursSchema.strip()),
+  exceptions: z.array(providerExceptionSchema.strip()),
 });
 const appointmentRow = z.object({
   id: z.uuid(),

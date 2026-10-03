@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import {
   appointmentStatusSchema,
+  appointmentTypeIconSchema,
   dateSchema,
   schedulingFailureSchema,
   schedulingTimestampSchema,
@@ -19,6 +20,7 @@ const weekAppointmentFields = {
   endsAt: schedulingTimestampSchema,
   status: appointmentStatusSchema.exclude(["cancelled"]),
   appointmentType: z.string(),
+  appointmentTypeIcon: appointmentTypeIconSchema,
   patientName: z.string(),
   patientListName: z.string(),
 };
@@ -26,20 +28,22 @@ const weekAppointmentSchema = z.object(weekAppointmentFields).readonly();
 const weekRangeSchema = z
   .object({ from: schedulingTimestampSchema, until: schedulingTimestampSchema })
   .readonly();
-const scheduleOpenSchema = z
-  .object({
-    startsAt: schedulingTimestampSchema,
-    endsAt: schedulingTimestampSchema,
-    locationId: z.uuid(),
-    locationName: z.string(),
-  })
-  .readonly();
 const scheduleReferenceTypeSchema = z
   .object({
     id: z.uuid(),
     name: z.string(),
     durationMinutes: z.number().int().positive(),
     version: schedulingVersionSchema,
+  })
+  .readonly();
+// An open time names the type it fits: the filtered type, or the provider's shortest eligible one.
+const scheduleOpenSchema = z
+  .object({
+    startsAt: schedulingTimestampSchema,
+    endsAt: schedulingTimestampSchema,
+    locationId: z.uuid(),
+    locationName: z.string(),
+    type: scheduleReferenceTypeSchema,
   })
   .readonly();
 export const weekDaySchema = z
@@ -91,6 +95,7 @@ export const dayProviderSchema = z
   .object({
     id: z.uuid(),
     name: z.string(),
+    bookable: z.boolean(),
     working: z
       .array(
         z

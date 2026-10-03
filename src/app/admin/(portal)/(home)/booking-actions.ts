@@ -48,7 +48,12 @@ export async function readCardMonth(
   if (!catalog.ok) return { ok: false, code: catalog.code };
   if (!("entity" in catalog) || catalog.entity !== "appointment_type" || !("items" in catalog))
     return { ok: false, code: "unavailable" };
-  const types = catalog.items.map((item) => ({ id: item.id, name: item.name }));
+  // The catalog reads alphabetically; staff see types in the order Settings gives them.
+  const types = catalog.items
+    .toSorted(
+      (a, b) => (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER),
+    )
+    .map((item) => ({ id: item.id, name: item.name }));
   const typeId =
     input.appointmentTypeId !== null && types.some((type) => type.id === input.appointmentTypeId)
       ? input.appointmentTypeId

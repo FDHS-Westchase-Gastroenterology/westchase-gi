@@ -87,6 +87,8 @@ export interface WeekOpenCell extends Placed {
   readonly locationId: string;
   readonly locationName: string;
   readonly providerName: string;
+  /** The type this time books: the filtered type, or the provider's shortest eligible one. */
+  readonly type: WeekSchedule["referenceType"];
 }
 
 export type WeekCell = WeekAppointmentCell | WeekOpenCell;
@@ -152,7 +154,6 @@ export interface ScheduleWeek {
   readonly end: number;
   readonly hours: readonly { readonly minute: number; readonly label: string }[];
   readonly columns: readonly WeekColumn[];
-  readonly referenceType: WeekSchedule["referenceType"];
   readonly activeProviderCount: number;
 }
 
@@ -310,6 +311,7 @@ export function scheduleWeekFor(schedule: Readonly<WeekSchedule>): ScheduleWeek 
           time,
           locationId: open.locationId,
           locationName: open.locationName,
+          type: open.type,
           label: `Open, ${time}, ${minutes} minutes${who}`,
         });
       }
@@ -358,7 +360,6 @@ export function scheduleWeekFor(schedule: Readonly<WeekSchedule>): ScheduleWeek 
     end,
     hours,
     columns,
-    referenceType: schedule.referenceType,
     activeProviderCount: schedule.activeProviderCount,
   };
 }

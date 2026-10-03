@@ -101,7 +101,6 @@ export function ScheduleWeekView({
               key={payload.kind === "appointment" ? payload.cell.id : payload.cell.key}
               payload={payload}
               keyed={keyed}
-              referenceType={view.referenceType}
               onDone={(message) => {
                 card.close();
                 toast(message);
