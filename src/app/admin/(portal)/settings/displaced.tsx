@@ -40,7 +40,7 @@ export function Displaced({
                 {shortDate(conflict.date)} · {clockOf(practiceMinute(conflict.startsAt))}–
                 {clockOf(endMinute(conflict.endsAt))}
               </span>
-              <span data-ui-redact className="font-semibold">
+              <span data-ui-redact="patient-name" className="font-semibold">
                 {conflict.patientListName}
               </span>
               <span>{conflict.appointmentType}</span>
