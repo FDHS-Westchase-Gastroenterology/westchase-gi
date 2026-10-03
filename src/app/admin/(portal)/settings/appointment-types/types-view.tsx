@@ -195,7 +195,7 @@ export function TypesView({
         Staff choose from these when booking, in this order. Each type&apos;s length decides how
         much of the day it takes.
       </p>
-      <div className="settings-types">
+      <div className="settings-types" data-tour="appointment-types">
         <div aria-hidden="true" className="settings-types-head">
           <span />
           <span>Type</span>

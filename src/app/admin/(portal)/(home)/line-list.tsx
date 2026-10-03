@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-import { requestCount } from "./home-line";
+import { requestCount, tourRowId } from "./home-line";
 import type { HomeLine } from "./home-line";
 import { useLanded } from "./landed-request";
 import { LineRow } from "./line-row";
@@ -122,6 +122,7 @@ export function LineList({
   const tableRef = useRef<HTMLTableElement>(null);
   const rangeRef = useRef<HTMLSpanElement>(null);
   const count = lines.length;
+  const tourRow = tourRowId(lines);
 
   /* The open card's panel state, reported up from its row: a detached card
      leaves the list answering presses under its recede. The flag
@@ -225,6 +226,13 @@ export function LineList({
                 <TableBody>
                   {lines.map((line) => (
                     <LineRow
+                      tour={
+                        line.id === tourRow
+                          ? line.status === "new"
+                            ? "home-new-row"
+                            : "home-top-row"
+                          : undefined
+                      }
                       key={line.id}
                       line={line}
                       dial={dial}

@@ -35,6 +35,11 @@ export const CARD_BUTTON = `${OPEN_CARD} .wgi-record-full`;
     #344), portaled beside the card: its times are the card's own work. */
 export const DAY_POPOVER = ".wgi-day-popover";
 
+/** The first-sign-in tour's tip (tour-runner.tsx, issue #358), which points
+    at the card while it is open: Next, Skip and its own Escape are the
+    tour's, never a dismissal of the card it is explaining. */
+export const TOUR_TIP = "[data-tour-tip]";
+
 /** True when the element holding focus sits inside `selector`. */
 function focusWithin(selector: string): boolean {
   const active = document.activeElement;
@@ -72,7 +77,8 @@ export function cardStaysOpen(
       (row?.contains(target) === true ||
         target.closest("[data-sonner-toaster]") !== null ||
         target.closest(SHEET) !== null ||
-        target.closest(DAY_POPOVER) !== null)
+        target.closest(DAY_POPOVER) !== null ||
+        target.closest(TOUR_TIP) !== null)
     );
   }
   if (details.reason === "focus-out") {
@@ -82,7 +88,8 @@ export function cardStaysOpen(
       event instanceof FocusEvent &&
       event.relatedTarget instanceof Element &&
       (event.relatedTarget.closest(SHEET) !== null ||
-        event.relatedTarget.closest(DAY_POPOVER) !== null)
+        event.relatedTarget.closest(DAY_POPOVER) !== null ||
+        event.relatedTarget.closest(TOUR_TIP) !== null)
     );
   }
   if (details.reason === "escape-key") {
@@ -92,6 +99,7 @@ export function cardStaysOpen(
        popover up beside the card takes it first: it closes and the card
        stays for the next Escape. */
     if (document.querySelector(DAY_POPOVER) !== null) return true;
+    if (focusWithin(TOUR_TIP)) return true;
     return !focusWithin(CARD) && document.querySelector(SHEET) !== null;
   }
   return false;

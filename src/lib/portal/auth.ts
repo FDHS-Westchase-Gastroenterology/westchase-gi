@@ -74,9 +74,9 @@ export function pendingTourFor(
   tours: readonly StaffTourRecord[],
 ): StaffTour | null {
   const own = roleTour(role);
-  const open = toursForRole(role);
+  const open = new Set<StaffTour>(toursForRole(role));
   const pending = tours
-    .filter((record) => record.status === "pending" && open.includes(record.tour))
+    .filter((record) => record.status === "pending" && open.has(record.tour))
     .map((record) => record.tour);
   if (pending.includes(own)) return own;
   if (pending.length > 0) return pending[0];

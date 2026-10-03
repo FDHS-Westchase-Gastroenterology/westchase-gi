@@ -74,7 +74,7 @@ export const TOUR_STEPS = {
       pathname: "/admin/schedule",
       view: "day",
       href: "/admin/schedule?view=day",
-      targets: ["day-check-in", "day-block", "day-empty"],
+      targets: ["day-check-in", "day-block", "day-providers", "day-empty"],
       side: "bottom",
       align: "center",
       icon: "check",

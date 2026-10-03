@@ -26,7 +26,11 @@ export function RecordBookingMain({
 }>) {
   const { draft, month, popover, pick } = booking;
   return (
-    <div className="wgi-record-main" inert={booking.book.pending || undefined}>
+    <div
+      className="wgi-record-main"
+      data-tour="home-card-booking"
+      inert={booking.book.pending || undefined}
+    >
       <div className="wgi-record-cal">
         <BookingCalendar
           month={draft.month}
@@ -84,6 +88,7 @@ export function BookButton({
     <button
       type="button"
       className="wgi-record-save"
+      data-tour="home-card-booking"
       disabled={locked || command === null}
       onClick={() => {
         if (command !== null) book.book(command);
