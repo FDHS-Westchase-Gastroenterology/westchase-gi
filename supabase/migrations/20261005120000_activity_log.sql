@@ -78,11 +78,12 @@ as $$
             when a.action = 'auth.sign_in' then 'sign_ins'
             when a.action in ('request.create', 'request.status_change', 'request.close',
               'request.call_outcome', 'request.note', 'request.authorized_delete',
-              'request.retention_delete', 'request.retention_hold') then 'requests'
+              'request.retention_delete', 'request.retention_hold', 'requests.print_new')
+              then 'requests'
             when a.action = 'request.workflow_command' and a.detail ->> 'command' in (
               'record_contact_attempt', 'confirm_booking_handoff', 'close_request', 'reopen_request',
               'set_call_again', 'undo_latest_transition', 'classify_legacy_closure') then 'requests'
-            when a.action in ('requests.export', 'requests.print_new', 'recipients.add',
+            when a.action in ('requests.export', 'recipients.add',
               'recipients.remove', 'recipients.toggle', 'recipients.label_update', 'staff.invite',
               'staff.onboard', 'staff.deactivate', 'staff.role', 'staff.password_reset',
               'staff.tour_restart', 'staff.tour_complete', 'maintainers.invite', 'maintainers.cancel',

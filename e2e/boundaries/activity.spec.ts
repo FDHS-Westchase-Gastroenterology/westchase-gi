@@ -152,7 +152,8 @@ test("the log merges audit, scheduling and patient history newest first, pages a
     });
 
     /* Earlier days: request notes, a sign-in and a print packet in the audit log (two notes
-       share an instant, so the id breaks the tie), a schedule change and a patient revision. */
+       share an instant, so the id breaks the tie; the packet is request work), a schedule change
+       and a patient revision. The Settings category is covered by the scoping test below. */
     const [d1, d2, d3] = [practiceDate(1), practiceDate(2), practiceDate(3)];
     const audit = (action: string, entity: string, at: string, detail = {}) => ({
       id: randomUUID(),
@@ -213,7 +214,7 @@ test("the log merges audit, scheduling and patient history newest first, pages a
       schedule: count("schedule"),
       sign_ins: count("sign_ins"),
       settings: count("settings"),
-    }).toEqual({ total: 24, appointments: 10, requests: 6, schedule: 6, sign_ins: 1, settings: 1 });
+    }).toEqual({ total: 24, appointments: 10, requests: 7, schedule: 6, sign_ins: 1, settings: 0 });
     expect(new Set(all.map((row) => row.source))).toEqual(
       new Set(["audit", "scheduling", "patient"]),
     );

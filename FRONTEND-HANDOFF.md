@@ -410,7 +410,8 @@ A page is `{ ok: true, rows, nextCursor, counts }`: up to 50 rows newest first, 
 `(occurredAt, id)`, `nextCursor` null on the last page, and `counts.hidden` (how many rows the
 viewer could see that the filters leave out) on the first page only. Front desk sees
 appointments, requests, the schedule and their own sign-ins; an admin also sees every sign-in and
-the Settings category (staff, recipients, maintainers, print packets and exports). A Settings
+the Settings category (staff, recipients, maintainers and exports). Print packets are request
+work and read under Requests. A Settings
 chip sent by front desk returns no rows rather than an error.
 
 Failures are `invalid_command` (filters or cursor the contract refuses: keep the controls and say
