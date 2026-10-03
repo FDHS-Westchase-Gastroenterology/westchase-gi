@@ -184,6 +184,13 @@ The brand's secondary text ink is `--color-muted-ink`, not `--color-muted`, beca
 `--color-muted` is a surface tint. Before adopting a component, list the semantic utilities it
 uses (`bg-*`, `text-*`, `border-*`) and check each for a brand-token collision.
 
+Surfaces and components come from the shadcn registry, never hand-rolled. A route composes
+`ui/` recipes and `patterns/`. A primitive no recipe covers (a popover, menu, combobox, calendar,
+switch, sheet, tabs, toast, collapsible and the like) is adopted from its registry source in
+`stock/` into `ui/`, with provenance, even when only one screen uses it. The two standing
+exceptions in design-system/adoption.md stay: modals on the native `<dialog>`, and route
+navigation as links.
+
 Adoption starts with existing repository components and shadcn registry source. If a CLI command is needed to
 supply its behavior, run `add --dry-run` / `--diff` before touching an existing recipe. Review
 all generated changes, meet the repo lint bar, and preserve the token mappings. Add a product

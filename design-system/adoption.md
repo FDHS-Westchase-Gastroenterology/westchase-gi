@@ -7,16 +7,20 @@ system has already decided not to adopt, and what a change of each kind has to p
 ```
 Need a component?
 ├── A ui/ recipe already fits, or fits with one more value on an existing axis → use it
-├── One route needs it once → compose it in the route (components.md#component-tiers)
-├── Two or more surfaces need the same behavior → adopt registry source into ui/
+├── One route needs a layout of existing parts → compose ui/ recipes in the route (components.md#component-tiers)
+├── A primitive no recipe covers, for one surface or many → adopt registry source into ui/
 └── Neither the recipes nor the registry covers the category → bring the case to Jason first
 ```
 
 ## Workflow
 
+Surfaces and components come from the shadcn registry, never hand-rolled. Route code composes
+recipes; it does not rebuild a primitive's positioning, focus, dismissal or roles, even for one
+screen. The standing findings below are the decided exceptions.
+
 1. Inspect the existing `ui/` recipes and the product need before adding another component.
-2. If none fits, read the shadcn registry source and its provenance. Say why a custom
-   implementation is necessary and which behavior it owns.
+2. If none fits, read the shadcn registry source and its provenance. Say what the adoption
+   changes from the registry and which behavior it owns.
 3. Adapt the implementation into `src/components/ui/`, with reusable compositions in
    `src/components/patterns/`. Product surfaces consume those, never `stock/`.
 4. Reconcile token and generated-CSS changes with AGENTS.md "shadcn/ui": brand anchors
