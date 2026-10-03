@@ -47,7 +47,14 @@ export function ScheduleTools({
   value,
   targets,
   toolsRef,
-}: Readonly<{ value: ScheduleView; targets: ShortcutTargets; toolsRef?: Ref<HTMLDivElement> }>) {
+  children,
+}: Readonly<{
+  value: ScheduleView;
+  targets: ShortcutTargets;
+  toolsRef?: Ref<HTMLDivElement>;
+  /** A view's own tool after the switch, such as the Day view's Hours. */
+  children?: ReactNode;
+}>) {
   const router = useRouter();
   return (
     <div ref={toolsRef} className="wgi-schedule-tools">
@@ -63,6 +70,7 @@ export function ScheduleTools({
           if (href !== null) router.push(href);
         }}
       />
+      {children}
     </div>
   );
 }

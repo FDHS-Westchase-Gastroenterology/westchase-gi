@@ -5,7 +5,7 @@ import { RadioGroup as RadioGroupPrimitive } from "@base-ui/react/radio-group";
 import { cva } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
 import { cn } from "cn";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
 
@@ -81,7 +81,9 @@ const segmentedControlVariants = cva(
 const segmentVariants = cva(
   [
     // Geometry: fills its column, sits above the thumb
-    "relative z-10 flex min-w-0 cursor-pointer items-center justify-center",
+    "relative z-10 flex min-w-0 cursor-pointer items-center justify-center gap-2",
+    // An option's icon keeps the ink and a 16px box
+    "[&_svg]:size-4 [&_svg]:shrink-0",
     // Ink: slate-700 at rest, the chosen segment in slate-950 and semibold
     "text-[0.875rem] leading-none font-normal whitespace-nowrap text-slate-700 select-none",
     "data-checked:font-semibold data-checked:text-slate-950",
@@ -127,6 +129,8 @@ const thumbVariants = cva(
 export interface SegmentedControlOption<Value extends string> {
   readonly value: Value;
   readonly label: string;
+  /** A glyph drawn before the label, such as the Hours sheet's scope icons. */
+  readonly icon?: ReactNode;
   /** Why the option cannot be chosen yet; set, it disables the option and says so. */
   readonly disabledReason?: string;
 }
@@ -185,6 +189,7 @@ function SegmentedControl<Value extends string>({
             data-slot="segmented-control-item"
             className={segmentVariants({ paper })}
           >
+            {option.icon}
             {option.label}
           </RadioPrimitive.Root>
         );
