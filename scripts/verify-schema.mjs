@@ -44,11 +44,14 @@ try {
 }
 
 const TABLES = [
+  "appointment_type_providers",
   "appointment_types",
   "appointments",
   "audit_log",
   "clinical_command_receipts",
   "clinical_signers",
+  "location_closures",
+  "location_hours",
   "notification_outbox",
   "notification_recipients",
   "patient_billing_accounts",
@@ -147,6 +150,15 @@ const RPC_SIGNATURES = {
   portal_schedule_day: "p_actor_id uuid, p_date date, p_appointment_type_id uuid",
   portal_schedule_week_provider: "p_actor_id uuid",
   portal_remember_week_provider: "p_actor_id uuid, p_provider_id uuid",
+  portal_save_scheduling_settings:
+    "p_actor_id uuid, p_idempotency_key uuid, p_fingerprint text, p_command jsonb",
+  portal_scheduling_settings: "p_actor_id uuid",
+  portal_office_hours_allow:
+    "p_location_id uuid, p_weekday integer, p_open_minute integer, p_close_minute integer",
+  portal_settings_hours_valid: "p_hours jsonb, p_keys text[]",
+  portal_scheduling_settings_record: "p_entity text, p_id uuid",
+  portal_default_type_providers_for_provider: "",
+  portal_default_type_providers_for_type: "",
   portal_log_call_outcome:
     "p_actor_email text, p_request_id uuid, p_outcome text, p_note text, p_follow_up_at timestamp with time zone",
   portal_undo_call_outcome: "p_actor_email text, p_request_id uuid, p_event_id uuid",
@@ -236,11 +248,18 @@ const RPC_RESULTS = {
   portal_schedule_working:
     "TABLE(provider_id uuid, location_id uuid, day date, working tstzmultirange)",
   portal_schedule_greedy_opens:
-    "TABLE(provider_id uuid, location_id uuid, day date, starts_at timestamp with time zone, ends_at timestamp with time zone)",
+    "TABLE(provider_id uuid, location_id uuid, day date, starts_at timestamp with time zone, ends_at timestamp with time zone, appointment_type_id uuid)",
   portal_schedule_week: "jsonb",
   portal_schedule_day: "jsonb",
   portal_schedule_week_provider: "jsonb",
   portal_remember_week_provider: "jsonb",
+  portal_save_scheduling_settings: "jsonb",
+  portal_scheduling_settings: "jsonb",
+  portal_office_hours_allow: "boolean",
+  portal_settings_hours_valid: "boolean",
+  portal_scheduling_settings_record: "jsonb",
+  portal_default_type_providers_for_provider: "trigger",
+  portal_default_type_providers_for_type: "trigger",
   portal_log_call_outcome: "uuid",
   portal_undo_call_outcome: "jsonb",
   portal_hide_staff_release: "boolean",
@@ -271,6 +290,7 @@ const AUDIT_RPC_SOURCES = {
   portal_execute_billing_command: "staff",
   portal_execute_clinical_command: "staff",
   portal_save_scheduling_config: "staff",
+  portal_save_scheduling_settings: "staff",
   portal_execute_appointment_command: "staff",
   portal_log_call_outcome: "staff",
   portal_undo_call_outcome: "staff",

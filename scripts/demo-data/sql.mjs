@@ -48,11 +48,57 @@ const TABLES = [
       ["configured_at", TS],
     ],
   ],
-  ["scheduling_locations", [...CONFIG, ["request_location", TX]]],
-  ["scheduling_providers", CONFIG],
+  [
+    "scheduling_locations",
+    [
+      ...CONFIG,
+      ["request_location", TX],
+      ["street", TX],
+      ["city", TX],
+      ["region", TX],
+      ["postal", TX],
+      ["maps_query", TX],
+    ],
+  ],
+  ["scheduling_providers", [...CONFIG, ["credentials", TX], ["bookable", BO], ["sort_order", I]]],
   [
     "appointment_types",
-    [...CONFIG, ["duration_minutes", I], ["buffer_before_minutes", I], ["buffer_after_minutes", I]],
+    [
+      ...CONFIG,
+      ["duration_minutes", I],
+      ["buffer_before_minutes", I],
+      ["buffer_after_minutes", I],
+      ["sort_order", I],
+      ["icon", TX],
+      ["description", TX],
+    ],
+  ],
+  [
+    "appointment_type_providers",
+    [
+      ["appointment_type_id", U],
+      ["provider_id", U],
+    ],
+  ],
+  [
+    "location_hours",
+    [
+      ["location_id", U],
+      ["weekday", I],
+      ["open_minute", I],
+      ["close_minute", I],
+    ],
+  ],
+  [
+    "location_closures",
+    [
+      ["id", U],
+      ["location_id", U],
+      ["closed_on", D],
+      ["note", TX],
+      ["created_at", TS],
+      ["created_by", U],
+    ],
   ],
   [
     "provider_hours",
@@ -73,6 +119,7 @@ const TABLES = [
       ["provider_id", U],
       ["location_id", U],
       ["kind", TX],
+      ["reason", TX],
       ["starts_at", TS],
       ["ends_at", TS],
     ],
@@ -249,6 +296,9 @@ export const PORTAL_TABLES = [
   "staff_schedule_preferences",
   "provider_time_exceptions",
   "provider_hours",
+  "appointment_type_providers",
+  "location_closures",
+  "location_hours",
   "scheduling_providers",
   "scheduling_locations",
   "appointment_types",
@@ -302,7 +352,15 @@ end if;\n`;
   sql += `delete from public.audit_log where source is not null;\n`;
   sql += `delete from public.staff_profiles where user_id <> ${operator} and (role <> 'admin' or email like '%@example.test');\n`;
 
-  for (const [table, defs] of TABLES) sql += insert(table, defs, rows[table]);
+  for (const [table, defs] of TABLES) {
+    // Inserting providers and types pairs every provider with every type; the dataset's own
+    // pairs replace those defaults.
+    if (table === "appointment_type_providers") sql += `delete from public.${table};\n`;
+    sql += insert(table, defs, rows[table]);
+  }
+  // Explicit booking orders leave the identity sequences behind; a new row takes the next position.
+  for (const table of ["scheduling_providers", "appointment_types"])
+    sql += `perform setval(pg_get_serial_sequence('public.${table}','sort_order'),coalesce((select max(sort_order) from public.${table}),0)+1,false);\n`;
 
   sql += `insert into public.patient_revisions (id,patient_id,version,command,before_record,after_record,request_id,actor_id,actor_email,occurred_at)
   select gen_random_uuid(), p.id, 1, 'create', null, to_jsonb(p) - 'search_text', x.request_id, p.created_by, s.email, p.created_at
