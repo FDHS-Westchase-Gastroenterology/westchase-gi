@@ -24,12 +24,12 @@ import {
   schedulingConfigDatabaseSchema,
 } from "./rows";
 import {
-  schedulingSettingsInputSchema,
+  schedulingSettingsCommandInputSchema,
   schedulingSettingsOutcomeSchema,
   settingsCommandOutcomeSchema,
 } from "./settings-contracts";
 import type {
-  SchedulingSettingsInput,
+  SchedulingSettingsCommandInput,
   SchedulingSettingsOutcome,
   SettingsCommandOutcome,
 } from "./settings-contracts";
@@ -255,34 +255,40 @@ export async function executeSchedulingOperation(
   return { ok: false, code: "invalid_command" };
 }
 
-/* The Settings window's read and its granular commands. The database applies the admin gate,
-   the version checks and the conflict scan; this layer validates shape and signs the intent. */
-export async function executeSchedulingSettings(
+/* The Settings window's read, for any active staff member. canEdit tells the window whether to
+   show edit controls; the commands below enforce the admin gate themselves. */
+export async function readSchedulingSettings(
   db: SupabaseClient,
   actorId: string,
-  input: Readonly<SchedulingSettingsInput>,
-): Promise<SchedulingSettingsOutcome | SettingsCommandOutcome> {
-  const parsed = schedulingSettingsInputSchema.safeParse(input);
+): Promise<SchedulingSettingsOutcome> {
+  const result = await db
+    .rpc("portal_scheduling_settings", { p_actor_id: actorId })
+    .abortSignal(AbortSignal.timeout(10_000));
+  if (result.error !== null) return { ok: false, code: "unavailable" };
+  const outcome = schedulingSettingsOutcomeSchema.safeParse(result.data);
+  return outcome.success ? outcome.data : { ok: false, code: "unavailable" };
+}
+
+/* One granular Settings command. The database applies the admin gate, the version check and
+   the conflict scan; this layer validates the shape and signs the intent. */
+export async function executeSchedulingSettingsCommand(
+  db: SupabaseClient,
+  actorId: string,
+  input: Readonly<SchedulingSettingsCommandInput>,
+): Promise<SettingsCommandOutcome> {
+  const parsed = schedulingSettingsCommandInputSchema.safeParse(input);
   if (!parsed.success) return { ok: false, code: "invalid_command" };
-  const operation = parsed.data;
-  if (operation.action === "settings") {
-    const result = await db
-      .rpc("portal_scheduling_settings", { p_actor_id: actorId })
-      .abortSignal(AbortSignal.timeout(10_000));
-    if (result.error !== null) return { ok: false, code: "unavailable" };
-    const outcome = schedulingSettingsOutcomeSchema.safeParse(result.data);
-    return outcome.success ? outcome.data : { ok: false, code: "unavailable" };
-  }
+  const { idempotencyKey, command } = parsed.data;
   const fingerprint = commandFingerprint(
-    JSON.stringify({ actorId, action: operation.action, command: operation.command }),
+    JSON.stringify({ actorId, action: "settings_command", command }),
   );
   if (fingerprint === null) return { ok: false, code: "unavailable" };
   const result = await db
     .rpc("portal_save_scheduling_settings", {
       p_actor_id: actorId,
-      p_idempotency_key: operation.idempotencyKey,
+      p_idempotency_key: idempotencyKey,
       p_fingerprint: fingerprint,
-      p_command: operation.command,
+      p_command: command,
     })
     .abortSignal(AbortSignal.timeout(10_000));
   if (result.error !== null) return { ok: false, code: "unavailable" };

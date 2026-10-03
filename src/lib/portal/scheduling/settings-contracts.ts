@@ -171,15 +171,11 @@ export const settingsCommandSchema = z
   .readonly();
 export type SettingsCommand = z.input<typeof settingsCommandSchema>;
 
-export const schedulingSettingsInputSchema = z.discriminatedUnion("action", [
-  z.strictObject({ action: z.literal("settings") }),
-  z.strictObject({
-    action: z.literal("settings_command"),
-    idempotencyKey: z.uuid(),
-    command: settingsCommandSchema,
-  }),
-]);
-export type SchedulingSettingsInput = z.input<typeof schedulingSettingsInputSchema>;
+export const schedulingSettingsCommandInputSchema = z.strictObject({
+  idempotencyKey: z.uuid(),
+  command: settingsCommandSchema,
+});
+export type SchedulingSettingsCommandInput = z.input<typeof schedulingSettingsCommandInputSchema>;
 
 /* An appointment time off or a closed day would cover. Neither cancels it: the window lists
    them so staff can choose new times. */

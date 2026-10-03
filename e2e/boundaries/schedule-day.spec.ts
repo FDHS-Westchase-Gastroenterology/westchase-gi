@@ -165,12 +165,14 @@ test("the day read gives every working provider a column and names who is off", 
     });
     const columns = read.providers.filter((provider) => ours.has(provider.id));
     const byId = new Map(columns.map((provider) => [provider.id, provider]));
-    // Columns in name order; the fixture's own providers work every day.
-    expect(columns.map((provider) => provider.id)).toEqual(
-      [...columns]
-        .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
-        .map((provider) => provider.id),
-    );
+    /* Columns in the providers' Settings order, which starts as the order they were added; the
+       fixture's own providers work every day. */
+    expect(columns.map((provider) => provider.id)).toEqual([
+      ...fixture.providerIds,
+      providers.Split,
+      providers.Gap,
+      providers.Extra,
+    ]);
     expect(byId.has(providers.Off)).toBe(false);
     expect(read.off.filter((provider) => ours.has(provider.id))).toEqual([
       { id: providers.Off, name: "TEST schedule-day Off" },
