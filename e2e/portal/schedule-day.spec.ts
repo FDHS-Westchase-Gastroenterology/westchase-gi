@@ -399,6 +399,7 @@ test("Schedule day offers Check in only within its window, and checks in from th
     await expect(checkIn).toBeVisible();
     await checkIn.click();
     await expect(page.getByText(`${patient} is checked in`)).toBeVisible();
+    await expect(page.getByText(`11:30 AM · 12:00 PM with TEST ${prefix} First`)).toBeVisible();
     await expect(block.getByText("Checked in", { exact: true })).toBeVisible();
     await expect(checkIn).toHaveCount(0);
 
