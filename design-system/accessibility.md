@@ -58,7 +58,7 @@ Focus moves with the work:
   and returns focus to the opener on close, but in Chromium, Tab from the dialog's last control
   leaves the page for one stop before it comes back to the first (measured in Playwright's
   Chromium: Cancel, Remove, `BODY`, Cancel). So a portal dialog wraps Tab by hand:
-  `print-chooser.tsx`, `portal-tour.tsx`, `recipients-manager.tsx` and the request form's discard
+  `print-chooser.tsx`, `recipients-manager.tsx` and the request form's discard
   confirmation do, and no two agree on what counts as focusable. Copy `keepFocusInDialog` from
   `print-chooser.tsx`: it alone skips Base UI's hidden `tabindex="-1"` input and anything
   `aria-disabled`. `AddAppointmentDialog` does not wrap; on the patient site `LanguageChooser` and

@@ -421,7 +421,9 @@ async function redactPortalData(page) {
     document.querySelector(".portal-attention-next")?.remove();
     document.querySelector('[data-testid="no-recipients-warning"]')?.remove();
     document.querySelector('[data-testid="delivery-failure-warning"]')?.remove();
-    document.querySelector('[data-testid="portal-tour-nudge"]')?.remove();
+    document
+      .querySelectorAll("[data-tour-tip], .wgi-tour-ring")
+      .forEach((element) => element.remove());
     document.querySelector('[data-testid="portal-release-announcement"]')?.remove();
     document.querySelector('[data-testid="portal-release-utility"]')?.remove();
     document.querySelector("nextjs-portal")?.remove();

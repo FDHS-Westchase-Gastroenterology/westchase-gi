@@ -13,7 +13,6 @@ import {
   useSyncExternalStore,
 } from "react";
 import type { ComponentType, ReactNode } from "react";
-import { createPortal } from "react-dom";
 import { toast } from "sonner";
 
 import { Calendar, Check, ClipboardCheck, Clock, Home, Mail, Users, X } from "@/components/icons";
@@ -181,7 +180,8 @@ interface Measure {
   readonly found: boolean;
 }
 
-function shown(element: Readonly<Element>): boolean {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- DOM nodes carry platform member types that cannot be made readonly
+function shown(element: Element): boolean {
   if (element.closest("[data-ending-style]") !== null) return false;
   const rect = element.getBoundingClientRect();
   return rect.width > 0 && rect.height > 0;
@@ -195,6 +195,7 @@ function resolveTargets(targets: readonly string[]): Element[] {
   return [];
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- DOM nodes carry platform member types that cannot be made readonly
 function unionBox(elements: readonly Element[]): Box {
   let top = Infinity;
   let left = Infinity;
@@ -223,14 +224,14 @@ function useTourTarget(step: Readonly<TourStep>, enabled: boolean): Measure | nu
   const [measure, setMeasure] = useState<Measure | null>(null);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) return undefined;
     const started = performance.now();
     let frame = 0;
     let scrolled = false;
-    let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
     const observed = new Set<Element>();
     const resize = new ResizeObserver(schedule);
 
+    // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- DOM nodes carry platform member types that cannot be made readonly
     function settle(elements: readonly Element[], found: boolean) {
       const box = unionBox(elements);
       setMeasure((previous) =>
@@ -285,12 +286,12 @@ function useTourTarget(step: Readonly<TourStep>, enabled: boolean): Measure | nu
     window.addEventListener("resize", schedule);
     document.addEventListener("transitionend", schedule, true);
     document.addEventListener("animationend", schedule, true);
-    fallbackTimer = setTimeout(schedule, FALLBACK_MS);
+    const fallbackTimer = setTimeout(schedule, FALLBACK_MS);
     schedule();
 
     return () => {
       if (frame !== 0) cancelAnimationFrame(frame);
-      if (fallbackTimer !== null) clearTimeout(fallbackTimer);
+      clearTimeout(fallbackTimer);
       mutations.disconnect();
       resize.disconnect();
       window.removeEventListener("scroll", schedule, { capture: true });
@@ -332,16 +333,16 @@ function TourTip({ state }: Readonly<{ state: TourState }>) {
   const returnFocus = useRef<Element | null>(null);
   const routed = useRef<string | null>(null);
 
-  /* A fresh run opens on its first screen: an admin's tour on Settings, a
-     restart from Help wherever Help sent it. Once per run, so moving
+  /* The server opens a run on its first screen: sign-in lands an admin's
+     first tour on Settings (landingHref), and Help redirects to the tour it
+     restarts. A run that begins elsewhere waits for its screen, so moving
      around the portal by choice is never undone by the tour. */
   useEffect(() => {
     if (state.ended || state.begun || routed.current === state.runKey) return;
     routed.current = state.runKey;
     returnFocus.current = document.activeElement;
     writeRun(state.runKey, "0");
-    if (!here) router.replace(step.href);
-  }, [state, here, step.href, router]);
+  }, [state]);
 
   const anchor = useMemo(() => {
     if (measure === null) return null;
@@ -424,7 +425,9 @@ function TourTip({ state }: Readonly<{ state: TourState }>) {
 
   return (
     <>
-      {ring === null ? null : createPortal(ring, document.body)}
+      {/* The tip renders beside the workspace, outside any transformed box,
+          so the fixed ring needs no portal. */}
+      {ring}
       <p className="sr-only" role="status" aria-live="polite">
         {open
           ? `${TOUR_LABELS[state.tour]}, step ${String(state.index + 1)} of ${String(steps.length)}: ${step.title}`

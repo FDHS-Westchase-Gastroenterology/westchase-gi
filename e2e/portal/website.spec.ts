@@ -251,7 +251,7 @@ test.describe("website custody", () => {
     await page.goto("/admin/settings/software");
     await page.getByTestId("request-website-change").click();
     await expect(page).toHaveURL(/\/admin\/help#website-changes$/);
-    await expect(page.getByRole("heading", { name: "Getting website changes made" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "If something looks wrong" })).toBeVisible();
 
     await page.goto("/admin/registry");
     await expect(page).toHaveURL(/\/admin\/settings\/software\/?$/);

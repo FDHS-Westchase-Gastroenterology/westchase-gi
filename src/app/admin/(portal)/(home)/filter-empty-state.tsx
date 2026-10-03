@@ -64,10 +64,10 @@ export function FilterEmptyState({
   }
   return (
     <div
-        className="wgi-empty"
-        data-testid={`${testIdPrefix}-no-results`}
-        data-tour={`${testIdPrefix}-empty`}
-      >
+      className="wgi-empty"
+      data-testid={`${testIdPrefix}-no-results`}
+      data-tour={`${testIdPrefix}-empty`}
+    >
       <h2>No results</h2>
       <p>{emptyStateMessage(lines, active, nowMs)}</p>
       <button type="button" className="wgi-empty-clear" onClick={onClear}>

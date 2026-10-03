@@ -65,7 +65,7 @@ a mint pill in `DocumentList.tsx:56-83`. The real anchor reads `dict.common.docs
 | Variant | Paint | When | Worn by |
 | --- | --- | --- | --- |
 | `default` | Navy, white label; hover deepens to `navy-2` with `--shadow-soft` | The one primary action of a form, dialog or screen. The default. | 36 files: search, save, sign in, add request |
-| `amber` | `amber` with a `navy-2` label | The patient site's appointment call to action; in the portal, the warm step that leaves for more work: help's "Open appointments", the release briefing's "Open requests", the tour's "Finish tour" | 10 files, and `PortalTour` on its last step |
+| `amber` | `amber` with a `navy-2` label | The patient site's appointment call to action; in the portal, the warm step that leaves for more work: the release briefing's "Open requests" | 8 files |
 | `outline` | Transparent, `ink` label, a 1.5px `line-2` inset stroke | The action beside a primary one: cancel, clear, change email, go back | 26 files; four more switch between `default` and `outline` |
 | `ghost-light` | 12% white with a 34% white stroke | The second action on a navy band | The home page, the appointment page, `Footer`, `TextBand` |
 

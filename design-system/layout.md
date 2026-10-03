@@ -85,7 +85,7 @@ Print drops the rail and the shadow and lets the viewport grow to every line.
 | --- | --- | --- | --- |
 | `--radius-sm` (`rounded-sm`) | 0.375rem | A control or a mark inside a surface | `Input`, `Textarea`, `NativeSelect`, `TimePicker`; Home's triggers, answer rows (`.wgi-answer`) and Overdue stamp (`.portal-stamp`); the skip link |
 | `--radius` (`rounded`) | 0.625rem | A button; portal paper, and a portal menu, popover or toast | `Button`, which the portal retunes to 0.5rem through `--btn-radius` ([recorded exception](tokens.md#recorded-exceptions)); `.portal-queue-workbench`, `.portal-request-record`, `.portal-account-menu > div`, `Toaster` |
-| `--radius-lg` (`rounded-lg`) | 0.875rem | A card, a choice card, an image, a modal, a patient-site menu | `.card`, `AuthCard`, `Item`, a `FieldLabel` that wraps a `Field`, patient images and tiles, `Header` navigation menus, `.portal-confirm-dialog`, the tour dialog |
+| `--radius-lg` (`rounded-lg`) | 0.875rem | A card, a choice card, an image, a modal, a patient-site menu | `.card`, `AuthCard`, `Item`, a `FieldLabel` that wraps a `Field`, patient images and tiles, `Header` navigation menus, `.portal-confirm-dialog` |
 | `rounded-full` or 999px | A pill | A badge, a count, a chip, a bullet, a scroll thumb | `Badge`, the `ScrollArea` thumb, `.wgi-pill`, `.portal-nav-count`, list bullets |
 
 ```text
@@ -117,7 +117,7 @@ divide it. Each shadow token has one role, and a surface wears one at a time.
 | Shadow | Role | Worn by |
 | --- | --- | --- |
 | `--shadow-soft` | A tile or control that lifts | `Button` `default` and `amber` on hover; the patient home's wayfinding tiles and physician cards, which also rise 4px on hover; the office gallery's photo grid; `LocationMaps` |
-| `--shadow-card` | A card, image or modal lifted off the page | A single patient photo set beside copy, the physicians page's navy panel, `AuthCard`, `.card`, `ProfileCardViewer`'s shell and toolbar, `Header` menus, the tour dialog, `.portal-confirm-dialog` |
+| `--shadow-card` | A card, image or modal lifted off the page | A single patient photo set beside copy, the physicians page's navy panel, `AuthCard`, `.card`, `ProfileCardViewer`'s shell and toolbar, `Header` menus, `.portal-confirm-dialog` |
 | `--shadow-popover` | A layer floating over same-white paper, where `--shadow-card`'s negative spread would hide inside the paper's edge | `Toaster`; `.wgi-popover`'s fallback when no Home paint is set |
 
 **A card's shadow is its edge; a portal layer floating over paper adds a hairline.** A card or modal
@@ -139,7 +139,7 @@ row tints the same way. None of them lifts a surface.
 | `portal-workbench.css` spacing | 233 of 273 margin, padding and gap declarations are literal rem; 16 read only `--ps-*` | [Roadmap item 2](roadmap.md#2-workbench-tokenization) |
 | `portal-workbench.css` radii | Seven literals from 0.35rem to 0.7rem: nav links, the sidebar mark, tools and account actions, the account menu's summary, the mobile brand mark, loading placeholders | [Roadmap item 8](roadmap.md#8-the-radius-ramp) |
 | `portal-workbench.css` shadows | `.portal-sidebar` at both widths, `.portal-account-menu > div` and `.portal-commit-shelf` write literal shadows | [Roadmap item 10](roadmap.md#10-portal-surface-tints) |
-| `.portal-panel`, `.portal-help`, `.portal-flyer-list` in `globals.css` | A `line-2` border box at 0.75rem around the settings managers, the help page and the flyer list | The box: [roadmap item 1](roadmap.md#1-card-surfaces); the radius: item 8 |
+| `.portal-panel`, `.portal-flyer-list` in `globals.css` | A `line-2` border box at 0.75rem around the settings managers and the flyer list | The box: [roadmap item 1](roadmap.md#1-card-surfaces); the radius: item 8 |
 | `Header.tsx`, `NoticeBanner.tsx`, `ProfileCardViewer.tsx` | `rounded-md` (eleven in `Header`, one in `NoticeBanner`); the language menu's `rounded-[var(--radius-md)]`; `rounded-[5px]` | [Roadmap item 8](roadmap.md#8-the-radius-ramp) |
 | `ui/card.tsx`, `ui/checkbox.tsx` | `rounded-xl` on the card, its header and footer; the registry's `rounded-[4px]` checkbox, smaller than any step | [Roadmap item 8](roadmap.md#8-the-radius-ramp) |
 | Base `:focus-visible` in `globals.css` | A 3px radius | [Roadmap item 8](roadmap.md#8-the-radius-ramp) |

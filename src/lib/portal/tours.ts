@@ -144,3 +144,8 @@ export function tourStepMatches(
 export function tourStartHref(tour: StaffTour): string {
   return TOUR_STEPS[tour][0].href;
 }
+
+/** Where a sign-in lands: the first screen of the tour the session will run, else Home. */
+export function landingHref(pendingTour: StaffTour | null): string {
+  return pendingTour === null ? "/admin" : tourStartHref(pendingTour);
+}

@@ -10,8 +10,7 @@ decides**, a brand call, so bring evidence, not a change.
 
 **Ready.** `.card` and `.card-lined` in `globals.css` are a recipe written as classes at 14 call
 sites in 13 patient-site and review-hub files. They become `variant` values on `ui/card.tsx`, as do
-`AuthCard`'s `className` restyle and the box `.portal-panel`, `.portal-help` and
-`.portal-flyer-list` share, each looking as it does today; call sites keep only their layout.
+`AuthCard`'s `className` restyle and the box `.portal-panel` and `.portal-flyer-list` share, each looking as it does today; call sites keep only their layout.
 
 ## 2. Workbench tokenization
 
@@ -60,7 +59,7 @@ callback or appointment day. `(home)/parts/booking-calendar.tsx` wraps it a thir
 **Ready.** The [legacy feature blocks](styling.md#global-css) in `globals.css` write literal colors,
 shadows, offsets and motion. Each becomes recipes, utilities or scoped CSS per
 [styling.md](styling.md#styling-model), keeping its look; a value nothing names waits on item 8, 10
-or 16. Moving the first-login tour (`PortalTour`) onto `.portal-confirm-dialog` is Jason's call.
+or 16.
 
 ## 8. The radius ramp
 

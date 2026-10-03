@@ -19,6 +19,7 @@ import type { PortalSessionUser, PortalStaffAuthState } from "@/lib/portal/auth"
 import { AUDIT_ACTIONS } from "@/lib/portal/contracts";
 import type { PasswordAuthFlow } from "@/lib/portal/contracts";
 import { portalUrl, serverClient, serviceClient } from "@/lib/portal/server";
+import { landingHref } from "@/lib/portal/tours";
 
 export interface LoginActionState {
   error: string | null;
@@ -255,6 +256,7 @@ export async function loginAction(
     return loginError();
   }
 
+  let landing = "/admin";
   try {
     const previewCredentials = previewLoginCredentials(email, password);
     const supabase = await serverClient();
@@ -272,11 +274,12 @@ export async function loginAction(
       return loginError();
     }
     await recordSignIn(sessionUser);
+    landing = landingHref(sessionUser.pendingTour);
   } catch {
     return loginError();
   }
 
-  return redirect("/admin");
+  return redirect(landing);
 }
 
 export async function logoutAction(): Promise<void> {
@@ -409,7 +412,7 @@ export async function setPasswordAction(
 
   const completionError = await completePasswordChange(supabase, staff, flow, password);
   if (completionError !== null) return completionError;
-  return redirect("/admin");
+  return redirect(landingHref(staff.pendingTour));
 }
 
 /**
@@ -494,5 +497,5 @@ export async function recoverPasswordAction(
 
   const completionError = await completePasswordChange(supabase, staff, flow, password);
   if (completionError !== null) return completionError;
-  return redirect("/admin");
+  return redirect(landingHref(staff.pendingTour));
 }

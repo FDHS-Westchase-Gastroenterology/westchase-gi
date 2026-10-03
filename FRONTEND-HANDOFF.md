@@ -27,6 +27,7 @@ contracts are not yet on `main`.
 | Schedule from an intake request | One operation updates both the reservation and its reviewed request | Connected: the Home record card and the Schedule's request record book from the card's month (`month_availability`, then one `book` with `sourceRequestId`). An unlinked requester is registered and linked as the booking lands. The Day view's appointment card cancels a request's visit to Call again or Request closed and Undoes it; its drag reschedules both. Remaining: the Home card's own reschedule and cancel | [Requests and appointments](#requests-and-appointments) |
 | Run the practice's accounts and alerts | Staff invites and roles, notification addresses with a test send, and website maintainers, each audited and admin-only (#355) | Connected: the Settings window's Practice and About groups (`/admin/settings/staff`, `/notifications`, `/software`). Staff read all three panes with no edit controls, and the server refuses their writes | [Settings: Practice and About](#settings-practice-and-about) |
 | See what staff did | One newest-first Activity log over appointment, schedule, request, patient, sign-in and settings history, with chip, provider, date and search filters and role scoping (#357) | Connected: `/admin/audit` reads `readActivityPage` with the category and appointment chips, provider, date range and search, scrolls into the next page, phrases every row, and expands a row into its detail; front desk gets no Settings chip and no Technical record | [Activity log](#activity-log) |
+| Learn the portal | One tour record per account and tour (`staff_tours`) written through `portal_set_staff_tour`, refused by role and audited, and a session read that names the tour to start (#358) | Connected: the first sign-in runs the role's tour (front desk from Home, an admin from Settings › Providers), Done or Skip tour is recorded, Help (`/admin/help`) restarts either tour and opens topics by address, and `ui/help-button` answers on a screen and opens its topic in Help | [Help and tours](#help-and-tours) |
 | Read the request queue | Complete filtered results, counts, attention order, and Previous/Next | Existing screens already use the complete reads; preserve them when changing filters or paging | [Worklists](#worklists) |
 | Record billing, when used | Patient-owned charges, payments recorded elsewhere, refunds, adjustments, and corrections | Optional ledger screens, role-aware actions, and reconciliation | [Billing](#billing) |
 | Keep clinical records, when used | Notes, external document references, drafts, signing, amendments, and corrections | Optional clinical screens, signer administration, and protected record history | [Clinical records](#clinical-records) |
@@ -520,6 +521,46 @@ on the Schedule, front desk without the Settings chip or the Technical record, a
 a review flyer's PDF and its .zip from `/admin/review-flyers/zip/[key]` and checks every entry's
 name, size and CRC against `private/review-flyers`.
 
+## Help and tours
+
+The staff session (`resolveStaffAuthState` in [auth.ts](src/lib/portal/auth.ts)) carries
+`pendingTour`: the tour the portal layout's tour runner starts, or null. An unreadable record
+starts no tour. `pendingTourFor` picks it
+from the account's `staff_tours` records: a tour started from Help (`pending`) runs first, the
+role's own tour when both are pending; otherwise the role's tour runs until it has any record.
+Sign-in and a completed password change redirect to `landingHref(pendingTour)`, the tour's first
+screen, so an admin's first tour opens on Settings › Providers; a run that begins elsewhere waits
+for its first screen.
+Front desk takes `front_desk`; an admin takes `admin` by default and may take both
+(`toursForRole`). The steps, their screens and their targets live in
+[tours.ts](src/lib/portal/tours.ts).
+
+| Server Function (`tour-actions.ts`) | Input, result, and failures |
+| --- | --- |
+| `startTourAction(tour)` | Help's Start buttons. Records the tour `pending` and redirects to its first step's screen. A tour the role cannot take, or an inactive account, throws. |
+| `endTourAction({ tour, outcome })` | The runner's Done (`finished`), Skip tour, Close or Esc (`skipped`). Returns `{ ok: true }`, or `{ ok: false }` for refused input or a refused write; the tip still closes, and the tour may start again on the next sign-in. |
+
+`portal_set_staff_tour(p_user_id, p_tour, p_status)` is service-role only and returns whether the
+record changed. It refuses an unknown tour or status (`22023`), an account without an active
+profile (`P0002`) and the admin tour for front desk (`42501`), and audits each change as
+`staff.tour_restart`, `staff.tour_complete` or `staff.tour_dismiss`. The records go with the
+account. The single `portal_tour_dismissed_at` column they replaced is dropped; each dismissal
+became a record for the role's tour, `finished` when the old tour was completed and `skipped`
+otherwise.
+
+Help topics live in [help-topics.ts](src/lib/portal/help-topics.ts). Each has an id that is its
+address (`helpTopicHref(id)`, `/admin/help#<id>`), a group, and a role; `helpTopicVisible` hides
+Practice settings topics from front desk. A screen adds help with
+`<HelpButton topic="<id>" />` from [help-button.tsx](src/components/ui/help-button.tsx): a tooltip
+names the topic, the popover shows its answer, and "Open in Help ›" opens it in place. Every
+signed-in staff member can open Help; "Request a website change" stays `WEBSITE_CHANGE_HREF`.
+
+Acceptance: `e2e/boundaries/tours.spec.ts` (records per account and tour, role refusal, audit
+rows, cascade on account removal, Data API refusal, the dropped column), `e2e/portal/tours.spec.ts`
+(both tours from first sign-in, worked from the keyboard; Done and Skip tour recorded and not
+restarted; Help restarting either tour) and `e2e/portal/help.spec.ts` (search, topic addresses,
+the role's groups and the Hours sheet's help button through to Help).
+
 ## Billing
 
 Use `POST /api/admin/billing` and [billing/contracts.ts](src/lib/portal/billing/contracts.ts).
@@ -599,7 +640,7 @@ a separate integration.
 The automated examples live in [e2e/portal](e2e/portal) and [e2e/boundaries](e2e/boundaries):
 `patients.spec.ts`, `scheduling.spec.ts`, `appointment-handoff.spec.ts`, `billing.spec.ts`,
 `clinical.spec.ts`, `worklists.spec.ts`, `find-people.spec.ts`, `schedule-people.spec.ts`,
-`admin-ux.spec.ts`, and `notification-test.spec.ts`. Read them with the matching contracts. A real
+`admin-ux.spec.ts`, `notification-test.spec.ts`, `tours.spec.ts`, and `help.spec.ts`. Read them with the matching contracts. A real
 staff-session API test establishes server behavior; a completed frontend still needs its authored
 screen path tested. Do not treat opening a dialog or receiving an API success as full UI acceptance.
 
