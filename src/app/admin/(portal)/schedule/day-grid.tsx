@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
+import { useRef, useState } from "react";
+import type { CSSProperties, KeyboardEvent, PointerEvent, ReactNode } from "react";
 
 import { Check } from "@/components/icons";
 import { TypeIcon } from "@/components/patterns/type-icon";
 import { PopoverTrigger } from "@/components/ui/popover";
 import type { PopoverHandle } from "@/components/ui/popover-behavior";
 
+import { DropMark, LiftedCard, useDayDrag } from "./day-drag";
+import type { DayDrag, DayDropHandler } from "./day-drag";
 import { moveFor, nextCell } from "./day-keyboard";
 import { useMinuteClock } from "./minute-clock";
 import type {
@@ -33,6 +35,9 @@ import { nowOffset } from "./week-hours";
    - The day is one focus group: Tab enters it once, at the last block it
      left, and the arrows move through it (day-keyboard.ts). Return or
      Space opens the focused block's card, as a click does.
+   - A scheduled visit that has not started can be dragged to another time
+     or provider (day-drag.tsx); its block stays behind as a ghost and the
+     column under the pointer says whether the card can land there.
    - The now line and the Check in window follow the browser's clock; the
      rest is the day read the server rendered. */
 
@@ -69,6 +74,8 @@ export interface DayGridProps {
   /** The first arrow press: the view shows its keyboard hints. */
   readonly onArrow: () => void;
   readonly onCheckIn: (cell: DayAppointmentCell) => void;
+  /** A dragged visit dropped where it can land. */
+  readonly onMove: DayDropHandler;
   /** The visit whose Check in is in flight, if any. */
   readonly checking: string | null;
   /** The row under the grid: the hints, and who is not working. */
@@ -82,6 +89,16 @@ export function DayGrid(props: DayGridProps) {
   const { view, baseId, onArrow } = props;
   const now = useMinuteClock();
   const [activeKey, setActiveKey] = useState<string | null>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const drag = useDayDrag({
+    view,
+    bodyRef,
+    onLift: () => {
+      props.card.close();
+    },
+    onDrop: props.onMove,
+  });
+  const { target } = drag;
   const activeIndex = Math.max(
     0,
     view.cells.findIndex((cell) => cellKey(cell) === activeKey),
@@ -118,6 +135,7 @@ export function DayGrid(props: DayGridProps) {
           <div
             role="group"
             aria-label={`${view.title} by provider`}
+            ref={bodyRef}
             className="wgi-dayview-body"
             onKeyDown={onKeyDown}
           >
@@ -141,6 +159,7 @@ export function DayGrid(props: DayGridProps) {
                 role="group"
                 aria-label={column.label}
                 className="wgi-dayview-column"
+                data-lane={lane}
               >
                 {column.shades.map((shade) => (
                   <span
@@ -155,6 +174,7 @@ export function DayGrid(props: DayGridProps) {
                     <DayCellView
                       key={cellKey(cell)}
                       {...props}
+                      drag={drag}
                       cell={cell}
                       now={now}
                       active={index === activeIndex}
@@ -164,6 +184,9 @@ export function DayGrid(props: DayGridProps) {
                     />
                   ) : null,
                 )}
+                {target?.lane === lane && drag.lifted !== null ? (
+                  <DropMark target={target} />
+                ) : null}
               </div>
             ))}
             {nowTop === null || now === null ? null : (
@@ -182,6 +205,7 @@ export function DayGrid(props: DayGridProps) {
         <div className="wgi-dayview-overlay">{props.overlay}</div>
       ) : null}
       {props.foot}
+      <LiftedCard drag={drag} />
     </div>
   );
 }
@@ -210,6 +234,7 @@ function ColumnHead({ column }: Readonly<{ column: DayColumn }>) {
 }
 
 interface CellViewProps extends DayGridProps {
+  readonly drag: DayDrag;
   readonly cell: DayCell;
   readonly now: number | null;
   readonly active: boolean;
@@ -223,6 +248,7 @@ function DayCellView({
   onKeyed,
   onCheckIn,
   checking,
+  drag,
   cell,
   now,
   active,
@@ -257,15 +283,29 @@ function DayCellView({
     );
 
   const offer = canCheckIn(cell, now);
+  const { lifted, target } = drag;
+  const verdict = target?.verdict;
+  /* The ghost the lifted card left, refusing when the card is over a time it cannot take. */
+  const ghost =
+    lifted?.cell.id === cell.id ? (verdict?.kind === "refused" ? "refused" : "") : undefined;
+  const conflict = verdict?.kind === "refused" && verdict.conflictId === cell.id;
   return (
     <div
       className="wgi-dayview-block"
       data-tone={cell.tone}
       data-record-open={recordOpen.has(cell.id) || undefined}
+      data-lifted={ghost}
+      data-conflict={conflict || undefined}
       style={position}
     >
       <PopoverTrigger
         {...shared}
+        // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- DOM events carry framework member types that cannot be made readonly
+        onPointerDown={(event: PointerEvent<HTMLButtonElement>) => {
+          onKeyed(false);
+          drag.onPointerDown(event, cell);
+        }}
+        onClickCapture={drag.onClickCapture}
         payload={{ kind: "appointment", cell }}
         className="wgi-dayview-block-open"
         data-appointment={cell.id}
