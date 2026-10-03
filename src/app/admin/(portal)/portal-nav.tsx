@@ -14,7 +14,8 @@ import {
 } from "@/components/icons";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 
-import { inSettings, SettingsNav } from "./settings-nav";
+import { SettingsNav } from "./settings-nav";
+import { inSettings } from "./settings-panes";
 
 // Five destinations per layout, each its own list (issue #327, Figma section
 // 08 option 2; Schedule from issue #343). The desktop rail gives the five work

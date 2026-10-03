@@ -3,17 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Fragment, useEffect, useSyncExternalStore } from "react";
-import type { ComponentType } from "react";
 
-import {
-  ChevronLeft,
-  ClipboardCheck,
-  Download,
-  Mail,
-  MapPin,
-  User,
-  Users,
-} from "@/components/icons";
+import { ChevronLeft } from "@/components/icons";
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -23,54 +14,14 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 
+import { inSettings, SETTINGS_GROUPS, SETTINGS_PANES } from "./settings-panes";
+
 /* The Settings window (issue #352, Figma St1): inside /admin/settings the
    portal sidebar becomes Settings' own list, the way a settings window on a
    Mac has its sidebar of panes (HIG Sidebars). "‹ Settings" at its head
    leaves the window for the page the user came from, else Home. The rows,
    the current row and the compact rail are the portal sidebar's; three
    labeled groups sit under hairlines. */
-
-export const SETTINGS_ROOT = "/admin/settings";
-
-interface SettingsPane {
-  readonly href: string;
-  readonly label: string;
-  readonly icon: ComponentType<{ readonly className?: string }>;
-}
-
-export const SETTINGS_GROUPS: readonly {
-  readonly label: string;
-  readonly items: readonly SettingsPane[];
-}[] = [
-  {
-    label: "Schedule",
-    items: [
-      { href: "/admin/settings/providers", label: "Providers", icon: Users },
-      {
-        href: "/admin/settings/appointment-types",
-        label: "Appointment types",
-        icon: ClipboardCheck,
-      },
-      { href: "/admin/settings/locations", label: "Locations", icon: MapPin },
-    ],
-  },
-  {
-    label: "Practice",
-    items: [
-      { href: "/admin/settings/staff", label: "Staff access", icon: User },
-      { href: "/admin/settings/notifications", label: "Notifications", icon: Mail },
-    ],
-  },
-  {
-    label: "About",
-    items: [{ href: "/admin/settings/software", label: "Software", icon: Download }],
-  },
-];
-const SETTINGS_PANES = SETTINGS_GROUPS.flatMap((group) => group.items);
-
-export function inSettings(pathname: string): boolean {
-  return pathname === SETTINGS_ROOT || pathname.startsWith(`${SETTINGS_ROOT}/`);
-}
 
 /* Where "‹ Settings" returns: the portal page a link into Settings was
    followed from, kept for the tab's session. Read through an external
