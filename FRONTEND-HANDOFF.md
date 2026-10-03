@@ -21,7 +21,7 @@ contracts are not yet on `main`.
 | --- | --- | --- | --- |
 | Finish a contact without another call | One contact-and-close save, combined history, and Undo | Connected: both Home No call choices use completion; regression coverage includes history, replay, stale input, reload, and Undo | [Contact completion](#contact-completion) |
 | Manage patients | Registration, search, demographics, reviewed request links, archive/restore, and history | Connected on the Schedule: one search over patients and unlinked open requests (`findSchedulePeople`), the patient's record with visits and read-only clinical lists, and registration when a request is booked. Remaining: demographic edits, identity review, and administrator archive/restore | [Patients](#patients), [Schedule search and records](#schedule-search-and-records) |
-| Set up scheduling | Providers, locations, appointment types, hours, time off, closed days, and preparation buffers | Connected: the Settings window's Schedule group (`/admin/settings/providers`, `/appointment-types`, `/locations`) applies each change as it is made, warns before time off or a closed day covers bookings and lists them to rebook after, and offers Undo. Staff read every pane with no edit controls | [Settings window](#settings-window) |
+| Set up scheduling | Providers, locations, appointment types, hours, time off, closed days, and preparation buffers | Connected: the Settings window's Schedule group (`/admin/settings/providers`, `/appointment-types`, `/locations`) applies each change as it is made, warns before time off or a closed day covers bookings and lists them to rebook after, and offers Undo. Staff read every pane with no edit controls. The Day view's Hours sheet changes one day's hours, or a weekday's from that day on, and offers Undo | [Settings window](#settings-window), [Day hours](#day-hours) |
 | See month availability | One summary per practice date: open count, booked share, seen visits, closed days, and per-provider openings | Connected: `/admin/schedule` month view with the day preview, the week view (`week_schedule`), and the Day view (`day_schedule`): one column per working provider, open time that books, and the no-providers empty state | [Scheduling](#scheduling) |
 | Book and manage appointments | Availability, conflict checks, booking, rescheduling, cancellation, arrival/outcomes, and Undo | Connected on the week and Day views: the appointment card checks in, reschedules, cancels and marks no-show or complete, and the open-time card books a found patient. On the Day view a visit also moves by dragging it to open time (`can_place` while it is in the air, then `reschedule`). On both views every landed command, and the Day view's booking, move and Check in, offer Undo for 15 minutes (`undoAppointmentChange`). Remaining: appointment history | [Scheduling](#scheduling) |
 | Schedule from an intake request | One operation updates both the reservation and its reviewed request | Connected: the Home record card and the Schedule's request record book from the card's month (`month_availability`, then one `book` with `sourceRequestId`). An unlinked requester is registered and linked as the booking lands. The Day view's appointment card cancels a request's visit to Call again or Request closed and Undoes it; its drag reschedules both. Remaining: the Home card's own reschedule and cancel | [Requests and appointments](#requests-and-appointments) |
@@ -300,6 +300,42 @@ time off over a booking and its rebooking link, a type turned off and back on wi
 reorder with Undo, a closed day and its reopening, and staff reading every pane without edit
 controls. [e2e/boundaries/scheduling-settings.spec.ts](e2e/boundaries/scheduling-settings.spec.ts)
 covers each refusal against the database.
+
+### Day hours
+
+The Day view's Hours sheet (`day-hours-sheet.tsx`, admins only, today and later) changes a
+provider's hours for the day on screen, or for that weekday from the day on. Its Server Functions
+are in [schedule/day-hours-actions.ts](src/app/admin/(portal)/schedule/day-hours-actions.ts) and
+take the shapes in [scheduling/day-hours-contracts.ts](src/lib/portal/scheduling/day-hours-contracts.ts).
+Each refuses a staff session with `forbidden`, and the database refuses it again.
+
+| Server Function | Input, result, and failures |
+| --- | --- |
+| `readDayHoursFor(date)` | Every bookable provider that day: the day's `windows` (weekly hours plus one-off hours, less a day's reasonless removals), the weekday's `weekly` windows, `homeLocationId`, `usualWeekdays`, `timeOff` with its reason, and the day's `bookings`; each office's hours that weekday and whether it is `closed`. Time off is listed, not edited: it stays in Settings. |
+| `setDayHours({ idempotencyKey, command })` | `command` is `providerId`, `date`, `scope` (`date` or `weekday_from`), the whole day's `windows` (office, open and close minute on the 15-minute grid, no two overlapping, none touching at one office), `expectedVersion`, and `dryRun`. Success returns the provider's `version`, the day's `openCount`, and, unless a dry run, the `changeId` Undo sends. A dry run writes nothing. |
+| `undoDayHours({ idempotencyKey, changeId, expectedVersion })` | Puts the provider's hours and one-off hours back as they were before that change, when nothing has changed the provider since. |
+
+`date` rewrites only that day; other weeks keep their weekly hours. `weekday_from` ends the
+weekday's weekly rows the day before and starts the new windows on the day, clearing that day's
+one-off hours; earlier weeks are unchanged. Neither reaches the part of today that has passed
+(`hours_in_past`).
+
+| Code | Meaning in the Hours sheet |
+| --- | --- |
+| `schedule_in_use` | The change would strand a scheduled, checked-in or completed visit. The `conflicts` list names each; the sheet offers Keep (the old end) or Reschedule (the visit's card on its Reschedule face). A dry run answers the same. |
+| `outside_office_hours` | A window would leave the office's hours that weekday. |
+| `location_closed` | A `date` window falls on an office's closed day. |
+| `provider_not_bookable` / `location_unavailable` | The provider or office was turned off meanwhile. |
+| `stale_version` | Another change landed first, with `currentVersion`; Undo refuses the same way once the provider has moved on. |
+
+The sheet sends a dry run per row while dragging and one command per changed row on Save, then
+raises one toast whose Undo sends each `undoDayHours` in reverse.
+
+Acceptance: [e2e/portal/schedule-day-hours.spec.ts](e2e/portal/schedule-day-hours.spec.ts) drags
+an end past a visit, keeps it, shortens it, switches on a provider who was off, saves both, and
+undoes. [e2e/boundaries/day-hours.spec.ts](e2e/boundaries/day-hours.spec.ts) covers shorten,
+extend, add, remove, the stranded-visit refusal, the office-hours bound, `weekday_from` leaving
+earlier weeks unchanged, a dry run that writes nothing, the staff refusal, and a stale undo.
 
 ## Requests and appointments
 

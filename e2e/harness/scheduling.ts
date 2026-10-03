@@ -9,6 +9,14 @@ import {
 } from "../../src/lib/portal/scheduling/contracts";
 import type { SchedulingInput } from "../../src/lib/portal/scheduling/contracts";
 import {
+  dayHoursCommandInputSchema,
+  dayHoursCommandOutcomeSchema,
+  dayHoursOutcomeSchema,
+  dayHoursUndoInputSchema,
+  dayHoursUndoOutcomeSchema,
+} from "../../src/lib/portal/scheduling/day-hours-contracts";
+import type { DayHoursCommand } from "../../src/lib/portal/scheduling/day-hours-contracts";
+import {
   schedulingSettingsCommandInputSchema,
   schedulingSettingsOutcomeSchema,
   settingsCommandOutcomeSchema,
@@ -86,6 +94,64 @@ export async function readSettings(db: SupabaseClient, actorId: string) {
   const result = await db.rpc("portal_scheduling_settings", { p_actor_id: actorId });
   expect(result.error).toBeNull();
   return schedulingSettingsOutcomeSchema.parse(result.data);
+}
+
+interface DayHoursIntent {
+  readonly actorId: string;
+  readonly action: "day_hours_command" | "day_hours_undo";
+  readonly command: Readonly<object>;
+}
+
+function fixtureFingerprint(intent: DayHoursIntent) {
+  return createHmac("sha256", "TEST scheduling acceptance fixture")
+    .update(JSON.stringify(intent))
+    .digest("hex");
+}
+
+/** The Hours sheet's read of one practice day. */
+export async function readDayHours(db: SupabaseClient, actorId: string, date: string) {
+  const result = await db.rpc("portal_day_hours", { p_actor_id: actorId, p_date: date });
+  expect(result.error).toBeNull();
+  return dayHoursOutcomeSchema.parse(result.data);
+}
+
+/** One Hours sheet command, as the sheet's server action sends it. */
+export async function setDayHours(
+  db: SupabaseClient,
+  actorId: string,
+  command: Readonly<DayHoursCommand>,
+) {
+  const parsed = dayHoursCommandInputSchema.parse({ idempotencyKey: randomUUID(), command });
+  const result = await db.rpc("portal_set_provider_day_hours", {
+    p_actor_id: actorId,
+    p_idempotency_key: parsed.idempotencyKey,
+    p_fingerprint: fixtureFingerprint({
+      actorId,
+      action: "day_hours_command",
+      command: parsed.command,
+    }),
+    p_command: parsed.command,
+  });
+  expect(result.error).toBeNull();
+  return dayHoursCommandOutcomeSchema.parse(result.data);
+}
+
+/** The Hours sheet's undo, as the toast sends it. */
+export async function undoDayHours(
+  db: SupabaseClient,
+  actorId: string,
+  change: Readonly<{ changeId: string; expectedVersion: number }>,
+) {
+  const parsed = dayHoursUndoInputSchema.parse({ idempotencyKey: randomUUID(), ...change });
+  const command = { changeId: parsed.changeId, expectedVersion: parsed.expectedVersion };
+  const result = await db.rpc("portal_undo_provider_day_hours", {
+    p_actor_id: actorId,
+    p_idempotency_key: parsed.idempotencyKey,
+    p_fingerprint: fixtureFingerprint({ actorId, action: "day_hours_undo", command }),
+    p_command: command,
+  });
+  expect(result.error).toBeNull();
+  return dayHoursUndoOutcomeSchema.parse(result.data);
 }
 
 export function schedulingFixtureDate(days = 14) {
