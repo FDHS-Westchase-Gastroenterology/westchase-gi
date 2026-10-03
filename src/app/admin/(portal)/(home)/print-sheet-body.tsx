@@ -5,6 +5,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { Table, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TableRovingBody, TableRovingControl, TableRovingRow } from "@/components/ui/table-roving";
 import { readActiveFilters, withParam } from "@/lib/portal/filters";
 import type { ActiveFilter, FilterKey } from "@/lib/portal/filters";
 
@@ -138,7 +141,9 @@ function PrintSheetContent({
   /* Keys work the moment the sheet opens: focus lands on the highlighted
      row's box, not on Add filter. */
   useEffect(() => {
-    tableRef.current?.querySelector<HTMLElement>('[data-highlighted] [role="checkbox"]')?.focus();
+    tableRef.current
+      ?.querySelector<HTMLElement>('[data-highlighted] [data-roving="control"]')
+      ?.focus();
   }, []);
 
   const toggle = (id: string) => {
@@ -163,26 +168,20 @@ function PrintSheetContent({
     });
   };
 
+  /* The table's rows walk themselves (ui/table-roving); from anywhere else
+     in the sheet the arrows still move the highlight, and the table
+     scrolls it into view. */
   const move = (delta: number) => {
     if (highlighted === null) return;
     const at = rows.findIndex((line) => line.id === highlighted.id);
     const target = rows.at(Math.min(rows.length - 1, Math.max(0, at + delta)));
-    if (target === undefined) return;
-    setHighlightId(target.id);
-    const row = tableRef.current?.querySelector<HTMLElement>(
-      `[data-row-id="${CSS.escape(target.id)}"]`,
-    );
-    row?.scrollIntoView({ block: "nearest" });
-    /* Focus travels with the highlight when it is on the table's boxes. */
-    if (document.activeElement?.closest("[data-row-id]")) {
-      row?.querySelector<HTMLElement>('[role="checkbox"]')?.focus();
-    }
+    if (target !== undefined) setHighlightId(target.id);
   };
 
   const printable = isPrintable(chosen.length);
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
     const target = event.target;
     if (!(target instanceof Element) || target.closest(OWN_KEYS) !== null) return;
     const control = target.closest("button, a") !== null;
@@ -223,10 +222,10 @@ function PrintSheetContent({
           {/* The column heads stay when nothing matches (P4): the table is
               still what will print, and the empty state says why it is empty. */}
           <div className="wgi-print-scroll">
-            <table ref={tableRef} className="wgi-print-table" data-testid="print-table">
-              <thead>
-                <tr>
-                  <th scope="col" className="wgi-print-check">
+            <Table ref={tableRef} className="wgi-print-table" data-testid="print-table">
+              <TableHeader className="tracking-normal normal-case">
+                <TableRow>
+                  <TableHead className="wgi-print-check">
                     <Checkbox
                       aria-label="Include every request"
                       data-testid="print-select-all"
@@ -235,62 +234,59 @@ function PrintSheetContent({
                       indeterminate={chosen.length > 0 && !allChosen}
                       onCheckedChange={toggleAll}
                     />
-                  </th>
-                  <th scope="col">Patient</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Received</th>
-                  <th scope="col" className="wgi-print-page">
-                    Page
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
+                  </TableHead>
+                  <TableHead>Patient</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Received</TableHead>
+                  <TableHead className="wgi-print-page">Page</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableRovingBody
+                activeRow={highlighted?.id ?? null}
+                onActiveRowChange={setHighlightId}
+              >
                 {display.map((line) => {
                   const gone = leaving.has(line.id);
-                  const isHighlighted = !gone && line.id === highlighted?.id;
                   const page = gone ? null : (pageOf.get(line.id) ?? null);
                   return (
-                    <tr
+                    <TableRovingRow
                       key={line.id}
+                      rowId={line.id}
                       data-row-id={line.id}
-                      data-highlighted={isHighlighted || undefined}
                       data-left-out={(!gone && page === null) || undefined}
                       data-arriving={arriving.has(line.id) || undefined}
                       data-leaving={gone || undefined}
                       inert={gone}
                       className="wgi-print-row"
-                      onPointerDown={() => {
-                        setHighlightId(line.id);
-                      }}
-                      onFocus={() => {
-                        setHighlightId(line.id);
-                      }}
                     >
-                      <td className="wgi-print-check">
-                        <Checkbox
-                          aria-label={`Include ${line.name}`}
-                          tabIndex={isHighlighted ? 0 : -1}
-                          checked={page !== null}
-                          onCheckedChange={() => {
-                            toggle(line.id);
-                          }}
+                      <TableCell className="wgi-print-check">
+                        <TableRovingControl
+                          render={
+                            <Checkbox
+                              aria-label={`Include ${line.name}`}
+                              checked={page !== null}
+                              onCheckedChange={() => {
+                                toggle(line.id);
+                              }}
+                            />
+                          }
                         />
-                      </td>
-                      <td className="wgi-print-name" data-ui-redact="patient-name">
+                      </TableCell>
+                      <TableCell className="wgi-print-name" data-ui-redact="patient-name">
                         {line.name}
-                      </td>
-                      <td>
+                      </TableCell>
+                      <TableCell>
                         <LineStatusBadge status={line.status} />
-                      </td>
-                      <td className="wgi-print-received" title={line.receivedFull}>
+                      </TableCell>
+                      <TableCell className="wgi-print-received" title={line.receivedFull}>
                         {line.receivedRel}
-                      </td>
-                      <td className="wgi-print-page">{page ?? "—"}</td>
-                    </tr>
+                      </TableCell>
+                      <TableCell className="wgi-print-page">{page ?? "—"}</TableCell>
+                    </TableRovingRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableRovingBody>
+            </Table>
             {rows.length === 0 ? (
               <FilterEmptyState
                 lines={lines}
@@ -307,7 +303,12 @@ function PrintSheetContent({
           </div>
           {rows.length === 0 ? null : (
             <p className="wgi-print-hint">
-              <kbd>↑↓</kbd> to preview · <kbd>Space</kbd> to include or leave out
+              <KbdGroup aria-hidden="true">
+                <Kbd>↑</Kbd>
+                <Kbd>↓</Kbd>
+              </KbdGroup>
+              <span className="sr-only">Up and down arrows:</span> to preview · <Kbd>Space</Kbd> to
+              include or leave out
             </p>
           )}
         </div>

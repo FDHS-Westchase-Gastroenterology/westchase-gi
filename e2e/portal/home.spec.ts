@@ -149,6 +149,24 @@ test.describe("portal home", () => {
     await expect(printSubmit).toHaveAttribute("target", "_blank");
     await expect(page.getByTestId("print-summary")).toContainText("oldest first");
 
+    // The rows walk by arrows with one tab stop (ui/table-roving): focus
+    // Opens on the first row's box, follows the highlight, and Space on
+    // The focused box leaves its request out and puts it back.
+    const boxes = printRows.getByRole("checkbox");
+    await expect(boxes.first()).toBeFocused();
+    if ((await printRows.count()) > 1) {
+      await page.keyboard.press("ArrowDown");
+      await expect(boxes.nth(1)).toBeFocused();
+      await expect(printRows.nth(1)).toHaveAttribute("data-highlighted");
+      await expect(boxes.nth(0)).toHaveAttribute("tabindex", "-1");
+      await page.keyboard.press("Space");
+      await expect(boxes.nth(1)).not.toBeChecked();
+      await page.keyboard.press("Space");
+      await expect(boxes.nth(1)).toBeChecked();
+      await page.keyboard.press("ArrowUp");
+      await expect(boxes.first()).toBeFocused();
+    }
+
     // Leaving everything out leaves nothing to print.
     await page.getByTestId("print-select-all").click();
     await expect(page.getByTestId("print-summary")).toHaveText(/^None of \d+ requests? chosen$/);

@@ -4539,16 +4539,13 @@ a.appt-phone {
 }
 
 .wgi-print-hint {
+  display: flex;
   flex: none;
+  align-items: center;
+  gap: 0.375rem;
   margin: 0.5rem 0 0;
   color: var(--wgi-muted-ink);
   font-size: 0.8125rem;
-}
-
-.wgi-print-hint kbd {
-  color: var(--wgi-name-ink);
-  font-family: inherit;
-  font-weight: 700;
 }
 
 /* The preview pane: the page as the print route renders it, scaled to
