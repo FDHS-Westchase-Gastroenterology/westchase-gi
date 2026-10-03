@@ -3963,6 +3963,249 @@ a.appt-phone {
   overflow-wrap: anywhere;
 }
 
+/* ---------- The Schedule's patient record (issue #356) ----------
+   Figma Ypf9ohpRcGWF5C9T9bSvWW, section 13, P2: Home's sheet with the
+   tabs in its header, above the rule, and a foot of commands under the
+   body. patient-record-sheet.tsx tells the story. */
+
+/* The tabs close the header: 16px under the contact row, the header's
+   own padding under them, the rule below. */
+.wgi-sheet-tabs {
+  margin-top: 1rem;
+}
+
+/* Details reads as a plain list in its own tab, not indented under a
+   section label as it is in Home's request record. */
+.wgi-sheet-dl-flush {
+  padding: 0;
+}
+
+/* The foot: the commands, left, above a hairline; it never scrolls. */
+.wgi-sheet-foot {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border-top: 1px solid var(--wgi-rule);
+  padding: 1rem 1.5rem 1rem;
+}
+
+.wgi-sheet-foot:empty {
+  display: none;
+}
+
+/* How they came to us: the origin, and its history to the right. */
+.wgi-sheet-origin {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.wgi-sheet-history-link {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.125rem;
+  border-radius: 3px;
+  color: var(--wgi-link-ink);
+  font-size: 0.8125rem;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 0.15em;
+  transition: text-decoration-color var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-sheet-history-link > svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+@media (hover: hover) {
+  .wgi-sheet-history-link:hover {
+    text-decoration-color: currentColor;
+  }
+}
+
+/* Visits: two labelled groups of cards 8px apart. */
+.wgi-visit-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.wgi-visit-group + .wgi-visit-group {
+  margin-top: 0.5rem;
+}
+
+.wgi-visit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A visit: the calendar, its when over its with, and the word at the
+   right. White under a hairline; today's is tinted and loses the line. */
+.wgi-visit {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.75rem;
+  border: 1px solid var(--wgi-rule);
+  border-radius: 8px;
+  background: #fff;
+  padding: 0.6875rem 0.875rem;
+  color: var(--wgi-name-ink);
+  text-decoration: none;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-visit[data-today] {
+  border-color: transparent;
+  background: var(--wgi-band);
+}
+
+@media (hover: hover) {
+  .wgi-visit:hover {
+    background: var(--wgi-hover);
+  }
+
+  .wgi-visit[data-today]:hover {
+    background: var(--color-navy-200);
+  }
+}
+
+.wgi-visit:active {
+  transform: scale(0.98);
+}
+
+.wgi-visit-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--wgi-muted-ink);
+}
+
+.wgi-visit[data-today] .wgi-visit-icon {
+  color: var(--wgi-name-ink);
+}
+
+.wgi-visit-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.wgi-visit-when {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.25rem;
+}
+
+.wgi-visit-with {
+  overflow: hidden;
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wgi-visit-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.wgi-visit[data-today] .wgi-visit-word {
+  color: var(--wgi-name-ink);
+}
+
+.wgi-visit-word > svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+/* Clinical notes and documents: a read-only list, one row each. */
+.wgi-clinical-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wgi-clinical-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--wgi-rule);
+  padding: 0.625rem 0;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.wgi-clinical-item:first-child {
+  padding-top: 0;
+}
+
+.wgi-clinical-title {
+  min-width: 0;
+  color: var(--wgi-name-ink);
+  overflow-wrap: anywhere;
+}
+
+.wgi-clinical-meta {
+  flex: none;
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+}
+
+/* Add a note: the composer in a popover over the foot, above the sheet
+   that holds the button, as the history popover is. */
+.wgi-note-positioner {
+  z-index: calc(var(--z-drawer, 80) + 2);
+}
+
+.wgi-note-popover {
+  width: 22rem;
+  padding: 0;
+}
+
+.wgi-note-guidance {
+  margin: 0;
+  color: var(--wgi-muted-ink);
+  font-size: 0.78125rem;
+  line-height: 1.125rem;
+}
+
+.wgi-note-error {
+  margin: 0;
+  color: var(--color-coral-700);
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+}
+
+@media (forced-colors: active) {
+  .wgi-visit,
+  .wgi-visit[data-today] {
+    border-color: CanvasText;
+  }
+}
+
 /* The record's skeleton: the sections' own shapes on the list skeleton's
    shared opacity loop (DESIGN.md keeps the authored shape; a generic block
    is a downgrade). */
@@ -4738,7 +4981,8 @@ a.appt-phone {
   .wgi-record-close:active,
   .wgi-empty-clear:active,
   .wgi-sheet-close:active,
-  .wgi-sheet-call:active {
+  .wgi-sheet-call:active,
+  .wgi-visit:active {
     transform: none;
   }
 }

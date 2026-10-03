@@ -64,7 +64,7 @@ function useReleasedHistory() {
 
 /* The patient's message under its quote rule, two lines until asked;
    "Show all" appears only when the clamp actually hides something. */
-function PatientMessage({ message }: Readonly<{ message: string }>) {
+export function PatientMessage({ message }: Readonly<{ message: string }>) {
   const [open, setOpen] = useState(false);
   const [clipped, setClipped] = useState(false);
   const text = useRef<HTMLParagraphElement>(null);
@@ -118,7 +118,7 @@ function PatientMessage({ message }: Readonly<{ message: string }>) {
   );
 }
 
-function LatestNoteBlock({ note }: Readonly<{ note: LatestNote }>) {
+export function LatestNoteBlock({ note }: Readonly<{ note: LatestNote }>) {
   return (
     <section className="wgi-sheet-section" aria-labelledby="wgi-sheet-note-label">
       <h3 id="wgi-sheet-note-label" className="wgi-sheet-label">

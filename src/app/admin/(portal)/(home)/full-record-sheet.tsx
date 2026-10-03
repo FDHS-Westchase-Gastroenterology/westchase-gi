@@ -1,21 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
-import { formatPhoneForDisplay, telHref } from "@/app/admin/(portal)/requests/format";
 import { attemptsLabel, recordSections } from "@/app/admin/(portal)/requests/record-sections";
-import { isMailbox } from "@/lib/portal/contracts";
+import type { RecordSections } from "@/app/admin/(portal)/requests/record-sections";
 import type { FullRecord } from "@/lib/portal/request-record/contracts";
 import { presentationStatus } from "@/lib/portal/workflow/contracts";
 
 import { SheetBody } from "./full-record-sheet-body";
-import { useSheetResize } from "./full-record-sheet-geometry";
 import { prefersText } from "./home-line";
 import type { HomeLine } from "./home-line";
 import { LineStatusBadge } from "./parts/badge";
-import { CloseGlyph, PhoneGlyph } from "./parts/glyphs";
-import { HomeSheet, HomeSheetClose, HomeSheetContent, HomeSheetTitle } from "./parts/sheet";
-import { CARD_BUTTON, closedByKeyboard, sheetStaysOpen } from "./sheet-coexistence";
+import { phoneParts, RecordSheetFrame, SheetContactRow, SheetTitleRow } from "./record-sheet-frame";
+import { CARD_BUTTON } from "./sheet-coexistence";
 import { useRecordRead } from "./use-record-read";
 
 /* Full record: a right sheet that runs beside the record card
@@ -50,8 +47,9 @@ import { useRecordRead } from "./use-record-read";
    record they open; beside an open card it opens no wider than the room
    that clears the card.
 
-   This file is the composition: the read, the dismissal policy, and the
-   header. The sections are in full-record-sheet-body.tsx,
+   This file is the composition: the read and the header. The frame, its
+   dismissal policy and its grip are in record-sheet-frame.tsx, shared
+   with the Schedule's records (issue #356). The sections are in full-record-sheet-body.tsx,
    what they say in requests/record-sections.ts, the panel's box in
    full-record-sheet-geometry.ts, and the rules this sheet and the home
    popovers share in sheet-coexistence.ts. */
@@ -61,45 +59,51 @@ function Attempts({ count }: Readonly<{ count: number }>) {
   return label === null ? null : <span className="wgi-sheet-attempts">· {label}</span>;
 }
 
-type SheetContactProps = Readonly<{
+type RequestSheetHeadProps = Readonly<{
   line: Readonly<HomeLine>;
   record: FullRecord | null;
+  sections: RecordSections | null;
   loading: boolean;
+  /** Home's sheet says the preference under the queue line; the Schedule's
+      request record says it where the appointment would be. */
+  pref?: boolean;
 }>;
 
-/* The phone as the card's call chip, then the email. The number is the
-   list's until the record arrives, so a slow or failed read never hides
-   it; the email waits for the record, a placeholder while it loads. */
+/* A request's pinned header: the name and the close, then the card's
+   queue line at the sheet's size (the badge, when it is due, and how many
+   calls it has taken so far), the preference, and the phone chip beside
+   the email. The name, status and phone are the list's line until the
+   record arrives, so a slow or failed read never hides them; the email
+   waits for the record, a placeholder while it loads. */
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the request record carries workflow history entries whose types cannot be made readonly
-function SheetContact({ line, record, loading }: SheetContactProps) {
-  const mailbox = record?.email?.trim() ?? "";
-  const safeMailbox = mailbox !== "" && isMailbox(mailbox) ? mailbox : null;
+export function RequestSheetHead({
+  line,
+  record,
+  sections,
+  loading,
+  pref = true,
+}: RequestSheetHeadProps) {
+  const phone =
+    record === null ? { tel: line.tel, phoneDisplay: line.phoneDisplay } : phoneParts(record.phone);
   return (
-    <div className="wgi-sheet-contact">
-      <a
-        href={record === null ? line.tel : telHref(record.phone)}
-        className="wgi-record-call wgi-sheet-call"
-        data-ui-redact="patient-contact"
-      >
-        <PhoneGlyph size={15} />
-        {record === null ? line.phoneDisplay : formatPhoneForDisplay(record.phone)}
-      </a>
-      {record === null ? (
-        loading ? (
-          <span className="wgi-sheet-placeholder" aria-hidden="true" />
-        ) : null
-      ) : safeMailbox === null ? (
-        <span className="wgi-sheet-empty">No email provided</span>
-      ) : (
-        <a
-          href={`mailto:${safeMailbox}`}
-          className="wgi-sheet-email"
-          data-ui-redact="patient-contact"
-        >
-          {safeMailbox}
-        </a>
-      )}
-    </div>
+    <header className="wgi-sheet-head">
+      <SheetTitleRow name={record?.name ?? line.name} />
+      <p className="wgi-record-queue wgi-sheet-queue">
+        <LineStatusBadge
+          status={record === null ? line.status : presentationStatus(record.state)}
+          className="wgi-record-badge"
+        />
+        <span data-overdue={line.stamp === null ? undefined : true}>{line.timing}</span>
+        {sections === null ? null : <Attempts count={sections.attempts} />}
+      </p>
+      {pref ? <p className="wgi-sheet-pref">{prefersText(line.pref)}</p> : null}
+      <SheetContactRow
+        tel={phone.tel}
+        phoneDisplay={phone.phoneDisplay}
+        email={record === null ? undefined : record.email}
+        loading={loading}
+      />
+    </header>
   );
 }
 
@@ -122,133 +126,46 @@ export function FullRecordSheet({
 }>) {
   /* The line stays rendered while the sheet leaves: the dashboard drops it
      the moment the sheet closes, and Base UI can only play the exit on a
-     popup that is still in the tree. `onOpenChangeComplete` lets go of it. */
+     popup that is still in the tree. The frame's exit lets go of it. */
   const [shown, setShown] = useState(line);
   if (line !== null && line !== shown) setShown(line);
-  const [arrived, setArrived] = useState(false);
-  const [leavingByKey, setLeavingByKey] = useState(false);
-  const { popup, mount, refit, beginResize, resizeByKey } = useSheetResize();
 
   const shownId = shown?.id ?? null;
   const { outcome, record, retry, release } = useRecordRead(line, shownId);
   const sections = useMemo(() => (record === null ? null : recordSections(record)), [record]);
 
-  /* A retarget (another row's card opened while the sheet was up) keeps
-     the popup mounted, so the mount-time fit does not run again: refit
-     once the new card has taken its place, a frame later, on the base
-     beat that data-fitting gives a programmatic width change. */
-  const fittedFor = useRef<string | null>(null);
-  useEffect(() => {
-    const previous = fittedFor.current;
-    fittedFor.current = shownId;
-    if (shownId === null || previous === null || previous === shownId) return undefined;
-    const frame = requestAnimationFrame(() => {
-      refit(popup.current);
-    });
-    return () => {
-      cancelAnimationFrame(frame);
-    };
-  }, [shownId, refit, popup]);
-
   return (
-    <HomeSheet
+    <RecordSheetFrame
       open={line !== null}
-      modal={false}
-      disablePointerDismissal
-      onOpenChange={(open, details) => {
-        /* Escape heard here is the sheet's own: a popup holding focus takes
-           the key on its onKeyDown and stops it there, and the card yields
-           document-level Escapes to the sheet while one is mounted
-           (sheet-coexistence.ts). A history popover beside the sheet takes
-           the Escape first. */
-        if (!open && sheetStaysOpen(details)) return;
-        if (!open) setLeavingByKey(closedByKeyboard(details));
-        onOpenChange(open);
+      contentKey={shownId}
+      instant={instant}
+      onOpenChange={onOpenChange}
+      onExited={() => {
+        setShown(null);
+        release();
+        onClosed();
       }}
-      onOpenChangeComplete={(open) => {
-        setArrived(open);
-        if (!open) {
-          setLeavingByKey(false);
-          setShown(null);
-          release();
-          onClosed();
-        }
-      }}
+      /* Focus goes back to the card's sheet toggle while that card is
+         still open beside the sheet, otherwise to the originating row's
+         chevron. Asked at close time, not at render: the dashboard has
+         already let go of the sheet by then. */
+      finalFocus={() =>
+        returnFocus?.() ??
+        document.querySelector<HTMLElement>(CARD_BUTTON) ??
+        document.querySelector<HTMLElement>(`[data-row="${shownId ?? ""}"] .appt-line-trigger`)
+      }
     >
       {shown === null ? null : (
-        <HomeSheetContent
-          ref={mount}
-          /* Focus lands on the sheet itself, which reads its title, not on
-             the resize grip that happens to come first in the tab order. */
-          initialFocus={popup}
-          /* Focus goes back to the card's sheet toggle while that card is
-             still open beside the sheet, otherwise to the originating
-             row's chevron. Asked at close time, not at render: the
-             dashboard has already let go of the sheet by then. */
-          finalFocus={() =>
-            returnFocus?.() ??
-            document.querySelector<HTMLElement>(CARD_BUTTON) ??
-            document.querySelector<HTMLElement>(`[data-row="${shown.id}"] .appt-line-trigger`)
-          }
-          /* The card's toggle closes the sheet without a Base UI change
-             details for closedByKeyboard to read, so the dashboard says
-             through `instant` whether that close came from the keyboard. */
-          instant={(instant && (!arrived || line === null)) || leavingByKey}
-        >
-          <div className="wgi-sheet-surface">
-            <button
-              type="button"
-              className="wgi-sheet-grip"
-              aria-label="Resize the full record panel"
-              title="Drag, or press the arrow keys, to resize"
-              onPointerDown={beginResize}
-              onKeyDown={resizeByKey}
-            >
-              <span aria-hidden="true" />
-            </button>
-            {/* Keyed by the record on screen: a retarget remounts the
-                content and its settle replays, the cue that the selection
-                changed. The grip stays outside — it is the surface's own
-                affordance, not the record's. */}
-            <div className="wgi-sheet-content" key={shown.id}>
-              <header className="wgi-sheet-head">
-                {/* Base UI's Title renders an <h2> itself — no render element,
-                    so the heading and its content stay in one JSX node. The
-                    sheet is named by it: the patient, and, for a screen
-                    reader, what this surface is. */}
-                <HomeSheetTitle className="wgi-sheet-name">
-                  <span className="sr-only">Full record: </span>
-                  <span data-ui-redact="patient-name">{record?.name ?? shown.name}</span>
-                </HomeSheetTitle>
-                <HomeSheetClose
-                  render={
-                    <button
-                      type="button"
-                      className="wgi-sheet-close"
-                      aria-label="Close full record"
-                    />
-                  }
-                >
-                  <CloseGlyph size={16} />
-                </HomeSheetClose>
-                {/* The card's queue line, at the sheet's size: the badge, when
-                    it is due, and how many calls it has taken so far. */}
-                <p className="wgi-record-queue wgi-sheet-queue">
-                  <LineStatusBadge
-                    status={record === null ? shown.status : presentationStatus(record.state)}
-                    className="wgi-record-badge"
-                  />
-                  <span data-overdue={shown.stamp === null ? undefined : true}>{shown.timing}</span>
-                  {sections === null ? null : <Attempts count={sections.attempts} />}
-                </p>
-                <p className="wgi-sheet-pref">{prefersText(shown.pref)}</p>
-                <SheetContact line={shown} record={record} loading={outcome === null} />
-              </header>
-              <SheetBody outcome={outcome} sections={sections} onRetry={retry} />
-            </div>
-          </div>
-        </HomeSheetContent>
+        <>
+          <RequestSheetHead
+            line={shown}
+            record={record}
+            sections={sections}
+            loading={outcome === null}
+          />
+          <SheetBody outcome={outcome} sections={sections} onRetry={retry} />
+        </>
       )}
-    </HomeSheet>
+    </RecordSheetFrame>
   );
 }

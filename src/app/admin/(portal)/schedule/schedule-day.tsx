@@ -174,9 +174,9 @@ export function ScheduleDayView({ view, admin }: Readonly<{ view: ScheduleDay; a
                 card.close();
                 landed(change);
               }}
-              onOpenRecord={(line, appointmentId) => {
+              onOpenRecord={(patient, appointmentId) => {
                 card.close();
-                openRecord(line, appointmentId, keyed);
+                openRecord(patient, appointmentId, keyed);
               }}
             />
           )

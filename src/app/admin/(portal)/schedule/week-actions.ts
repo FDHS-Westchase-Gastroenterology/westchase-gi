@@ -7,8 +7,10 @@ import type { HomeLine } from "@/app/admin/(portal)/(home)/home-line";
 import { lineFor } from "@/app/admin/(portal)/(home)/home-line-for";
 import { fetchWorkedRow } from "@/app/admin/(portal)/requests/queue";
 import { requireRole } from "@/lib/portal/auth";
-import type { FoundPerson } from "@/lib/portal/patients/contracts";
-import { findPeople, searchPatients } from "@/lib/portal/patients/reads";
+import type { ClinicalOutcome } from "@/lib/portal/clinical/contracts";
+import { executeClinicalOperation } from "@/lib/portal/clinical/service";
+import type { FoundPerson, PatientSummary, PatientVisit } from "@/lib/portal/patients/contracts";
+import { findPeople, readPatient, searchPatients } from "@/lib/portal/patients/reads";
 import type { SchedulingFailureCode } from "@/lib/portal/scheduling/contracts";
 import { executeSchedulingOperation } from "@/lib/portal/scheduling/service";
 import { serviceClient } from "@/lib/portal/server";
@@ -239,5 +241,109 @@ export async function readWeekRecordLine(requestId: string): Promise<HomeLine | 
     return row === null ? null : lineFor(row, now, names);
   } catch {
     return null;
+  }
+}
+
+/** A clinical record as the patient record's Clinical and Documents tabs list it. */
+export interface ScheduleClinicalItem {
+  readonly id: string;
+  readonly title: string;
+  readonly serviceDate: string | null;
+  readonly status: "draft" | "signed" | "entered_in_error";
+}
+
+/** One clinical list: its records, or why there are none to show. */
+export type ScheduleClinicalList =
+  | { readonly ok: true; readonly total: number; readonly items: readonly ScheduleClinicalItem[] }
+  | { readonly ok: false; readonly forbidden: boolean };
+
+export interface SchedulePatientRecord {
+  readonly patient: PatientSummary;
+  /** Every visit but the cancelled ones, latest first. */
+  readonly visits: readonly PatientVisit[];
+  /** The patient's latest linked request, as Home's line; null when none is linked. */
+  readonly requestLine: HomeLine | null;
+  readonly requestTotal: number;
+  readonly notes: ScheduleClinicalList;
+  readonly documents: ScheduleClinicalList;
+}
+
+export type SchedulePatientOutcome =
+  | { readonly ok: true; readonly record: SchedulePatientRecord }
+  | { readonly ok: false; readonly code: "not_found" | "unavailable" };
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the clinical outcome carries record rows whose nested types cannot be made readonly
+function clinicalList(outcome: ClinicalOutcome): ScheduleClinicalList {
+  if (!outcome.ok) return { ok: false, forbidden: outcome.code === "forbidden" };
+  if (!("records" in outcome)) return { ok: false, forbidden: false };
+  return {
+    ok: true,
+    total: outcome.total,
+    items: outcome.records.map((record) => ({
+      id: record.id,
+      title: record.title,
+      serviceDate: record.serviceDate,
+      status: record.status,
+    })),
+  };
+}
+
+/** The Schedule's patient record (issue #356): the patient, their visits,
+   the latest request linked to them as the line Home's sheet reads, and
+   their clinical notes and documents, read-only. The id may come from the
+   address (`?patient=`), so anything that isn't one is no record. */
+export async function readSchedulePatient(patientId: string): Promise<SchedulePatientOutcome> {
+  const session = await requireRole("staff", { unauthenticated: "throw" });
+  if (!z.uuid().safeParse(patientId).success) return { ok: false, code: "not_found" };
+  const db = serviceClient();
+  const clinical = async (kind: "note" | "document_reference"): Promise<ClinicalOutcome> => {
+    try {
+      return await executeClinicalOperation(db, session.id, {
+        action: "list",
+        patientId,
+        query: "",
+        status: null,
+        kind,
+        limit: 50,
+        after: null,
+      });
+    } catch {
+      return { ok: false, code: "unavailable" };
+    }
+  };
+  try {
+    const [read, notes, documents] = await Promise.all([
+      readPatient(db, session.id, { patientId, historyBefore: null, linksAfter: null }),
+      clinical("note"),
+      clinical("document_reference"),
+    ]);
+    if (!read.ok)
+      return { ok: false, code: read.code === "not_found" ? "not_found" : "unavailable" };
+    const latest = read.requests.items.reduce<(typeof read.requests.items)[number] | null>(
+      (best, link) => (best === null || link.receivedAt > best.receivedAt ? link : best),
+      null,
+    );
+    const now = new Date();
+    let requestLine: HomeLine | null = null;
+    if (latest !== null) {
+      const [row, names] = await Promise.all([
+        fetchWorkedRow(db, latest.requestId, now),
+        fetchStaffNameMap(db),
+      ]);
+      requestLine = row === null ? null : lineFor(row, now, names);
+    }
+    return {
+      ok: true,
+      record: {
+        patient: read.patient,
+        visits: read.appointments.items,
+        requestLine,
+        requestTotal: read.requests.total,
+        notes: clinicalList(notes),
+        documents: clinicalList(documents),
+      },
+    };
+  } catch {
+    return { ok: false, code: "unavailable" };
   }
 }

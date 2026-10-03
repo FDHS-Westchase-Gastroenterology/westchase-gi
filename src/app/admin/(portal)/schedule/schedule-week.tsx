@@ -98,9 +98,9 @@ export function ScheduleWeekView({
                 toast(message);
                 router.refresh();
               }}
-              onOpenRecord={(line, appointmentId) => {
+              onOpenRecord={(patient, appointmentId) => {
                 card.close();
-                openRecord(line, appointmentId, keyed);
+                openRecord(patient, appointmentId, keyed);
               }}
             />
           )

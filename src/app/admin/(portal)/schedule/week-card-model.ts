@@ -123,6 +123,16 @@ export function statusBadge(status: WeekAppointmentStatus): StatusBadge {
   return STATUS_BADGE[status];
 }
 
+/* The status is a ui/badge in its color-law variant, wearing Home's line
+   badge paints (home.css .wgi-badge) over the recipe's, so Scheduled on
+   the week reads as the request's Scheduled on Home. */
+export const BADGE_PAINT = {
+  settled: "wgi-badge-scheduled",
+  current: "wgi-badge-contacted",
+  attention: "wgi-badge-new",
+  quiet: "wgi-badge-closed",
+} as const satisfies Record<StatusBadge["variant"], string>;
+
 /* ---- Cancel ---- */
 
 /** A request-managed cancel sets when to call the patient again: the next

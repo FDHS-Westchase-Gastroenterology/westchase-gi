@@ -6,6 +6,7 @@ import {
   startTransition,
   Suspense,
   use,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -20,31 +21,43 @@ import { AddRequestDialog } from "@/app/admin/(portal)/add-appointment-dialog";
 import type { AddRequestDialogHandle } from "@/app/admin/(portal)/add-appointment-dialog";
 import type { FoundPerson } from "@/lib/portal/patients/contracts";
 
+import { PatientRecordSheet } from "./patient-record-sheet";
 import { requestPrefill } from "./schedule-search-model";
 import { readWeekRecordLine } from "./week-actions";
+import type { RecordHint } from "./week-card-parts";
 
 /* The people the Schedule opens (issue #356), shared by its three views:
    the full-record sheet and the Add request dialog live once here, in the
    Schedule's layout, so a record opened from the search or from a card
    stays open while the views change under it, and the schedule stays live
-   behind it. The open record is in the address (`?request=`), so reload,
-   Back and a pasted link open it again; opening pushes a history entry and
-   closing replaces it, so Back closes the sheet before it leaves the page.
-   The query that found the person never reaches the address.
+   behind it. The open record is in the address, `?patient=` for a
+   patient's record and `?request=` for a person known only by a request,
+   so reload, Back and a pasted link open it again; opening pushes a
+   history entry and closing replaces it, so Back closes the sheet before
+   it leaves the page. The query that found the person never reaches the
+   address.
 
-   Focus goes back where the record came from: the card's appointment on
-   the grid, or the search field. */
+   While a patient's record is open, their appointments on the grid wear
+   its outline. Focus goes back where the record came from: the card's
+   appointment on the grid, or the search field. */
 
 interface SchedulePeopleValue {
   /** Opens what the search found: the person's request, or their record. */
   readonly openPerson: (person: FoundPerson, instant: boolean) => void;
   /** Opens Add request with what the search typed, if anything. */
   readonly startRequest: (typed: string, instant: boolean) => void;
-  /** Opens the record of the request behind an appointment card. */
-  readonly openRecord: (line: HomeLine, appointmentId: string, instant: boolean) => void;
+  /** Opens the record of the patient behind an appointment card. */
+  readonly openRecord: (patient: RecordHint, appointmentId: string, instant: boolean) => void;
 }
 
 const SchedulePeopleContext = createContext<SchedulePeopleValue | null>(null);
+const NO_VISITS: ReadonlySet<string> = new Set();
+const OpenRecordVisits = createContext<ReadonlySet<string>>(NO_VISITS);
+
+/** The appointments of the patient whose record is open, which the grid outlines. */
+export function useOpenRecordVisits(): ReadonlySet<string> {
+  return use(OpenRecordVisits);
+}
 
 export function useSchedulePeople(): SchedulePeopleValue {
   const value = use(SchedulePeopleContext);
@@ -70,18 +83,26 @@ function searchField(): HTMLElement | null {
 interface RecordState {
   readonly shown: HomeLine | null;
   readonly setShown: (line: HomeLine) => void;
+  /** What opened a patient's record knew of them already. */
+  readonly hint: RecordHint | null;
   readonly instant: boolean;
   /** Where focus goes when the record closes: an appointment on the grid, or the search field (null). */
   readonly origin: Readonly<RefObject<string | null>>;
+  readonly onVisits: (ids: ReadonlySet<string>) => void;
 }
 
 /* The sheet of the record the address names. It reads the address, so it
    sits under its own Suspense boundary and the views around it never wait
    on it. */
-function AddressedRecord({ shown, setShown, instant, origin }: RecordState) {
+function AddressedRecord({ shown, setShown, hint, instant, origin, onVisits }: RecordState) {
   const router = useRouter();
   const params = useSearchParams();
   const requestId = params.get("request");
+  const patientId = params.get("patient");
+  const returnFocus = () =>
+    origin.current === null
+      ? searchField()
+      : document.querySelector<HTMLElement>(`[data-appointment="${origin.current}"]`);
   const line = shown?.id === requestId ? shown : null;
 
   /* A record the address names that this page has not read yet: a reload,
@@ -106,21 +127,32 @@ function AddressedRecord({ shown, setShown, instant, origin }: RecordState) {
   }, [requestId, shown, setShown]);
 
   return (
-    <FullRecordSheet
-      line={line}
-      instant={instant}
-      onOpenChange={(open) => {
-        if (!open) window.history.replaceState(null, "", recordHref("request", null));
-      }}
-      onClosed={() => {
-        router.refresh();
-      }}
-      returnFocus={() =>
-        origin.current === null
-          ? searchField()
-          : document.querySelector<HTMLElement>(`[data-appointment="${origin.current}"]`)
-      }
-    />
+    <>
+      <FullRecordSheet
+        line={line}
+        instant={instant}
+        onOpenChange={(open) => {
+          if (!open) window.history.replaceState(null, "", recordHref("request", null));
+        }}
+        onClosed={() => {
+          router.refresh();
+        }}
+        returnFocus={returnFocus}
+      />
+      <PatientRecordSheet
+        patientId={requestId === null ? patientId : null}
+        hint={hint}
+        instant={instant}
+        onOpenChange={(open) => {
+          if (!open) window.history.replaceState(null, "", recordHref("patient", null));
+        }}
+        onClosed={() => {
+          router.refresh();
+        }}
+        onVisits={onVisits}
+        returnFocus={returnFocus}
+      />
+    </>
   );
 }
 
@@ -130,9 +162,18 @@ export function SchedulePeople({
 }: Readonly<{ addRequestKey: string; children: ReactNode }>) {
   const router = useRouter();
   const [shown, setShown] = useState<HomeLine | null>(null);
+  const [hint, setHint] = useState<RecordHint | null>(null);
+  const [visits, setVisits] = useState<ReadonlySet<string>>(NO_VISITS);
   const [instant, setInstant] = useState(false);
   const origin = useRef<string | null>(null);
   const addDialog = useRef<AddRequestDialogHandle>(null);
+
+  /* A new set every read; the grid repaints only when the appointments change. */
+  const showVisits = useCallback((ids: ReadonlySet<string>) => {
+    setVisits((current) =>
+      current.size === ids.size && [...ids].every((id) => current.has(id)) ? current : ids,
+    );
+  }, []);
 
   const value = useMemo<SchedulePeopleValue>(
     () => ({
@@ -143,20 +184,17 @@ export function SchedulePeople({
           window.history.pushState(null, "", recordHref("request", person.id));
           return;
         }
-        if (person.status.kind === "request") {
-          window.history.pushState(null, "", recordHref("request", person.status.requestId));
-          return;
-        }
+        setHint({ id: person.id, name: person.name, phone: person.phone });
         window.history.pushState(null, "", recordHref("patient", person.id));
       },
       startRequest(typed, keyed) {
         addDialog.current?.open(requestPrefill(typed), keyed);
       },
-      openRecord(next, appointmentId, keyed) {
+      openRecord(patient, appointmentId, keyed) {
         origin.current = appointmentId;
         setInstant(keyed);
-        setShown(next);
-        window.history.pushState(null, "", recordHref("request", next.id));
+        setHint(patient);
+        window.history.pushState(null, "", recordHref("patient", patient.id));
       },
     }),
     [],
@@ -164,9 +202,16 @@ export function SchedulePeople({
 
   return (
     <SchedulePeopleContext value={value}>
-      {children}
+      <OpenRecordVisits value={visits}>{children}</OpenRecordVisits>
       <Suspense fallback={null}>
-        <AddressedRecord shown={shown} setShown={setShown} instant={instant} origin={origin} />
+        <AddressedRecord
+          shown={shown}
+          setShown={setShown}
+          hint={hint}
+          instant={instant}
+          origin={origin}
+          onVisits={showVisits}
+        />
       </Suspense>
       <AddRequestDialog
         idempotencyKey={addRequestKey}

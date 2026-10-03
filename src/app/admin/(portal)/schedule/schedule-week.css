@@ -1133,3 +1133,10 @@
     background: var(--color-slate-50);
   }
 }
+
+/* The patient whose record is open (issue #356): their appointments wear
+   a navy outline, inside the corners, apart from the focus ring. */
+.wgi-week-cell[data-record-open] {
+  outline: 2px solid var(--color-navy-800);
+  outline-offset: -2px;
+}

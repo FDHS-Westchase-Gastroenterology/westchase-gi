@@ -3,8 +3,6 @@
 import { startTransition, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
-import type { HomeLine } from "@/app/admin/(portal)/(home)/home-line";
-
 import type { WeekCommandOutcome } from "./week-actions";
 import { failureMessage } from "./week-card-model";
 
@@ -36,9 +34,17 @@ export interface Landed {
 
 export type DoneHandler = (message: string, landed: Landed) => void;
 
+/** Who a record opens on before it is read: its header is never empty. */
+export interface RecordHint {
+  readonly id: string;
+  readonly name: string;
+  readonly phone: string | null;
+}
+
 export interface CardHandlers {
   readonly onDone: DoneHandler;
-  readonly onOpenRecord: (line: HomeLine, appointmentId: string) => void;
+  /** Opens the patient's record from their appointment's card. */
+  readonly onOpenRecord: (patient: RecordHint, appointmentId: string) => void;
 }
 
 export function CardError({ children }: Readonly<{ children: ReactNode }>) {

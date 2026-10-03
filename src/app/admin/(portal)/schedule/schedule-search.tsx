@@ -208,6 +208,14 @@ export function ScheduleSearch() {
               }
               return;
             }
+            /* The rows on screen still answer an earlier term until the
+               search for this one returns, so Return waits for it rather
+               than open someone the typed name no longer finds. */
+            if (event.key === "Enter" && !view.current && term.length >= SEARCH_MIN) {
+              event.preventDefault();
+              event.preventBaseUIHandler();
+              return;
+            }
             if (event.key === "Enter" && view.nobody) {
               event.preventDefault();
               start(term, true);

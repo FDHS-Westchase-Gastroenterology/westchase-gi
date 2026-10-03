@@ -11,31 +11,22 @@ import { Menu, MenuContent, MenuGroup, MenuItem, MenuTrigger } from "@/component
 import { PopoverTitle } from "@/components/ui/popover";
 
 import type { WeekAppointmentCell } from "./schedule-week-model";
-import { readWeekAppointment, readWeekRecordLine, weekAppointmentCommand } from "./week-actions";
+import { readWeekAppointment, weekAppointmentCommand } from "./week-actions";
 import type { WeekAppointmentOutcome } from "./week-actions";
 import { appointmentAt, appointmentWhen } from "./week-calendar";
 import { CancelFace, RescheduleFace } from "./week-card-faces";
-import { cardActions, failureMessage, MORE_LABEL, statusBadge } from "./week-card-model";
-import type {
-  MoreCommand,
-  StatusBadge,
-  WeekAppointmentCommand,
-  WeekAppointmentDetail,
+import {
+  BADGE_PAINT,
+  cardActions,
+  failureMessage,
+  MORE_LABEL,
+  statusBadge,
 } from "./week-card-model";
+import type { MoreCommand, WeekAppointmentCommand, WeekAppointmentDetail } from "./week-card-model";
 import { CardError, useCommand } from "./week-card-parts";
-import type { CardHandlers } from "./week-card-parts";
+import type { CardHandlers, RecordHint } from "./week-card-parts";
 
 /* ---- The appointment card ---- */
-
-/* The status is a ui/badge in its color-law variant, wearing Home's line
-   badge paints (home.css .wgi-badge) over the recipe's, so Scheduled on
-   the week reads as the request's Scheduled on Home. */
-const BADGE_PAINT = {
-  settled: "wgi-badge-scheduled",
-  current: "wgi-badge-contacted",
-  attention: "wgi-badge-new",
-  quiet: "wgi-badge-closed",
-} as const satisfies Record<StatusBadge["variant"], string>;
 
 type Face = "details" | "reschedule" | "cancel";
 
@@ -161,13 +152,11 @@ function AppointmentDetails({
             send={send}
             onTurn={turnTo}
           />
-          {detail.sourceRequestId === null ? null : (
-            <RecordFoot
-              requestId={detail.sourceRequestId}
-              appointmentId={detail.id}
-              onOpenRecord={onOpenRecord}
-            />
-          )}
+          <RecordFoot
+            patient={{ id: detail.patientId, name: detail.patientName, phone: detail.patientPhone }}
+            appointmentId={detail.id}
+            onOpenRecord={onOpenRecord}
+          />
         </>
       ) : null}
       {face === "reschedule" ? (
@@ -330,46 +319,27 @@ function DetailsFace({
   );
 }
 
-/* ---- The full record: Home's sheet, opened on the source request ---- */
+/* ---- The full record: the patient's, opened in the Schedule's sheet ---- */
 
 function RecordFoot({
-  requestId,
+  patient,
   appointmentId,
   onOpenRecord,
 }: Readonly<{
-  requestId: string;
+  patient: RecordHint;
   appointmentId: string;
   onOpenRecord: CardHandlers["onOpenRecord"];
 }>) {
-  const [failed, setFailed] = useState(false);
-  const [pending, setPending] = useState(false);
-
-  function open() {
-    setPending(true);
-    setFailed(false);
-    startTransition(async () => {
-      try {
-        const line = await readWeekRecordLine(requestId);
-        if (line === null) setFailed(true);
-        else onOpenRecord(line, appointmentId);
-      } catch {
-        setFailed(true);
-      } finally {
-        setPending(false);
-      }
-    });
-  }
-
   return (
     <div className="wgi-week-card-foot">
-      {failed ? <CardError>The full record couldn&apos;t be opened.</CardError> : null}
       <Button
         variant="link"
         size="sm"
         motion="none"
         className="wgi-week-card-record"
-        disabled={pending}
-        onClick={open}
+        onClick={() => {
+          onOpenRecord(patient, appointmentId);
+        }}
       >
         Open full record
         <ChevronRight data-icon="inline-end" />
