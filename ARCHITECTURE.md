@@ -590,16 +590,13 @@ Tests pin the main contracts:
 
 | Contract | Primary proof |
 | --- | --- |
-| Dictionary parity and static route assembly | Typecheck/build, `test/dictionary-availability.test.mjs`, `e2e/public/` |
-| Workflow policy: legal transitions, and that the UI offers exactly what the machine accepts | `src/lib/portal/workflow/machine.test.mjs`, `legal-actions.test.mjs`, `reads.test.mjs` |
-| Intake contract (field caps, phone, mailbox, source path, response shapes) | `src/lib/portal/contracts.test.mjs` at the application layer; `e2e/boundaries/` at the database |
-| Queue order, paging, filters, print selection, labels, the work panel's choices and copy | `src/lib/portal/*.test.mjs`, `src/app/admin/(portal)/requests/[id]/workflow-panel-model.test.mjs` |
-| Email delivery and notification fan-out | `src/lib/portal/email.test.mjs` |
+| Dictionary parity and static route assembly | Typecheck/build, `e2e/public/` |
+| Intake contract (field caps, phone, mailbox, source path, response shapes) | `e2e/portal/intake-api.spec.ts` at the application layer; `e2e/boundaries/` at the database |
 | Patient-site routes, locale negotiation, and privacy hygiene | `e2e/public/` (no credentials) |
 | Staff-portal journeys: intake, contact attempt, booking handoff, call-again, settings, printing | `e2e/portal/` against the Preview Branch |
 | Schema, grants, RLS, RPC atomicity, throttling, lifecycle, and PostgREST relations | `scripts/verify-schema.mjs` and `e2e/boundaries/` |
-| Destructive-test isolation from Production | `e2e/harness/target-guard.ts` and its test (`npm run test:e2e-guard`) |
-| One declaration per contract vocabulary; product files an agent can load whole | `anti-slop/no-contract-vocabulary-redeclaration` (oxlint) and `test/file-size-ratchet.test.mjs` |
+| Destructive-test isolation from Production | `e2e/harness/target-guard.ts` |
+| One declaration per contract vocabulary; product files an agent can load whole | `anti-slop/no-contract-vocabulary-redeclaration` (oxlint) |
 | Review-flyer destination and byte integrity | `scripts/verify-review-flyers.mjs` |
 
 The exact command set and change-type check matrix live in

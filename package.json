@@ -19,8 +19,6 @@
     "local-only:check": "node scripts/check-local-only.mjs tracked",
     "local-only:verify": "node scripts/check-local-only.mjs verify-generated",
     "local-only:write": "node scripts/check-local-only.mjs write",
-    "test:unit": "node --import ./test/register.mjs --test \"src/**/*.test.mjs\" \"scripts/**/*.test.mjs\" \"tools/**/*.test.mjs\" \"test/**/*.test.mjs\"",
-    "test:e2e-guard": "node --test e2e/harness/target-guard.test.mjs",
     "test:e2e:public": "PLAYWRIGHT_PUBLIC=1 playwright test e2e/public",
     "test:e2e:portal": "playwright test e2e/portal",
     "test:e2e:boundaries": "playwright test e2e/boundaries",

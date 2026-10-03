@@ -129,7 +129,7 @@
   "loadBearing": [
     {
       "path": "scripts/",
-      "reason": "Tracked on main and required by CI. .github/workflows/supabase-dependency-integration.yml runs node scripts/seed-portal.mjs at line 197 and node scripts/verify-schema.mjs at line 200. package.json scripts ui:reference, dev and test:unit also invoke files here.",
+      "reason": "Tracked on main and required by CI. .github/workflows/supabase-dependency-integration.yml runs node scripts/seed-portal.mjs at line 197 and node scripts/verify-schema.mjs at line 200. package.json scripts ui:reference, dev, demo:data and dev:patients also invoke files here.",
       "incident": "Untracked by commit 2b85477d on 2026-09-02, which broke the supabase-integration job; reverted the same day by 899afbdc."
     },
     {
@@ -150,7 +150,7 @@
     },
     {
       "path": "e2e/",
-      "reason": "Playwright specs and the target guard that npm run test:e2e-guard executes."
+      "reason": "Playwright specs and the target guard they import."
     },
     {
       "path": "supabase/",
@@ -158,7 +158,7 @@
     },
     {
       "path": "tools/",
-      "reason": "The custom oxlint anti-slop plugin, tested by npm run test:unit."
+      "reason": "The custom oxlint anti-slop plugin, loaded by .oxlintrc.json."
     },
     {
       "path": "public/",

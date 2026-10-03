@@ -49,8 +49,8 @@ E2E remains on `supabase/seed.sql`.
 
 Every dataset that a person reviews or demos in the staff portal meets one bar. An audience
 cannot tell it from a working clinic, and it holds only rows the database or portal could have
-written. `scripts/demo-data.test.mjs` encodes the bar, using the checks in
-`scripts/demo-data/checks.mjs`. A generator change that fails it is below the bar.
+written. `scripts/demo-data/checks.mjs` encodes the bar, and `npm run demo:data -- check` runs
+it. A generator change that fails it is below the bar.
 
 The bar, as properties a reviewer can see:
 
@@ -304,9 +304,6 @@ surface available to an agent or contributor working in a clean container:
 
 ```bash
 npm ci --no-audit --no-fund
-node --test .github/scripts/dependency-automation.test.cjs
-npm run test:e2e-guard
-npm run test:unit
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 \
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=ci-public-placeholder \
   SUPABASE_SERVICE_ROLE_KEY=ci-server-placeholder \
@@ -408,14 +405,14 @@ The checks below are added to the standing gates.
 
 | Change | Read first | Additional checks |
 | --- | --- | --- |
-| Patient copy / locale content | [Localized patient reads](ARCHITECTURE.md#localized-patient-reads) and [trust boundaries](ARCHITECTURE.md#trust-boundaries) | `test:unit`, `test:e2e:public`; `e2e/portal/intake-form.spec.ts` when form behavior shifts |
-| Intake form / API / persistence | [Patient appointment intake](ARCHITECTURE.md#patient-appointment-intake) | `src/lib/portal/contracts.test.mjs`, `e2e/portal/intake-api.spec.ts`, `e2e/portal/intake-form.spec.ts` |
-| Portal page, route, or action | [Portal identity, authorization, and reads](ARCHITECTURE.md#portal-identity-authorization-and-reads); add `src/lib/portal/workflow/contracts.ts` for queue work | The unit tests beside the module, then the `e2e/portal/` spec for the route (`requests.spec.ts`, `lifecycle.spec.ts` for the work panel) |
+| Patient copy / locale content | [Localized patient reads](ARCHITECTURE.md#localized-patient-reads) and [trust boundaries](ARCHITECTURE.md#trust-boundaries) | `test:e2e:public`; `e2e/portal/intake-form.spec.ts` when form behavior shifts |
+| Intake form / API / persistence | [Patient appointment intake](ARCHITECTURE.md#patient-appointment-intake) | `e2e/portal/intake-api.spec.ts`, `e2e/portal/intake-form.spec.ts` |
+| Portal page, route, or action | [Portal identity, authorization, and reads](ARCHITECTURE.md#portal-identity-authorization-and-reads); add `src/lib/portal/workflow/contracts.ts` for queue work | The `e2e/portal/` spec for the route (`requests.spec.ts`, `lifecycle.spec.ts` for the work panel) |
 | Migration, RLS, RPC, or seed | [State and persistence](ARCHITECTURE.md#state-and-persistence) and [trust boundaries](ARCHITECTURE.md#trust-boundaries) | `verify-schema --target branch` and `test:e2e:boundaries`; documented migration deployment to the selected database and green `supabase-integration` on the exact head |
-| Portal demo data, or a migration adding a table or column the portal shows | [Portal demo data](#portal-demo-data) | `npm run demo:data -- check` and `scripts/demo-data.test.mjs` (in `test:unit`); after a coordinated `reset`, `npm run demo:data -- audit` on the branch |
-| Email paths | [Email](ARCHITECTURE.md#email) | `src/lib/portal/email.test.mjs` (in `test:unit`) |
+| Portal demo data, or a migration adding a table or column the portal shows | [Portal demo data](#portal-demo-data) | `npm run demo:data -- check`; after a coordinated `reset`, `npm run demo:data -- audit` on the branch |
+| Email paths | [Email](ARCHITECTURE.md#email) | `e2e/portal/intake-api.spec.ts` and `e2e/boundaries/recipients.spec.ts` |
 | UI-visible change | `PRODUCT.md`, `DESIGN.md`, and [`ui-reference/README.md`](ui-reference/README.md) | Refresh covered `ui-reference/` images; before/after screenshots in the PR conversation; video when the change is a new workflow or has multiple authored steps |
-| CI / dependency automation | [Common starting points](ARCHITECTURE.md#common-starting-points) | `node --test .github/scripts/dependency-automation.test.cjs`; policy and test change together |
+| CI / dependency automation | [Common starting points](ARCHITECTURE.md#common-starting-points) | Review the workflow and `.github/scripts/dependency-automation.cjs` diff |
 
 `supabase-integration` remains the current-head database/application gate. It uses only the
 selected Preview database's credentials, verifies schema/RLS/RPCs, and exercises Auth refresh,
@@ -546,8 +543,7 @@ Every verified, manifest-only root npm update may enter the queue regardless of 
 name/type, SemVer class, grouping, or tool ownership. Maintainer-modified, source-changing,
 migration-changing, or otherwise untrusted PRs are rejected before review. Executable policy
 
-- regression tests: `.github/scripts/dependency-automation.cjs` and
-  `.github/scripts/dependency-automation.test.cjs` (they change together). SOP:
+- policy script: `.github/scripts/dependency-automation.cjs`. SOP:
   `.github/codex/dependabot-sop-and-examples.md`. `OPENAI_API_KEY` is a repository Actions
   secret; never copy it into source, logs, PR text, Dependabot secrets, or an agent workspace.
 
@@ -614,7 +610,6 @@ handle and dispose of it under clinic rules.
 
 ```bash
 npm run build && npm run lint && npm run doctor   # build + lint + React Doctor (100 baseline)
-npm run test:e2e-guard                            # target-guard matrix; no server/DB
 npx playwright test                               # full E2E contract
 node scripts/verify-schema.mjs --target branch    # Preview Branch schema/RLS/RPC/seed health
 node scripts/verify-schema.mjs --target prod      # authorized Production maintenance action

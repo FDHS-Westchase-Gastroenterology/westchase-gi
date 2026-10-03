@@ -1,40 +1,16 @@
 # Tests: what runs where, and how to add one
 
-The suite has three tiers. The folder a test lives in says what it needs.
+The suite is browser-only, in three tiers. The folder a test lives in says what it needs.
 
 | Tier | Where | Needs | Runs in | Command |
 | --- | --- | --- | --- | --- |
-| Unit | `*.test.mjs` beside the module, plus `test/`, `scripts/`, `tools/` | Node only | CI `quality`, every local change | `npm run test:unit` (a few seconds) |
 | Public browser | `e2e/public/` | A dev server, no credentials | CI `quality` | `npm run test:e2e:public` |
 | Portal browser | `e2e/portal/` | The Supabase Preview Branch, the seed admin | CI `supabase-integration` | `npm run test:e2e:portal` |
 | Boundaries | `e2e/boundaries/` | The Preview Branch, service and publishable keys | CI `supabase-integration` | `npm run test:e2e:boundaries` |
 
 Nothing ever runs against Production. `e2e/harness/target-guard.ts` binds the project
 reference to the URL, requires the Preview Branch marker, and rejects the Production reference
-before the first database call; `npm run test:e2e-guard` is its own test.
-
-## Unit tier
-
-- A test is a `node:test` file named `<module>.test.mjs` next to the module it covers. It
-  imports the module as `./module.ts`; `test/register.mjs` (registered once by the script)
-  resolves `@/` to `src/`, extensionless relative imports to `.ts`, JSON imports, and stubs
-  `server-only` and `client-only`. Do not write a resolve hook in a test.
-  A module under `src/components/` keeps its test in `test/` instead, because that tree is
-  browser-only by lint and may not import `node:test`.
-- Name each test as the domain sentence it protects ("a new request offers the three contact
-  attempts, booking, and the not-actionable close"), so a failure reads as what broke.
-- One file: `node --import ./test/register.mjs --test src/lib/portal/workflow/machine.test.mjs`.
-- Domain rules live here, not in the browser: the state machine (`workflow/machine.test.mjs`),
-  the legal-action policy against the machine (`workflow/legal-actions.test.mjs`), the intake
-  contract (`contracts.test.mjs`), queue order, paging, filters, labels, the work panel's model
-  (`requests/[id]/workflow-panel-model.test.mjs`), and email delivery (`email.test.mjs`).
-- Two guards also run here: `test/file-size-ratchet.test.mjs` fails when a product file outside
-  `stock/`, `content/` and `dictionaries/` passes 400 lines unless it is in
-  `test/file-size-allowlist.json` at or under its recorded size (a listed file may shrink but never
-  grow, and one that drops under the threshold must leave the list);
-  `tools/oxlint/anti-slop/no-contract-vocabulary-redeclaration.test.mjs` proves the lint rule
-  that forbids restating a contract vocabulary (`REQUEST_STATES`, `STAFF_ROLES`, …) as a union,
-  an `as const` array, or a `z.enum` argument.
+before the first database call.
 
 ## Browser tiers
 

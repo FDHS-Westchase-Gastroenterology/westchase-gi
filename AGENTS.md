@@ -216,7 +216,7 @@ Data that anyone reviews or demos in the staff portal meets the bar in
 [CONTRIBUTING.md "Portal demo data"](CONTRIBUTING.md#portal-demo-data). It names the practice's
 real staff from `src/lib/providers.ts`. Patients are fictional people with real-sounding names,
 `@mock.com` addresses and `555-01xx` phones. Notes read the way the clinic writes them, and every
-row is one the database could have written. `scripts/demo-data.test.mjs` is the executable bar.
+row is one the database could have written. `scripts/demo-data/checks.mjs` is the executable bar, run by `npm run demo:data -- check`.
 `npm run demo:data -- reset` is the shared Preview's baseline. `dev:patients` stages request
 fixtures on top of it, and e2e fixtures stay with their specs. Do not hand-insert demo rows or
 invent another generator. A migration that adds a table or column the portal shows also updates

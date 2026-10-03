@@ -95,7 +95,7 @@ This operation does not create, cancel, or change an appointment.
 The [Home completion browser regression](e2e/portal/home-contact-completion.spec.ts) exercises
 both contact outcomes from New and Contacted, including the disabled calendar, persisted closure
 and callback, one completion history decision, identical replay, stale input, reload, and Undo.
-[Card save tests](src/app/admin/(portal)/(home)/record-card-save.test.mjs) also retain both explicit
+[The card save model](src/app/admin/(portal)/(home)/record-card-save.ts) keeps both explicit
 callback mappings and the separate ordinary Close request action. Undo remains available from the
 full request record after the Home card closes.
 
