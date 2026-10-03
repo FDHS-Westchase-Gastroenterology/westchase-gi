@@ -148,6 +148,14 @@ export function providerSubline(
   return `${places.join(", ")} · ${dayRuns(hours.map((row) => row.weekday))}`;
 }
 
+/** How the Appointment types list names a provider: "Dr. Chang" for a doctor, else the
+    surname alone ("Ricardo" from "Yanessa Ricardo, APRN"). */
+export function shortName(name: string): string {
+  const words = (name.split(",")[0] ?? name).trim().split(/\s+/u);
+  const surname = words.at(-1) ?? name;
+  return /^dr\.?$/iu.test(words[0] ?? "") && words.length > 1 ? `Dr. ${surname}` : surname;
+}
+
 /* ---- Time off ---- */
 
 const REASON_LABEL = {
