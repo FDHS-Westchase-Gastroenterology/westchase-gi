@@ -302,8 +302,8 @@ function CalendarRange({
      day alone is a valid run.
    - Or drag across the days: pressing a day and moving over others selects
      from the pressed day to the one under the pointer, either direction,
-     and releasing ends it. The click that ends a drag is swallowed so it
-     does not restart the run.
+     and releasing ends it. The selection the drag's closing click makes is
+     ignored, so it does not restart the run.
    - Days before `min` are disabled, and the month cannot page back past it.
    - Days in `off` (already taken) carry the `is-off` class on their cell, so
      the surface strikes them through; they stay pickable, because the
@@ -330,7 +330,7 @@ function CalendarSpan({
   onChange: (from: string, to: string) => void;
 }>) {
   const first = parseDay(min);
-  const [open, setOpen] = useState(from !== "" && from === to);
+  const open = useRef(from !== "" && from === to);
   const press = useRef<{ anchor: string; dragged: boolean } | null>(null);
   const swallow = useRef(false);
   const selected: DateRange | undefined =
@@ -348,6 +348,7 @@ function CalendarSpan({
       onPointerDown={(event) => {
         const day = event.button === 0 ? dayAt(event.target) : null;
         press.current = day === null ? null : { anchor: day, dragged: false };
+        swallow.current = false;
       }}
       onPointerOver={(event) => {
         const held = press.current;
@@ -355,18 +356,12 @@ function CalendarSpan({
         if (held === null || day === null || (event.buttons & 1) === 0) return;
         if (day === held.anchor && !held.dragged) return;
         held.dragged = true;
-        setOpen(false);
+        open.current = false;
         onChange(day < held.anchor ? day : held.anchor, day < held.anchor ? held.anchor : day);
       }}
       onPointerUp={() => {
         swallow.current = press.current?.dragged === true;
         press.current = null;
-      }}
-      onClickCapture={(event) => {
-        if (!swallow.current) return;
-        swallow.current = false;
-        event.preventDefault();
-        event.stopPropagation();
       }}
     >
       <Calendar
@@ -380,12 +375,16 @@ function CalendarSpan({
         modifiersClassNames={{ off: "is-off" }}
         selected={selected}
         onSelect={(_range, picked) => {
+          if (swallow.current) {
+            swallow.current = false;
+            return;
+          }
           const day = dateToDay(picked);
-          if (open && from !== "" && day >= from) {
-            setOpen(false);
+          if (open.current && from !== "" && day >= from) {
+            open.current = false;
             onChange(from, day);
           } else {
-            setOpen(true);
+            open.current = true;
             onChange(day, day);
           }
         }}

@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "cn";
+import Link from "next/link";
 import { useState } from "react";
 
 import { initialsOf } from "@/app/admin/(portal)/schedule/week-calendar";
@@ -19,8 +20,8 @@ import type {
 
 /* Providers (issue #352, Figma St1): the list of providers on the left, the
    chosen one's detail on the right. The choice lives in the address
-   (?provider=) so a reload or a shared link opens the same provider, but it
-   changes on the client, without a server round trip. Every control applies
+   (?provider=) so a reload or a shared link opens the same provider; the
+   row is marked chosen on the click, before the page's next read lands. Every control applies
    its change as it is made and confirms in the Undo toast. */
 
 function providerHref(id: string) {
@@ -37,27 +38,27 @@ export function ProvidersView({
   adding: boolean;
 }>) {
   const [chosenId, setChosenId] = useState(initialId);
+  const [seenInitial, setSeenInitial] = useState(initialId);
+  if (seenInitial !== initialId) {
+    setSeenInitial(initialId);
+    setChosenId(initialId);
+  }
   const { providers, locations, today } = settings;
   const chosen = providers.find((provider) => provider.id === chosenId) ?? providers.at(0);
-
-  function choose(id: string) {
-    setChosenId(id);
-    window.history.replaceState(null, "", providerHref(id));
-  }
 
   return (
     <div className="wgi-settings settings-split mt-6">
       <nav aria-label="Providers" className="settings-list">
         {providers.map((provider) => (
-          <a
+          <Link
             key={provider.id}
             href={providerHref(provider.id)}
+            replace
+            scroll={false}
             aria-current={provider.id === chosen?.id ? "page" : undefined}
             className="settings-list-row"
-            onClick={(event) => {
-              if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-              event.preventDefault();
-              choose(provider.id);
+            onClick={() => {
+              setChosenId(provider.id);
             }}
           >
             <span aria-hidden="true" className="settings-avatar">
@@ -73,7 +74,7 @@ export function ProvidersView({
                   : "Not taking appointments"}
               </span>
             </span>
-          </a>
+          </Link>
         ))}
         {providers.length === 0 ? (
           <p className="p-2.5 text-[0.8125rem] text-(--wgi-muted-ink)">No providers yet.</p>
@@ -106,7 +107,8 @@ function ProviderDetail({
     setBookable(provider.bookable);
     setTypeIds(provider.typeIds);
   }
-  const shownTypes = types.filter((type) => type.active || typeIds.includes(type.id));
+  const seen = new Set(typeIds);
+  const shownTypes = types.filter((type) => type.active || seen.has(type.id));
 
   function setProfile(next: boolean) {
     setBookable(next);
@@ -137,8 +139,9 @@ function ProviderDetail({
   function setTypes(next: readonly string[]) {
     const previous = typeIds;
     setTypeIds(next);
-    const added = types.find((type) => next.includes(type.id) && !previous.includes(type.id));
-    const removed = types.find((type) => previous.includes(type.id) && !next.includes(type.id));
+    const after = new Set(next);
+    const added = types.find((type) => after.has(type.id) && !seen.has(type.id));
+    const removed = types.find((type) => seen.has(type.id) && !after.has(type.id));
     const command = {
       kind: "set_provider_types",
       id: provider.id,

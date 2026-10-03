@@ -172,7 +172,7 @@ function DayRow({ weekday, week, span, locations, canEdit, onDrag, onCommit }: D
           const max = Math.max(Math.min(bounds.close, span.close), window.closeMinute);
           return (
             <Slider
-              // Windows are positional within their day for the drag's life
+              // react-doctor-disable-next-line react-doctor/no-array-index-as-key -- a day's windows are positional: the first stays the first while its ends are dragged, and keying by its minutes would remount the slider under the pointer
               key={index}
               tone="hours"
               className="settings-hours-slider"

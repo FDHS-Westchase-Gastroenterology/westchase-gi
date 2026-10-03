@@ -54,7 +54,7 @@ export function AddProviderDialog({
   const send = useSettingsCommand();
   const [name, setName] = useState("");
   const [credentials, setCredentials] = useState("");
-  const [locationId, setLocationId] = useState(locations.at(0)?.id ?? "");
+  const [locationId, setLocationId] = useState(() => locations.at(0)?.id ?? "");
   const [pending, setPending] = useState(false);
   const location = locations.find((place) => place.id === locationId);
   const valid = name.trim() !== "" && location !== undefined;
@@ -69,14 +69,17 @@ export function AddProviderDialog({
   async function add() {
     if (!valid) return;
     setPending(true);
-    const outcome = await send({
-      kind: "add_provider",
-      name: name.trim(),
-      credentials: credentials.trim() === "" ? null : credentials.trim(),
-      hours: startingWeek(location),
-    });
-    setPending(false);
-    if (outcome.ok) leave(outcome.id);
+    try {
+      const outcome = await send({
+        kind: "add_provider",
+        name: name.trim(),
+        credentials: credentials.trim() === "" ? null : credentials.trim(),
+        hours: startingWeek(location),
+      });
+      if (outcome.ok) leave(outcome.id);
+    } finally {
+      setPending(false);
+    }
   }
 
   return (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { applySettingsCommand } from "@/app/admin/(portal)/settings/schedule-actions";
@@ -53,23 +53,25 @@ export type SettingsSend = ReturnType<typeof useSettingsCommand>;
 
 export function useSettingsCommand() {
   const router = useRouter();
-  const known = useRef(new Map<string, number>());
-  const queue = useRef<Promise<unknown>>(Promise.resolve());
-  const slots = useRef(new Map<string, string | number>());
+  const [known] = useState(() => new Map<string, number>());
+  const queue = useRef<Promise<unknown> | undefined>(undefined);
+  const [slots] = useState(() => new Map<string, string | number>());
 
   async function run(command: SettingsCommand): Promise<SettingsCommandOutcome> {
-    const next = queue.current.then(async (): Promise<SettingsCommandOutcome> => {
-      try {
-        const outcome = await applySettingsCommand({
-          idempotencyKey: crypto.randomUUID(),
-          command: withVersion(command, known.current),
-        });
-        if (outcome.ok) known.current.set(outcome.id, outcome.version);
-        return outcome;
-      } catch {
-        return { ok: false, code: "unavailable" };
-      }
-    });
+    const next = (queue.current ?? Promise.resolve()).then(
+      async (): Promise<SettingsCommandOutcome> => {
+        try {
+          const outcome = await applySettingsCommand({
+            idempotencyKey: crypto.randomUUID(),
+            command: withVersion(command, known),
+          });
+          if (outcome.ok) known.set(outcome.id, outcome.version);
+          return outcome;
+        } catch {
+          return { ok: false, code: "unavailable" };
+        }
+      },
+    );
     queue.current = next;
     return next;
   }
@@ -91,7 +93,7 @@ export function useSettingsCommand() {
     if (outcome.dryRun === true) return outcome;
     const { undo } = options;
     if (undo !== undefined) {
-      const previous = undo.slot === undefined ? undefined : slots.current.get(undo.slot);
+      const previous = undo.slot === undefined ? undefined : slots.get(undo.slot);
       if (previous !== undefined) toast.dismiss(previous);
       const id = showUndoToast({
         headline: undo.headline,
@@ -112,7 +114,7 @@ export function useSettingsCommand() {
           router.refresh();
         },
       });
-      if (undo.slot !== undefined) slots.current.set(undo.slot, id);
+      if (undo.slot !== undefined) slots.set(undo.slot, id);
     }
     router.refresh();
     return outcome;

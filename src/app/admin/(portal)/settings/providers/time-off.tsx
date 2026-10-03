@@ -141,11 +141,14 @@ function AddTimeOff({
   async function add() {
     if (!valid) return;
     setPending(true);
-    const outcome = await send(draftCommand(provider, draft, false));
-    setPending(false);
-    if (!outcome.ok) return;
-    reset(false);
-    onAdded(outcome.conflicts ?? []);
+    try {
+      const outcome = await send(draftCommand(provider, draft, false));
+      if (!outcome.ok) return;
+      reset(false);
+      onAdded(outcome.conflicts ?? []);
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
