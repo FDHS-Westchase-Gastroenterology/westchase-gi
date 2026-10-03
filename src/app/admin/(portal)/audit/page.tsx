@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { z } from "zod";
 
 import { formatReceived } from "@/app/admin/(portal)/requests/format";
@@ -256,7 +257,9 @@ async function TechnicalRecord({
             <TechnicalRecordSummary renderKey={`${page}\n${total}\n${firstShown}\n${lastShown}`}>
               Showing {firstShown}–{lastShown} of {total}
             </TechnicalRecordSummary>
-            <TechnicalRecordPager page={page} totalPages={totalPages} />
+            <Suspense fallback={null}>
+              <TechnicalRecordPager page={page} totalPages={totalPages} />
+            </Suspense>
           </div>
         ) : null}
       </section>

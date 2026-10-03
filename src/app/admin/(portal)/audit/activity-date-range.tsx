@@ -89,7 +89,7 @@ const WEEKDAY_MONTH_DAY = new Intl.DateTimeFormat("en-US", {
 });
 
 /** The trigger's words: "Any date", a span's name, or "Sep 14 – 16". */
-export function activityRangeLabel(range: Range, today: string): string {
+function activityRangeLabel(range: Range, today: string): string {
   const preset = matchingPreset(range, today);
   if (preset !== null) return PRESET_LABELS[preset];
   const from = range.from ?? range.to;

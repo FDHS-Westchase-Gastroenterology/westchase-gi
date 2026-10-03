@@ -84,10 +84,15 @@ function emphasize(sentence: string, names: readonly (string | null)[]): ReactNo
     .toSorted((a, b) => b.length - a.length);
   if (present.length === 0) return [sentence];
   const escaped = present.map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  // The capture group puts every name at an odd place in the split, so no lookup is needed;
+  // Each bold part is keyed by where it starts in the sentence.
   const parts = sentence.split(new RegExp(`(${escaped.join("|")})`));
-  return parts.map((part, index) =>
-    present.includes(part) ? <strong key={index}>{part}</strong> : part,
-  );
+  let offset = 0;
+  return parts.map((part, place) => {
+    const start = offset;
+    offset += part.length;
+    return place % 2 === 1 ? <strong key={`at-${String(start)}`}>{part}</strong> : part;
+  });
 }
 
 function recordHref(row: Readonly<ActivityRow>): string | null {
