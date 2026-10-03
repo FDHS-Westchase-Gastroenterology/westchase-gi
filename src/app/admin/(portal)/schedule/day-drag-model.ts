@@ -176,18 +176,19 @@ export interface PendingMove {
 export function withMove(view: Readonly<ScheduleDay>, move: Readonly<PendingMove> | null) {
   if (move === null || move.view !== view) return view;
   const { target } = move;
-  const cells = view.cells
-    .filter(
-      (cell) =>
-        cell.kind === "appointment" ||
-        cell.lane !== target.lane ||
-        cell.top >= target.top + target.height ||
-        target.top >= cell.top + cell.height,
-    )
-    .map((cell): DayCell => {
-      if (cell.kind !== "appointment" || cell.id !== move.id) return cell;
+  const cells: DayCell[] = [];
+  for (const cell of view.cells) {
+    if (cell.kind !== "appointment") {
+      const covered =
+        cell.lane === target.lane &&
+        cell.top < target.top + target.height &&
+        target.top < cell.top + cell.height;
+      if (!covered) cells.push(cell);
+    } else if (cell.id !== move.id) {
+      cells.push(cell);
+    } else {
       const range = timeRange(target.startsAt, target.endsAt);
-      return {
+      cells.push({
         ...cell,
         lane: target.lane,
         top: target.top,
@@ -200,8 +201,9 @@ export function withMove(view: Readonly<ScheduleDay>, move: Readonly<PendingMove
         checkIn: null,
         line: `${range} · ${cell.type}`,
         label: `${cell.name}, ${cell.type.toLowerCase()}, ${practiceTime(target.startsAt)} to ${practiceTime(target.endsAt)}, ${target.providerName}`,
-      };
-    })
-    .toSorted((a, b) => a.top - b.top || a.lane - b.lane);
+      });
+    }
+  }
+  cells.sort((a, b) => a.top - b.top || a.lane - b.lane);
   return { ...view, cells };
 }
