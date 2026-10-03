@@ -123,6 +123,10 @@ const RPC_SIGNATURES = {
     "p_actor_id uuid, p_patient_id uuid, p_history_before bigint, p_links_after uuid",
   portal_find_people: "p_actor_id uuid, p_query text, p_limit integer",
   portal_name_key: "p_name text",
+  portal_read_activity:
+    "p_actor_id uuid, p_categories text[], p_appointment_actions text[], p_provider_id uuid, p_from date, p_to date, p_query text, p_before_at timestamp with time zone, p_before_id uuid, p_limit integer",
+  portal_activity_rows:
+    "p_viewer_email text, p_admin boolean, p_categories text[], p_appointment_actions text[], p_provider_id uuid, p_from timestamp with time zone, p_until timestamp with time zone, p_hits jsonb, p_full integer, p_before_at timestamp with time zone, p_before_id uuid, p_limit integer",
   portal_preserve_appointment_patient: "",
   portal_schedule_allows:
     "p_location_id uuid, p_start timestamp with time zone, p_end timestamp with time zone, p_hours jsonb, p_exceptions jsonb",
@@ -237,6 +241,9 @@ const RPC_RESULTS = {
   portal_read_patient: "jsonb",
   portal_find_people: "jsonb",
   portal_name_key: "text",
+  portal_read_activity: "jsonb",
+  portal_activity_rows:
+    "TABLE(source text, id uuid, occurred_at timestamp with time zone, category text, appointment_action text, actor_email text, action text, patient_id uuid, request_id uuid, provider_id uuid, prior_provider_id uuid, location_id uuid, appointment_type_id uuid, subject_staff_id uuid, recipient_id uuid)",
   portal_preserve_appointment_patient: "trigger",
   portal_schedule_allows: "boolean",
   portal_provider_schedule: "jsonb",
