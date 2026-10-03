@@ -297,11 +297,38 @@ test("Schedule day books an open time in place, and Undo opens it again", async 
     const heading = card.getByText(/^Book \d/u).first();
     await expect(heading).toBeVisible();
     const time = (await heading.textContent())?.replace(/^Book /u, "") ?? "";
-    await card.getByPlaceholder("Search by name or phone").fill(patient);
-    await card
-      .getByRole("list", { name: "Patients" })
-      .getByRole("button", { name: patient })
-      .click();
+    /* The patient search is a combobox (issue #360): focus stays in the
+       field, the list is a listbox, and its count is announced. Escape
+       clears a query first and closes the card second. */
+    const search = card.getByRole("combobox", { name: "Patient" });
+    await search.fill(patient);
+    const patients = card.getByRole("listbox", { name: "Patients" });
+    const match = patients.getByRole("option", { name: patient });
+    await expect(match).toBeVisible();
+    await expect(card.locator('[data-slot="combobox-status"]')).toHaveText(/^\d+ patients?$/u);
+    await expect(search).toHaveAttribute(
+      "aria-controls",
+      (await patients.getAttribute("id")) ?? "",
+    );
+    await page.keyboard.press("Escape");
+    await expect(search).toHaveValue("");
+    await expect(search).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(card).toHaveCount(0);
+
+    /* Typed again, the arrows walk the list and Return picks. */
+    await open.first().click();
+    await card.getByRole("combobox", { name: "Patient" }).fill(patient);
+    await expect(match).toBeVisible();
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowUp");
+    await expect(patients.locator("[data-highlighted]")).toHaveCount(1);
+    await expect(search).toHaveAttribute(
+      "aria-activedescendant",
+      (await patients.locator("[data-highlighted]").getAttribute("id")) ?? "",
+    );
+    await page.keyboard.press("Enter");
+    await expect(card.locator(".wgi-week-card-chosen")).toHaveText(patient);
     await card.getByRole("button", { name: `Book ${time}` }).click();
 
     await expect(page.getByText(`${patient} is booked`)).toBeVisible();

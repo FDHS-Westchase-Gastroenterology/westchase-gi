@@ -960,7 +960,6 @@
   margin: 0;
   overflow-y: auto;
   padding: 2px;
-  list-style: none;
 }
 
 .wgi-week-card-time,
@@ -986,6 +985,14 @@
 .wgi-week-card-time:active,
 .wgi-week-card-patient:active {
   transform: scale(0.98);
+}
+
+/* The patient the arrows or the pointer rest on (ui/combobox). Focus
+   stays in the search, so the row carries the visible mark: the hover
+   tint, edged in teal ink. */
+.wgi-week-card-patient[data-highlighted] {
+  border-color: var(--color-teal-ink);
+  background: var(--wgi-hover);
 }
 
 .wgi-week-card-time:disabled {
@@ -1018,7 +1025,6 @@
   margin: 0;
   overflow-y: auto;
   padding: 2px;
-  list-style: none;
 }
 
 .wgi-week-card-patient {
@@ -1090,8 +1096,7 @@
     text-decoration: underline;
   }
 
-  .wgi-week-card-time:hover,
-  .wgi-week-card-patient:hover {
+  .wgi-week-card-time:hover {
     background: var(--wgi-hover);
   }
 
