@@ -23,8 +23,8 @@ contracts are not yet on `main`.
 | Manage patients | Registration, search, demographics, reviewed request links, archive/restore, and history | Connected on the Schedule: one search over patients and unlinked open requests (`findSchedulePeople`), the patient's record with visits and read-only clinical lists, and registration when a request is booked. Remaining: demographic edits, identity review, and administrator archive/restore | [Patients](#patients), [Schedule search and records](#schedule-search-and-records) |
 | Set up scheduling | Providers, locations, appointment types, hours, time off, closed days, and preparation buffers | Connected: the Settings window's Schedule group (`/admin/settings/providers`, `/appointment-types`, `/locations`) applies each change as it is made, warns before time off or a closed day covers bookings and lists them to rebook after, and offers Undo. Staff read every pane with no edit controls | [Settings window](#settings-window) |
 | See month availability | One summary per practice date: open count, booked share, seen visits, closed days, and per-provider openings | Connected: `/admin/schedule` month view with the day preview, the week view (`week_schedule`), and the Day view (`day_schedule`): one column per working provider, open time that books, and the no-providers empty state | [Scheduling](#scheduling) |
-| Book and manage appointments | Availability, conflict checks, booking, rescheduling, cancellation, arrival/outcomes, and Undo | Connected on the week and Day views: the appointment card checks in, reschedules, cancels and marks no-show or complete, and the open-time card books a found patient. The Day view's booking and Check in offer Undo for 15 minutes (`undoAppointmentChange`). Remaining: appointment history, and Undo on the week view | [Scheduling](#scheduling) |
-| Schedule from an intake request | One operation updates both the reservation and its reviewed request | Connected: the Home record card and the Schedule's request record book from the card's month (`month_availability`, then one `book` with `sourceRequestId`). An unlinked requester is registered and linked as the booking lands. Remaining: paired rescheduling/cancellation/Undo | [Requests and appointments](#requests-and-appointments) |
+| Book and manage appointments | Availability, conflict checks, booking, rescheduling, cancellation, arrival/outcomes, and Undo | Connected on the week and Day views: the appointment card checks in, reschedules, cancels and marks no-show or complete, and the open-time card books a found patient. On the Day view a visit also moves by dragging it to open time (`can_place` while it is in the air, then `reschedule`), and its booking, move, Check in and cancel offer Undo for 15 minutes (`undoAppointmentChange`). Remaining: appointment history, and Undo on the week view | [Scheduling](#scheduling) |
+| Schedule from an intake request | One operation updates both the reservation and its reviewed request | Connected: the Home record card and the Schedule's request record book from the card's month (`month_availability`, then one `book` with `sourceRequestId`). An unlinked requester is registered and linked as the booking lands. The Day view's appointment card cancels a request's visit to Call again or Request closed and Undoes it; its drag reschedules both. Remaining: the Home card's own reschedule and cancel | [Requests and appointments](#requests-and-appointments) |
 | See what staff did | One newest-first Activity log over appointment, schedule, request, patient, sign-in and settings history, with chip, provider, date and search filters and role scoping (#357) | Connected: `/admin/audit` reads `readActivityPage` with the category and appointment chips, provider, date range and search, scrolls into the next page, phrases every row, and expands a row into its detail; front desk gets no Settings chip and no Technical record | [Activity log](#activity-log) |
 | Read the request queue | Complete filtered results, counts, attention order, and Previous/Next | Existing screens already use the complete reads; preserve them when changing filters or paging | [Worklists](#worklists) |
 | Record billing, when used | Patient-owned charges, payments recorded elsewhere, refunds, adjustments, and corrections | Optional ledger screens, role-aware actions, and reconciliation | [Billing](#billing) |
@@ -151,6 +151,7 @@ are in [scheduling/time.ts](src/lib/portal/scheduling/time.ts).
 | `month_summary` | Read one practice month (`month: "YYYY-MM"`, optional `locationId`) as one row per date with open counts and per-provider openings. |
 | `month_availability` | Read one practice month's bookable starts for one appointment type (`month`, `appointmentTypeId`, request `location`, optional `patientId`): per date and provider, every open start and, when none, the reason. |
 | `command` | Write with `idempotencyKey` and `book`, `reschedule`, `cancel`, `check_in`, `complete`, `no_show`, or `undo`. |
+| `can_place` | Ask whether a scheduled, future appointment (`appointmentId`) could move to `providerId`, `locationId` and `startsAt` without saving. Returns `placeable: true` with the new `startsAt`/`endsAt`, or `placeable: false` with one `refusal`: `in_past`, `closed_day`, `type_not_offered`, `outside_hours`, or `slot_booked` with the `conflictId` holding the time (buffers included). A card that cannot move answers `illegal_transition`. The drop still sends `reschedule`, which checks every rule again. |
 
 Configuration creates omit both `id` and `expectedVersion`; updates send both. Provider saves
 replace the full `hours` and `exceptions` arrays, so load all current values before editing.
@@ -200,7 +201,7 @@ Cancelled appointments release capacity; completed and no-show records retain th
 | Command after booking | Additional rules |
 | --- | --- |
 | `reschedule` | Send appointment `id`/`expectedVersion`, provider, location, and start. Scheduled only. Omit type ID/version to retain duration/buffers; send both to choose a current type. Patient ownership cannot change. |
-| `cancel` | Scheduled or checked-in; requires a reason. Coordinated requests also need the fields in the next section. |
+| `cancel` | Scheduled or checked-in; requires a reason. Coordinated requests also need `requestVersion` and a `requestOutcome` (next section). |
 | `check_in` | Scheduled only, on the appointment's practice date. |
 | `complete` | Requires checked-in status. |
 | `no_show` | Scheduled only, after the start time. |
@@ -323,7 +324,7 @@ The older request-only Scheduled action does not reserve provider capacity.
 | --- | --- |
 | Book a linked request | Add `sourceRequestId` and the current `requestVersion` to `book`. Both must be present together. New/Contacted becomes Booked as the appointment is reserved. |
 | Reschedule | Send appointment `expectedVersion` and current `requestVersion`. Both appointment times and both versions change together. |
-| Cancel | Send appointment `expectedVersion`, `requestVersion`, a reason, and absolute `callAgainOn`. Capacity is released and the request returns to Contacted at 8 a.m. practice time on the chosen day. That callback time must still be in the future. |
+| Cancel | Send appointment `expectedVersion`, `requestVersion`, a reason, and a `requestOutcome`. `call_again` needs an absolute `callAgainOn`: capacity is released and the request returns to Contacted at 8 a.m. practice time on the chosen day, which must still be in the future. `close` takes no date and closes the request as won't schedule. A command with `callAgainOn` and no outcome means call again. Undo restores the visit and the Booked request either way. |
 | Undo a paired change | Send appointment `expectedVersion` and current `requestVersion`. The latest eligible change restores both; a later request version blocks that Undo. |
 | Check in, complete, or no-show | Use the appointment command. These outcomes preserve the completed intake handoff; their Undo also leaves it intact. |
 | Book without a request | Omit both source fields. No intake request is created. Ordinary cancellation needs a reason but no intake callback. |
@@ -337,7 +338,7 @@ The command's optional `request` result and detail read's nullable request summa
 this coordination. History includes `requestChange` with the prior request state/times, resulting
 request version, and transition ID. These public summaries exclude patient contact details and notes.
 
-Cancellation must display the chosen Call again day before saving. Missing request version or
+Cancellation must display the chosen Call again day, or that the request closes, before saving. Missing request version or
 follow-up produces `request_version_required` or `request_follow_up_required`. Handle
 `request_stale_version`, `request_not_actionable`, `request_already_booked`, `request_link_conflict`,
 `request_undo_unavailable`, and `request_transition_rejected` by explaining the conflict and fetching
