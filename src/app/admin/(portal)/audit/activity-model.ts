@@ -83,9 +83,11 @@ function objectOf(value: Json | null | undefined): JsonObject {
 function addedItems(before: JsonObject, after: JsonObject, list: string): JsonObject[] {
   const key = (item: Json): string => asJsonString(objectOf(item).id) ?? JSON.stringify(item);
   const had = new Set((asJsonArray(before[list]) ?? []).map(key));
-  return (asJsonArray(after[list]) ?? [])
-    .filter((item) => !had.has(key(item)))
-    .map((item) => objectOf(item));
+  const added: JsonObject[] = [];
+  for (const item of asJsonArray(after[list]) ?? []) {
+    if (!had.has(key(item))) added.push(objectOf(item));
+  }
+  return added;
 }
 
 function possessive(name: string): string {

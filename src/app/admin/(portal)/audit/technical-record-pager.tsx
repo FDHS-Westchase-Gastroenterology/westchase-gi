@@ -21,6 +21,10 @@ import { TECHNICAL_RECORD_SUMMARY_ID, technicalRecordHref } from "./activity-mod
 
 let focusSummaryNext = false;
 
+function focusSummaryAfterNavigate() {
+  focusSummaryNext = true;
+}
+
 export function TechnicalRecordSummary({
   renderKey,
   children,
@@ -52,9 +56,6 @@ export function TechnicalRecordPager({
   const params = useSearchParams();
   if (totalPages <= 1) return null;
   const baseHref = `/admin/audit?${params.toString()}`;
-  const onNavigate = () => {
-    focusSummaryNext = true;
-  };
 
   return (
     <nav
@@ -68,7 +69,7 @@ export function TechnicalRecordPager({
           rel="prev"
           data-slot="button"
           className={buttonVariants({ variant: "outline" })}
-          onNavigate={onNavigate}
+          onNavigate={focusSummaryAfterNavigate}
         >
           Previous
         </Link>
@@ -86,7 +87,7 @@ export function TechnicalRecordPager({
           rel="next"
           data-slot="button"
           className={buttonVariants({ variant: "outline" })}
-          onNavigate={onNavigate}
+          onNavigate={focusSummaryAfterNavigate}
         >
           Next
         </Link>
