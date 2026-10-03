@@ -1,7 +1,8 @@
-/* Node test-runner loader for this repository's TypeScript modules.
+/* Node loader for this repository's TypeScript modules.
 
-   Registered once by `npm run test:unit` (`node --import ./test/register.mjs`),
-   so a unit test can `import` a product module exactly the way the app does:
+   Registered by `npm run demo:data` and `npm run dev:patients`
+   (`node --import ./test/register.mjs`), so a script can `import` a product
+   module exactly the way the app does:
    `@/` resolves to `src/`, extensionless relative imports resolve to `.ts`,
    the `server-only` / `client-only` markers become empty modules, and JSON
    modules get the import attribute the bundler adds for them. Node strips

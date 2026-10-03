@@ -184,6 +184,13 @@ The brand's secondary text ink is `--color-muted-ink`, not `--color-muted`, beca
 `--color-muted` is a surface tint. Before adopting a component, list the semantic utilities it
 uses (`bg-*`, `text-*`, `border-*`) and check each for a brand-token collision.
 
+Surfaces and components come from the shadcn registry, never hand-rolled. A route composes
+`ui/` recipes and `patterns/`. A primitive no recipe covers (a popover, menu, combobox, calendar,
+switch, sheet, tabs, toast, collapsible and the like) is adopted from its registry source in
+`stock/` into `ui/`, with provenance, even when only one screen uses it. The two standing
+exceptions in design-system/adoption.md stay: modals on the native `<dialog>`, and route
+navigation as links.
+
 Adoption starts with existing repository components and shadcn registry source. If a CLI command is needed to
 supply its behavior, run `add --dry-run` / `--diff` before touching an existing recipe. Review
 all generated changes, meet the repo lint bar, and preserve the token mappings. Add a product
@@ -209,7 +216,7 @@ Data that anyone reviews or demos in the staff portal meets the bar in
 [CONTRIBUTING.md "Portal demo data"](CONTRIBUTING.md#portal-demo-data). It names the practice's
 real staff from `src/lib/providers.ts`. Patients are fictional people with real-sounding names,
 `@mock.com` addresses and `555-01xx` phones. Notes read the way the clinic writes them, and every
-row is one the database could have written. `scripts/demo-data.test.mjs` is the executable bar.
+row is one the database could have written. `scripts/demo-data/checks.mjs` is the executable bar, run by `npm run demo:data -- check`.
 `npm run demo:data -- reset` is the shared Preview's baseline. `dev:patients` stages request
 fixtures on top of it, and e2e fixtures stay with their specs. Do not hand-insert demo rows or
 invent another generator. A migration that adds a table or column the portal shows also updates

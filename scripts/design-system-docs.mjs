@@ -62,7 +62,7 @@ const CHECKED_AXES = new Set(["variant", "size", "motion", "orientation"]);
 const CITING_FILE = /\.(md|mdx|ts|tsx|js|jsx|mjs|cjs|css)$/;
 const SOURCE_FILE = /^src\/.*\.(ts|tsx)$/;
 const ARCHIVED = /(^|\/)archive\//;
-const SELF = new Set(["scripts/design-system-docs.mjs", "scripts/design-system-docs.test.mjs"]);
+const SELF = new Set(["scripts/design-system-docs.mjs"]);
 
 /* ---------------------------------------------------------------------- repo */
 

@@ -11,8 +11,6 @@ each kind of change usually touches. Link parity or strategy docs when relevant.
 
 These need no credentials and mirror the required CI checks. Run all of them:
 
-- [ ] `npm run test:unit`
-- [ ] `npm run test:e2e-guard`
 - [ ] `npm run build`
 - [ ] `npm run doctor` — local React Doctor standard is 100; inspect the report, not just the status
 - [ ] `npm run test:e2e:public`
