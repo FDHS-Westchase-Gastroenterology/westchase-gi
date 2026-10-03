@@ -62,23 +62,24 @@ function providersHere(
 ) {
   const here = new Set(location.providerIds);
   const officeDays = new Set(location.hours.map((day) => day.weekday));
-  return providers
-    .filter((provider) => here.has(provider.id))
-    .map((provider) => {
-      const days = new Set(
-        currentHours(provider, today)
-          .filter((row) => row.locationId === location.id)
-          .map((row) => row.weekday),
-      );
-      const some = days.size > 0 && [...officeDays].some((day) => !days.has(day));
-      const only = days.size === 1 ? [...days].at(0) : undefined;
-      const when = !some ? "" : only === undefined ? dayRuns(days) : `${longDay(only)}s`;
-      return {
+  return providers.flatMap((provider) => {
+    if (!here.has(provider.id)) return [];
+    const days = new Set(
+      currentHours(provider, today).flatMap((row) =>
+        row.locationId === location.id ? [row.weekday] : [],
+      ),
+    );
+    const some = days.size > 0 && [...officeDays].some((day) => !days.has(day));
+    const only = days.size === 1 ? [...days].at(0) : undefined;
+    const when = !some ? "" : only === undefined ? dayRuns(days) : `${longDay(only)}s`;
+    return [
+      {
         id: provider.id,
         initials: initialsOf(provider.name),
         label: when === "" ? shortName(provider.name) : `${shortName(provider.name)} (${when})`,
-      };
-    });
+      },
+    ];
+  });
 }
 
 function LocationCard({
