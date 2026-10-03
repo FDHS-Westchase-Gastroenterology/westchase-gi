@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { isMailbox, REQUEST_FIELD_LIMITS } from "@/lib/portal/contracts";
+import { appointmentStatusSchema } from "@/lib/portal/scheduling/contracts";
 import { REQUEST_STATES } from "@/lib/portal/workflow/contracts";
 
 const versionSchema = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
@@ -146,6 +147,23 @@ export const patientReadInputSchema = z.strictObject({
 });
 export type PatientReadInput = z.input<typeof patientReadInputSchema>;
 
+/** An appointment of the patient's, as the record's Visits tab lists it. Cancelled ones are left out. */
+export const patientVisitSchema = z.object({
+  id: z.uuid(),
+  startsAt: timestampSchema,
+  endsAt: timestampSchema,
+  status: appointmentStatusSchema,
+  version: versionSchema,
+  sourceRequestId: z.uuid().nullable(),
+  providerId: z.uuid(),
+  providerName: z.string(),
+  locationId: z.uuid(),
+  locationName: z.string(),
+  appointmentTypeId: z.uuid(),
+  appointmentTypeName: z.string(),
+});
+export type PatientVisit = z.infer<typeof patientVisitSchema>;
+
 export const patientReadOutcomeSchema = z.union([
   z.object({
     ok: z.literal(true),
@@ -160,7 +178,63 @@ export const patientReadOutcomeSchema = z.union([
       total: z.number().int().nonnegative(),
       nextRequestId: z.uuid().nullable(),
     }),
+    appointments: z.object({
+      items: z.array(patientVisitSchema),
+      total: z.number().int().nonnegative(),
+    }),
   }),
   patientFailureSchema,
 ]);
 export type PatientReadOutcome = z.output<typeof patientReadOutcomeSchema>;
+
+/* Finding a person from the schedule's search (issue #356): registry patients and the open
+   requests no patient is linked to yet, each with where they stand right now. */
+export const findPeopleInputSchema = z.strictObject({
+  query: z.string().max(254),
+  limit: z.number().int().min(1).max(50).default(20),
+});
+export type FindPeopleInput = z.input<typeof findPeopleInputSchema>;
+
+const requestStandingSchema = z.object({
+  kind: z.literal("request"),
+  requestId: z.uuid(),
+  requestStatus: z.enum(REQUEST_STATES),
+  followUpAt: timestampSchema.nullable(),
+  appointmentAt: timestampSchema.nullable(),
+});
+
+export const personStandingSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("appointment"),
+    when: z.enum(["today", "next"]),
+    appointmentId: z.uuid(),
+    startsAt: timestampSchema,
+    status: appointmentStatusSchema,
+    providerName: z.string(),
+    locationName: z.string(),
+  }),
+  requestStandingSchema,
+  z.object({ kind: z.literal("none"), lastVisitAt: timestampSchema.nullable() }),
+]);
+export type PersonStanding = z.infer<typeof personStandingSchema>;
+
+export const foundPersonSchema = z.object({
+  kind: z.enum(["patient", "request"]),
+  id: z.uuid(),
+  name: z.string(),
+  phone: z.string().nullable(),
+  status: personStandingSchema,
+});
+export type FoundPerson = z.infer<typeof foundPersonSchema>;
+
+export const findPeopleOutcomeSchema = z.union([
+  z.object({
+    ok: z.literal(true),
+    /** False when the portal has no patient and no open request at all: its first day. */
+    anyone: z.boolean(),
+    total: z.number().int().nonnegative(),
+    people: z.array(foundPersonSchema),
+  }),
+  patientFailureSchema,
+]);
+export type FindPeopleOutcome = z.output<typeof findPeopleOutcomeSchema>;

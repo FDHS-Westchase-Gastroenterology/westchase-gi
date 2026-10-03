@@ -121,6 +121,8 @@ const RPC_SIGNATURES = {
     "p_actor_id uuid, p_query text, p_archived boolean, p_limit integer, p_after_name text, p_after_id uuid",
   portal_read_patient:
     "p_actor_id uuid, p_patient_id uuid, p_history_before bigint, p_links_after uuid",
+  portal_find_people: "p_actor_id uuid, p_query text, p_limit integer",
+  portal_name_key: "p_name text",
   portal_preserve_appointment_patient: "",
   portal_schedule_allows:
     "p_location_id uuid, p_start timestamp with time zone, p_end timestamp with time zone, p_hours jsonb, p_exceptions jsonb",
@@ -233,6 +235,8 @@ const RPC_RESULTS = {
     "TABLE(id uuid, name text, phone text, location text, preferred_time text, locale text, status text, created_at timestamp with time zone, follow_up_at timestamp with time zone, legacy_review_required boolean, version bigint, last_activity_at timestamp with time zone, last_activity_by text, bucket text, bucket_order integer, ascending_time timestamp with time zone, descending_time timestamp with time zone, patient_id uuid)",
   portal_search_patients: "jsonb",
   portal_read_patient: "jsonb",
+  portal_find_people: "jsonb",
+  portal_name_key: "text",
   portal_preserve_appointment_patient: "trigger",
   portal_schedule_allows: "boolean",
   portal_provider_schedule: "jsonb",
