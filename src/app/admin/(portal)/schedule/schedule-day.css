@@ -703,24 +703,37 @@
 
 /* No providers yet (S5): a white card over the hours, 440px wide; the
    one command is the teal pill. */
+/* ui/empty, drawn to the Figma card: the parts' stack gaps give way to
+   the frame's own margins, and the text wraps as written. */
 .wgi-dayview-empty {
   display: flex;
   width: min(27.5rem, 100%);
   box-sizing: border-box;
+  flex: none;
   flex-direction: column;
   align-items: center;
+  gap: 0;
   padding: 32px 40px;
   border: 1px solid var(--wgi-rule);
   border-radius: 16px;
   background: #fff;
   box-shadow: var(--wgi-card-shadow);
   text-align: center;
+  text-wrap: wrap;
+}
+
+.wgi-dayview-empty-header,
+.wgi-dayview-empty-content {
+  max-width: none;
+  gap: 0;
+  text-wrap: wrap;
 }
 
 .wgi-dayview-empty-disc {
   display: grid;
   width: 52px;
   height: 52px;
+  margin: 0;
   place-items: center;
   border-radius: 999px;
   background: var(--color-teal-50);
