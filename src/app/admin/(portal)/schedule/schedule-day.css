@@ -728,9 +728,10 @@
 /* ---------- No one to show ---------- */
 
 /* With no columns, what stands over the hours sits in the middle of the
-   part of the day on screen, not of the whole day. */
+   part of the day on screen, not of the whole day, and above the now line. */
 .wgi-dayview-overlay {
   position: absolute;
+  z-index: 2;
   display: grid;
   inset: 0 0 29px;
   place-items: center;
