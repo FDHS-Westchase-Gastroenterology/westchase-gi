@@ -20,8 +20,9 @@
   color: var(--color-navy-800);
   font-size: 0.9375rem;
   font-weight: 600;
+  /* The fill is a gradient, which does not interpolate, so it changes at
+     once; the ring and the press ease. */
   transition:
-    background-color var(--motion-fast-duration) var(--motion-standard),
     box-shadow var(--motion-fast-duration) var(--motion-standard),
     transform var(--motion-fast-duration) var(--motion-standard);
 }
@@ -841,4 +842,26 @@ button.settings-closure:focus-visible {
   color: var(--wgi-name-ink);
   font-size: 0.875rem;
   font-weight: 600;
+}
+
+/* Rows, chips and text commands press as a deeper tint, the portal's press
+   for anything wider than a small button. Last in the file, so a press
+   outranks the hover tint under the same pointer. */
+.settings-list-row:active,
+.settings-text-command:active,
+.settings-reason:active,
+.settings-type-pill:not([data-disabled]):active,
+.settings-icon-choice:not([data-pressed]):active,
+button.settings-closure:active,
+.settings-location-map:active .settings-location-maps-chip {
+  background: var(--color-slate-100);
+}
+
+.settings-list-row[aria-current="page"]:active,
+.settings-type-pill[data-pressed]:not([data-disabled]):active {
+  background: var(--color-navy-100);
+}
+
+.settings-row-more:active {
+  background: var(--color-slate-200);
 }
