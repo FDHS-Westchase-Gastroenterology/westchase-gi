@@ -24,7 +24,7 @@ import {
   helpTopicText,
   helpTopicVisible,
 } from "@/lib/portal/help-topics";
-import type { HelpTopic } from "@/lib/portal/help-topics";
+import type { HelpGroup, HelpTopic } from "@/lib/portal/help-topics";
 
 import { HelpSample } from "./help-samples";
 
@@ -87,10 +87,11 @@ export function HelpContent({
   const visible = HELP_TOPICS.filter((topic) => helpTopicVisible(topic, role));
   const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const matching = visible.filter((topic) => topicMatches(topic, words));
-  const groups = HELP_GROUPS.map((group) => ({
-    group,
-    topics: matching.filter((topic) => topic.group === group.id),
-  })).filter((entry) => entry.topics.length > 0);
+  const groups: { group: HelpGroup; topics: HelpTopic[] }[] = [];
+  for (const group of HELP_GROUPS) {
+    const topics = matching.filter((topic) => topic.group === group.id);
+    if (topics.length > 0) groups.push({ group, topics });
+  }
 
   // A fragment names a topic to open: on arrival, and when a link on this page changes it.
   useEffect(() => {

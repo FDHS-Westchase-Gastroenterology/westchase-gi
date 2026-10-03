@@ -75,9 +75,10 @@ export function pendingTourFor(
 ): StaffTour | null {
   const own = roleTour(role);
   const open = new Set<StaffTour>(toursForRole(role));
-  const pending = tours
-    .filter((record) => record.status === "pending" && open.has(record.tour))
-    .map((record) => record.tour);
+  const pending: StaffTour[] = [];
+  for (const record of tours) {
+    if (record.status === "pending" && open.has(record.tour)) pending.push(record.tour);
+  }
   if (pending.includes(own)) return own;
   if (pending.length > 0) return pending[0];
   return tours.some((record) => record.tour === own) ? null : own;
