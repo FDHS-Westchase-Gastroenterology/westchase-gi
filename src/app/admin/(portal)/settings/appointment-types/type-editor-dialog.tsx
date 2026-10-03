@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 
+import { showModalWithInitialFocus } from "@/app/admin/(portal)/settings/open-dialog";
 import type { SettingsSend } from "@/app/admin/(portal)/settings/use-settings-command";
 import { Check } from "@/components/icons";
 import { TypeIcon } from "@/components/patterns/type-icon";
@@ -156,7 +157,7 @@ export function TypeEditorDialog({
   return (
     <dialog
       ref={(dialog) => {
-        if (dialog !== null && !dialog.open) dialog.showModal();
+        if (dialog !== null && !dialog.open) showModalWithInitialFocus(dialog);
       }}
       aria-modal="true"
       aria-labelledby="type-editor-title"
@@ -198,7 +199,7 @@ export function TypeEditorDialog({
               <FieldLabel htmlFor="type-name-input">Name</FieldLabel>
               <Input
                 id="type-name-input"
-                autoFocus={field === "name"}
+                data-initial-focus={field === "name" || undefined}
                 required
                 maxLength={120}
                 autoComplete="off"
@@ -236,7 +237,7 @@ export function TypeEditorDialog({
               <FieldLabel htmlFor="type-length-input">Length</FieldLabel>
               <NativeSelect
                 id="type-length-input"
-                autoFocus={field === "details"}
+                data-initial-focus={field === "details" || undefined}
                 value={String(length)}
                 onChange={(event) => {
                   setLength(Number(event.target.value));

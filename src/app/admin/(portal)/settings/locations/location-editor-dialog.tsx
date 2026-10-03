@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 
+import { showModalWithInitialFocus } from "@/app/admin/(portal)/settings/open-dialog";
 import {
   QUARTER_HOUR,
   WEEK_ORDER,
@@ -171,7 +172,7 @@ export function LocationEditorDialog({
   return (
     <dialog
       ref={(dialog) => {
-        if (dialog !== null && !dialog.open) dialog.showModal();
+        if (dialog !== null && !dialog.open) showModalWithInitialFocus(dialog);
       }}
       aria-modal="true"
       aria-labelledby="location-editor-title"
@@ -213,7 +214,7 @@ export function LocationEditorDialog({
               <FieldLabel htmlFor="location-name-input">Name</FieldLabel>
               <Input
                 id="location-name-input"
-                autoFocus
+                data-initial-focus
                 required
                 maxLength={120}
                 autoComplete="off"

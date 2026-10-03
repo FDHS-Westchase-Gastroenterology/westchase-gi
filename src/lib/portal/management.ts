@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHmac, randomUUID } from "node:crypto";
+
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -7,10 +9,11 @@ import { jsonObjectSchema } from "@/lib/json";
 import type { Json } from "@/lib/json";
 import { recordAudit } from "@/lib/portal/audit";
 import { requireRole } from "@/lib/portal/auth";
-import { AUDIT_ACTIONS, STAFF_ROLES } from "@/lib/portal/contracts";
+import { AUDIT_ACTIONS, NOTIFICATION_TEST_RATE_LIMIT, STAFF_ROLES } from "@/lib/portal/contracts";
 import type { PasswordAuthFlow } from "@/lib/portal/contracts";
 import type { DeliveryOutcome } from "@/lib/portal/email";
 import { sendPortalEmail } from "@/lib/portal/email-provider";
+import { sendTestNotifications } from "@/lib/portal/intake-notification";
 import { sendRecipientConfirmation, sendStaffSetupLink } from "@/lib/portal/management-email";
 import {
   addRecipientWithCompatibility,
@@ -19,11 +22,13 @@ import {
 } from "@/lib/portal/recipient-compatibility";
 import { recipientRpcFailureCode, runRecipientMutationTransport } from "@/lib/portal/recipient-rpc";
 import type { StaffProfileRow } from "@/lib/portal/rows";
-import { portalUrl, serviceClient } from "@/lib/portal/server";
+import { portalUrl, serviceClient, serviceRoleKey } from "@/lib/portal/server";
 import type { ServiceClient } from "@/lib/portal/server";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STAFF_BAN_DURATION = "876000h";
+// Its own domain, so a test-send bucket never shares a key with intake or telemetry.
+const TEST_SEND_HASH_DOMAIN = "wgi:notification-test-rate-limit:actor:v1\0";
 
 const addRecipientSchema = z.strictObject({
   email: z.string().trim().min(1).max(254).regex(EMAIL_RE),
@@ -47,7 +52,8 @@ const entityIdSchema = z.strictObject({
 
 const inviteStaffSchema = z.strictObject({
   email: z.string().trim().min(1).max(254).regex(EMAIL_RE),
-  displayName: z.string().trim().min(1).max(120),
+  // The invite sheet asks only for an email; the person names themselves when they set up.
+  displayName: z.string().trim().min(1).max(120).optional(),
   // Admin-chosen staff role, written only after requireRole("admin") through
   // The server-only service client. Browser clients have no write grant.
   // react-doctor-disable-next-line react-doctor/supabase-client-owned-authz-field
@@ -65,7 +71,13 @@ export type UpdateRecipientLabelResult =
   | { ok: true }
   | { ok: false; code: "invalid" | "not_found" | "unavailable" };
 
-export type ManagementFailureCode = "invalid" | "not_found" | "conflict" | "unavailable";
+export type ManagementFailureCode =
+  | "invalid"
+  | "not_found"
+  | "conflict"
+  | "none_on"
+  | "limit"
+  | "unavailable";
 
 export interface ManagementFailure {
   ok: false;
@@ -74,6 +86,10 @@ export interface ManagementFailure {
 }
 
 export type MutationResult = { ok: true } | ManagementFailure;
+
+export type TestNotificationResult =
+  | { ok: true; recipientCount: number; accepted: number }
+  | ManagementFailure;
 
 export type AddRecipientResult = { ok: true; delivery: DeliveryOutcome } | ManagementFailure;
 
@@ -117,8 +133,16 @@ async function deliverStaffSetupLink({
   });
 }
 
+function authErrorCode(error: Readonly<{ code?: string }> | null): string {
+  return error?.code ?? "";
+}
+
+function emailTaken(code: string): boolean {
+  return code === "email_exists" || code === "user_already_exists";
+}
+
 function authCreateFailure(code: string): ManagementFailure {
-  if (code === "email_exists" || code === "user_already_exists") {
+  if (emailTaken(code)) {
     return failure("conflict", "A staff account already uses that email.");
   }
   return failure("unavailable", "The staff account could not be created.");
@@ -184,7 +208,10 @@ export async function addNotificationRecipientMutation(input: Json): Promise<Add
   const session = await requireRole("admin");
   const parsed = addRecipientSchema.safeParse(input);
   if (!parsed.success) {
-    return failure("invalid", "Enter a valid recipient email and label.");
+    return failure(
+      "invalid",
+      "Enter a complete email address. A label can be up to 120 characters.",
+    );
   }
 
   const db = serviceClient();
@@ -214,9 +241,9 @@ export async function addNotificationRecipientMutation(input: Json): Promise<Add
   if (mutation.transport === "compatibility") {
     if (!mutation.response.ok) {
       if (mutation.response.code === "conflict") {
-        return failure("conflict", "That notification recipient already exists.");
+        return failure("conflict", "That address is already on the list.");
       }
-      return failure("unavailable", "The notification recipient could not be added.");
+      return failure("unavailable", "That address couldn't be added. Try again.");
     }
     recipientId = mutation.response.recipientId;
   } else {
@@ -227,9 +254,9 @@ export async function addNotificationRecipientMutation(input: Json): Promise<Add
         recipientRpcFailureCode("add", rpc.error !== null ? rpc.error.code : undefined) ===
         "conflict"
       ) {
-        return failure("conflict", "That notification recipient already exists.");
+        return failure("conflict", "That address is already on the list.");
       }
-      return failure("unavailable", "The notification recipient could not be added.");
+      return failure("unavailable", "That address couldn't be added. Try again.");
     }
     recipientId = parsedId.data;
   }
@@ -244,7 +271,7 @@ export async function addNotificationRecipientMutation(input: Json): Promise<Add
 }
 
 /**
- * Front-desk staff may correct a recipient label without remove-and-re-add
+ * An admin may correct a recipient label without remove-and-re-add
  * (which would re-send the confirmation email). The RPC owns the durable
  * write and its own `recipients.label_update` audit row.
  */
@@ -287,16 +314,12 @@ export async function updateRecipientLabelMutation(
   return { ok: true };
 }
 
-/**
- * Recipient policy: active staff may pause or resume notification delivery
- * because that is an operational queue task. Adding and removing destinations
- * remains admin-only; staff otherwise have read-only recipient access.
- */
+/** Pausing and resuming an address is a settings change: admin-only, like every other. */
 export async function toggleNotificationRecipientMutation(input: Json): Promise<MutationResult> {
-  const session = await requireRole("staff");
+  const session = await requireRole("admin");
   const parsed = recipientStateSchema.safeParse(input);
   if (!parsed.success) {
-    return failure("invalid", "Choose a valid notification recipient.");
+    return failure("invalid", "That address isn't on the list anymore.");
   }
 
   const db = serviceClient();
@@ -320,26 +343,96 @@ export async function toggleNotificationRecipientMutation(input: Json): Promise<
   if (mutation.transport === "compatibility") {
     if (!mutation.response.ok) {
       if (mutation.response.code === "not_found") {
-        return failure("not_found", "Notification recipient not found.");
+        return failure("not_found", "That address isn't on the list anymore.");
       }
-      return failure("unavailable", "The notification recipient could not be updated.");
+      return failure("unavailable", "That change didn't save. Try again.");
     }
   } else if (mutation.response.error !== null) {
     if (recipientRpcFailureCode("toggle", mutation.response.error.code) === "not_found") {
-      return failure("not_found", "Notification recipient not found.");
+      return failure("not_found", "That address isn't on the list anymore.");
     }
-    return failure("unavailable", "The notification recipient could not be updated.");
+    return failure("unavailable", "That change didn't save. Try again.");
   }
 
   revalidateManagementViews();
   return { ok: true };
 }
 
+async function testSendAllowed(db: ServiceClient, userId: string): Promise<boolean | null> {
+  const result = await db.rpc("portal_check_intake_rate_limit", {
+    p_client_hash: createHmac("sha256", serviceRoleKey())
+      .update(TEST_SEND_HASH_DOMAIN)
+      .update(userId)
+      .digest("hex"),
+    p_limit: NOTIFICATION_TEST_RATE_LIMIT.limit,
+    p_window_seconds: NOTIFICATION_TEST_RATE_LIMIT.windowSeconds,
+  });
+  const parsed = z.boolean().safeParse(result.data);
+  return result.error === null && parsed.success ? parsed.data : null;
+}
+
+/**
+ * Sends the new-request email, marked as a test, to every address that is on. It carries no
+ * request and no patient data. It refuses when nothing is on, a few sends per admin per window
+ * are allowed, and the audit row is written before anything is sent.
+ */
+export async function sendTestNotificationMutation(): Promise<TestNotificationResult> {
+  const session = await requireRole("admin");
+  const db = serviceClient();
+  const link = portalUrl("/admin");
+  if (link === null) {
+    return failure("unavailable", "The portal link isn't set up, so there is nothing to send.");
+  }
+
+  const { data: recipients, error } = await db
+    .from("notification_recipients")
+    .select("id, email")
+    .eq("active", true)
+    .order("email")
+    .overrideTypes<{ id: string; email: string }[], { merge: false }>();
+  if (error !== null) {
+    return failure("unavailable", "The notification list couldn't be read.");
+  }
+  if (recipients.length === 0) {
+    return failure("none_on", "No address is on, so there is nobody to send a test to.");
+  }
+
+  const allowed = await testSendAllowed(db, session.id);
+  if (allowed === null) {
+    return failure("unavailable", "The test email couldn't be sent.");
+  }
+  if (!allowed) {
+    return failure("limit", "A few test emails have gone out already. Try again in 10 minutes.");
+  }
+
+  try {
+    await recordAudit(db, {
+      actorEmail: session.email,
+      action: AUDIT_ACTIONS.RECIPIENTS_TEST_SEND,
+      entity: "notification_recipients",
+      entityId: null,
+      detail: {
+        recipient_count: recipients.length,
+        recipient_ids: recipients.map((recipient) => recipient.id),
+      },
+    });
+  } catch {
+    return failure("unavailable", "The test email couldn't be sent.");
+  }
+
+  const outcomes = await sendTestNotifications(sendPortalEmail, randomUUID(), recipients, link);
+  return {
+    ok: true,
+    recipientCount: recipients.length,
+    accepted: outcomes.filter((outcome) => outcome.status === "accepted").length,
+  };
+}
+
 export async function removeNotificationRecipientMutation(input: Json): Promise<MutationResult> {
   const session = await requireRole("admin");
   const parsed = entityIdSchema.safeParse(input);
   if (!parsed.success) {
-    return failure("invalid", "Choose a valid notification recipient.");
+    return failure("invalid", "That address isn't on the list anymore.");
   }
 
   const db = serviceClient();
@@ -361,15 +454,15 @@ export async function removeNotificationRecipientMutation(input: Json): Promise<
   if (mutation.transport === "compatibility") {
     if (!mutation.response.ok) {
       if (mutation.response.code === "not_found") {
-        return failure("not_found", "Notification recipient not found.");
+        return failure("not_found", "That address isn't on the list anymore.");
       }
-      return failure("unavailable", "The notification recipient could not be removed.");
+      return failure("unavailable", "That address couldn't be removed. Try again.");
     }
   } else if (mutation.response.error !== null) {
     if (recipientRpcFailureCode("remove", mutation.response.error.code) === "not_found") {
-      return failure("not_found", "Notification recipient not found.");
+      return failure("not_found", "That address isn't on the list anymore.");
     }
-    return failure("unavailable", "The notification recipient could not be removed.");
+    return failure("unavailable", "That address couldn't be removed. Try again.");
   }
 
   revalidateManagementViews();
@@ -380,7 +473,7 @@ export async function inviteStaffMutation(input: Json): Promise<InviteStaffResul
   const session = await requireRole("admin");
   const parsed = inviteStaffSchema.safeParse(input);
   if (!parsed.success) {
-    return failure("invalid", "Enter a valid name, email, and staff role.");
+    return failure("invalid", "Enter a complete email address and choose a role.");
   }
 
   const db = serviceClient();
@@ -390,15 +483,19 @@ export async function inviteStaffMutation(input: Json): Promise<InviteStaffResul
     return failure("unavailable", "The staff invitation could not be created.");
   }
 
-  const { data: created, error: createError } = await db.auth.admin.createUser({
-    email,
-    email_confirm: false,
-    app_metadata: { role: parsed.data.role },
-  });
+  const provision = async () =>
+    db.auth.admin.createUser({
+      email,
+      email_confirm: false,
+      app_metadata: { role: parsed.data.role },
+    });
+  let { data: created, error: createError } = await provision();
+  if (emailTaken(authErrorCode(createError)) && (await clearCancelledInvite(db, email))) {
+    ({ data: created, error: createError } = await provision());
+  }
   const user = created.user;
   if (createError || !user) {
-    const parsedCreateError = z.object({ code: z.string() }).safeParse(createError);
-    return authCreateFailure(parsedCreateError.success ? parsedCreateError.data.code : "");
+    return authCreateFailure(authErrorCode(createError));
   }
 
   const { data: generated, error: linkError } = await db.auth.admin.generateLink({
@@ -415,7 +512,7 @@ export async function inviteStaffMutation(input: Json): Promise<InviteStaffResul
     .insert({
       user_id: user.id,
       email,
-      display_name: parsed.data.displayName,
+      display_name: parsed.data.displayName ?? email.slice(0, email.indexOf("@")),
       role: parsed.data.role,
       active: true,
       onboarded_at: null,
@@ -545,6 +642,51 @@ export async function resendStaffInviteMutation(input: Json): Promise<InviteStaf
   });
 }
 
+/** Cancelling an invite nobody has accepted removes the account it
+ * provisioned, so the link stops working and the address can be invited
+ * again. The ban inside the cleanup lands before any deletion. */
+async function cancelPendingInvite(
+  db: ServiceClient,
+  actorEmail: string,
+  profile: Readonly<Pick<StaffProfileRow, "id" | "user_id">>,
+): Promise<MutationResult> {
+  try {
+    await recordAudit(db, {
+      actorEmail,
+      action: AUDIT_ACTIONS.STAFF_DEACTIVATE,
+      entity: "staff_profiles",
+      entityId: profile.id,
+      detail: { from: true, to: false, onboarded: false, invite_cancelled: true },
+    });
+  } catch {
+    return failure("unavailable", "The invite could not be cancelled.");
+  }
+  if (!(await deleteProvisionedUser(db, profile.user_id))) {
+    return failure("unavailable", "The invite could not be cancelled.");
+  }
+  revalidateManagementViews();
+  return { ok: true };
+}
+
+/** An address whose earlier invite was cancelled before the cancel removed
+ * accounts still holds an inactive, never-onboarded profile. Clearing it lets
+ * the new invite through; anyone who finished setup stays a conflict. */
+async function clearCancelledInvite(db: ServiceClient, email: string): Promise<boolean> {
+  const { data: stale, error } = await db
+    .from("staff_profiles")
+    .select("user_id, active, onboarded_at")
+    .eq("email", email)
+    .maybeSingle()
+    .overrideTypes<
+      Pick<StaffProfileRow, "user_id" | "active" | "onboarded_at">,
+      { merge: false }
+    >();
+  if (error !== null || stale === null || stale.active || stale.onboarded_at !== null) {
+    return false;
+  }
+  return deleteProvisionedUser(db, stale.user_id);
+}
+
 export async function deactivateStaffMutation(input: Json): Promise<MutationResult> {
   const session = await requireRole("admin");
   const parsed = entityIdSchema.safeParse(input);
@@ -558,11 +700,11 @@ export async function deactivateStaffMutation(input: Json): Promise<MutationResu
   const db = serviceClient();
   const { data: current, error: readError } = await db
     .from("staff_profiles")
-    .select("id, user_id, active")
+    .select("id, user_id, active, onboarded_at")
     .eq("user_id", parsed.data.id)
     .maybeSingle()
     .overrideTypes<
-      Pick<StaffProfileRow, "id" | "user_id" | "active">,
+      Pick<StaffProfileRow, "id" | "user_id" | "active" | "onboarded_at">,
       {
         merge: false;
       }
@@ -575,6 +717,9 @@ export async function deactivateStaffMutation(input: Json): Promise<MutationResu
   }
   if (!current.active) {
     return { ok: true };
+  }
+  if (current.onboarded_at === null) {
+    return cancelPendingInvite(db, session.email, current);
   }
 
   const { error: profileError } = await db

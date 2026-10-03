@@ -14,41 +14,43 @@ export const REVIEW_FLYERS_HREF = "/admin/review-flyers";
 export const PROVIDER_LINK_TARGET = "_blank";
 export const PROVIDER_LINK_REL = "noopener noreferrer";
 
+export const SOFTWARE_INTRO =
+  "Who runs the clinic\u2019s website and staff portal, and what is still unfinished.";
+
+export const SOFTWARE_RUNS_HEADING = "One piece of software runs three things";
+
 export const WEBSITE_CAPABILITIES = [
-  "Patient-facing website",
-  "Authenticated staff portal",
+  "Patient website",
+  "Staff portal",
   "Review-flyer printing",
 ] as const;
 
-export const STAFF_SECTION_ORDER = [
-  "what-website-does",
-  "what-practice-controls",
-  "still-needs-attention",
-  "how-to-request-change",
+/** The grouped rows under the capabilities: who holds each account the software runs on. A row
+    with a provider link opens that provider's console in a new tab. */
+export const SOFTWARE_ROWS = [
+  {
+    id: "domain",
+    label: "Domain",
+    value: "westchasegi.com",
+    note: "Clinic owned",
+    linkId: null,
+  },
+  {
+    id: "source-code",
+    label: "Source code",
+    value: "GitHub \u00b7 clinic repository",
+    note: null,
+    linkId: "github",
+  },
+  { id: "hosting", label: "Hosting", value: "Vercel", note: null, linkId: "vercel" },
 ] as const;
 
-export const STAFF_SECTION_HEADINGS = {
-  "what-website-does": "What the website does",
-  "what-practice-controls": "What Westchase GI controls",
-  "still-needs-attention": "Still needs attention",
-  "how-to-request-change": "How to request a website change",
-} as const satisfies Record<(typeof STAFF_SECTION_ORDER)[number], string>;
+export const MAINTAINER_ACCESS_ROW = {
+  label: "Maintainer access",
+  value: "Who can change the code and hosting",
+} as const;
 
-export const STAFF_WEBSITE_DOES =
-  "Patients use the public site to request an appointment, read procedure prep and education, download current documents, and confirm hours, locations, and providers. Staff use the same software for the authenticated staff portal and for review-flyer printing.";
-
-export const STAFF_PRACTICE_CONTROLS =
-  "Westchase GI controls the westchasegi.com domain, the source code in the clinic-owned GitHub repository, and the Vercel deployment that publishes the site. Domain, source code, repository access, deployment, database, email delivery, DNS, provider accounts, and credentials are not the same thing. This page is not proof that the practice holds every service credential.";
-
-export const STAFF_REQUEST_CHANGE =
-  "Staff request a website change by emailing the practice's website maintainer. That is a request, not editing the website from this portal, and it is not a reason to sign in to GitHub, Vercel, Supabase, or Porkbun. Most staff never need those accounts. Help explains the current process.";
-
-export const MAINTAINER_DISCLOSURE_SUMMARY =
-  "Maintainer details: providers, repository, deployment, and credentials. Most staff never need these accounts.";
-export const MAINTAINER_DISCLOSURE_CLOSED =
-  "Show maintainer details: providers, repository, deployment, and credentials. Most staff never need these accounts.";
-export const MAINTAINER_DISCLOSURE_OPEN =
-  "Hide maintainer details: providers, repository, deployment, and credentials. Most staff never need these accounts.";
+export const ATTENTION_HEADING = "Still needs attention";
 
 export const MAINTAINER_DISCLOSURE_INTRO =
   "These destinations are for website maintainers. They open in a new tab and leave the staff portal. Staff should request a website change instead of signing in to a provider console.";
@@ -137,11 +139,11 @@ export const WEBSITE_MAINTAINER_SERVICES = [
 const ALWAYS_ATTENTION = [
   {
     id: "database-email",
-    text: "Database (Supabase) and email delivery (Resend) currently run in consultant-managed accounts branded for the clinic. Moving them to practice-controlled accounts is unfinished.",
+    text: "The database and email delivery run in consultant-managed accounts. Moving them to practice accounts is unfinished.",
   },
   {
     id: "porkbun-renewal",
-    text: "Auto-renew and WHOIS privacy for westchasegi.com still need to be confirmed in the clinic's Porkbun account.",
+    text: "Auto-renew and WHOIS privacy for westchasegi.com still need to be confirmed.",
   },
 ] as const;
 
@@ -176,36 +178,4 @@ export function websiteProviderLink(
     throw new Error(`Unknown website provider link: ${id}`);
   }
   return match;
-}
-
-const FORBIDDEN_OWNERSHIP_CLAIM = /\b(?:everything|fully owned|fully in control)\b/i;
-const FORBIDDEN_COMPLETE_CLAIM =
-  /\b(?:ownership is complete|transfer is complete|custody is complete)\b/i;
-const SECRET_MATERIAL =
-  /ghp_[A-Za-z0-9]+|github_pat_[A-Za-z0-9_]+|sk_live_|sk_test_|BEGIN [A-Z ]*PRIVATE KEY|PORTAL_GITHUB_APP_PRIVATE_KEY|SUPABASE_SERVICE_ROLE_KEY|Bearer [A-Za-z0-9._-]+|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]+\./;
-
-export function allWebsiteCustodyText(connection: WebsiteConnectionState): string {
-  return [
-    STAFF_WEBSITE_DOES,
-    STAFF_PRACTICE_CONTROLS,
-    STAFF_REQUEST_CHANGE,
-    MAINTAINER_DISCLOSURE_SUMMARY,
-    MAINTAINER_DISCLOSURE_CLOSED,
-    MAINTAINER_DISCLOSURE_OPEN,
-    MAINTAINER_DISCLOSURE_INTRO,
-    MAINTAINER_GRANT_ACCESS,
-    ...WEBSITE_CAPABILITIES,
-    ...Object.values(STAFF_SECTION_HEADINGS),
-    ...websiteAttentionItems(connection).map((item) => item.text),
-    ...WEBSITE_MAINTAINER_SERVICES.map((service) => `${service.title} ${service.body}`),
-    ...WEBSITE_PROVIDER_LINKS.map((link) => `${link.name} ${link.href}`),
-  ].join("\n");
-}
-
-export function websiteCustodyHasForbiddenOwnershipClaim(text: string): boolean {
-  return FORBIDDEN_OWNERSHIP_CLAIM.test(text) || FORBIDDEN_COMPLETE_CLAIM.test(text);
-}
-
-export function websiteCustodyHasSecretMaterial(text: string): boolean {
-  return SECRET_MATERIAL.test(text);
 }

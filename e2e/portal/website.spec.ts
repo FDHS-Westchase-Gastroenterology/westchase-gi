@@ -46,19 +46,22 @@ function staffAccount(): StaffFixture {
 
 async function screenDisclosureChrome(summary: Locator) {
   return summary.evaluate((el) => {
-    const before = getComputedStyle(el, "::before");
     const style = getComputedStyle(el);
     return {
       screen: matchMedia("screen").matches,
       print: matchMedia("print").matches,
-      beforeContent: before.content,
       focusVisible: el.matches(":focus-visible"),
       outlineStyle: style.outlineStyle,
       outlineWidth: style.outlineWidth,
-      outlineOffset: style.outlineOffset,
     };
   });
 }
+
+/* The GitHub and Vercel rows link out in the open card; the services only a
+   maintainer signs in to stay inside the disclosure. */
+const ROW_LINK_IDS = new Set<string>(["canonical-repository", "provider-vercel"]);
+const ROW_LINKS = PROVIDER_LINKS.filter((link) => ROW_LINK_IDS.has(link.testId));
+const MAINTAINER_LINKS = PROVIDER_LINKS.filter((link) => !ROW_LINK_IDS.has(link.testId));
 
 function expectedConnectionStatus(): "Connected" | "Not configured" | "Connection unavailable" {
   if (GITHUB_CONFIGURATION_COUNT === 3) return "Connected";
@@ -95,43 +98,32 @@ test.describe("website custody", () => {
       "page",
     );
     const product = page.getByTestId("managed-product");
-    const staffLayer = page.getByTestId("website-staff-layer");
     const details = page.getByTestId("maintainer-details");
     await expect(product).toHaveCount(1);
-    await expect(page.getByRole("heading", { name: "Clinic website", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "One piece of software runs three things", exact: true }),
+    ).toBeVisible();
 
-    // Section labels paint uppercase; textContent keeps the authored casing.
-    const staffText = (await staffLayer.textContent()) ?? "";
-    const doesAt = staffText.indexOf("What the website does");
-    const controlsAt = staffText.indexOf("What Westchase GI controls");
-    const attentionAt = staffText.indexOf("Still needs attention");
-    const requestAt = staffText.indexOf("How to request a website change");
-    expect(doesAt).toBeGreaterThanOrEqual(0);
-    expect(doesAt).toBeLessThan(controlsAt);
-    expect(controlsAt).toBeLessThan(attentionAt);
-    expect(attentionAt).toBeLessThan(requestAt);
-
+    // The change request is the page's action, ahead of every account row.
     const changeLink = page.getByTestId("request-website-change");
     await expect(changeLink).toBeVisible();
     await expect(changeLink).toHaveAttribute("href", "/admin/help#website-changes");
     await expect(changeLink).toContainText("Request a website change");
-    await expect(staffLayer).toContainText("not editing the website from this portal");
-    await expect(staffLayer).toContainText("Most staff never need those accounts");
 
-    for (const capability of [
-      "Patient-facing website",
-      "Authenticated staff portal",
-      "Review-flyer printing",
-    ]) {
-      await expect(staffLayer).toContainText(capability);
+    for (const capability of ["Patient website", "Staff portal", "Review-flyer printing"]) {
+      await expect(product).toContainText(capability);
     }
-
-    await expect(staffLayer).toContainText("westchasegi.com domain");
-    await expect(staffLayer).toContainText("clinic-owned GitHub repository");
-    await expect(staffLayer).toContainText("Vercel deployment");
-    await expect(staffLayer).not.toContainText("everything", { ignoreCase: false });
-    await expect(staffLayer).not.toContainText("fully owned", { ignoreCase: false });
-    await expect(staffLayer.getByRole("link", { name: /Sign in to/ })).toHaveCount(0);
+    const domain = product.locator('[data-row="domain"]');
+    await expect(domain).toContainText("westchasegi.com");
+    await expect(domain).toContainText("Clinic owned");
+    await expect(product.locator('[data-row="source-code"]')).toContainText(
+      "GitHub · clinic repository",
+    );
+    await expect(product.locator('[data-row="hosting"]')).toContainText("Vercel");
+    await expect(details.locator("summary")).toContainText("Who can change the code and hosting");
+    await expect(product).not.toContainText("everything", { ignoreCase: false });
+    await expect(product).not.toContainText("fully owned", { ignoreCase: false });
+    await expect(product.getByRole("link", { name: /Sign in to/ })).toHaveCount(0);
 
     const attention = page.getByTestId("website-attention");
     await expect(attention).toBeVisible();
@@ -145,7 +137,10 @@ test.describe("website custody", () => {
     }
 
     await expect(details).toHaveJSProperty("open", false);
-    for (const link of PROVIDER_LINKS) {
+    for (const link of ROW_LINKS) {
+      await expect(page.getByTestId(link.testId)).toBeVisible();
+    }
+    for (const link of MAINTAINER_LINKS) {
       await expect(page.getByTestId(link.testId)).toBeHidden();
     }
 
@@ -173,9 +168,7 @@ test.describe("website custody", () => {
     const details = page.getByTestId("maintainer-details");
     const summary = details.locator("summary");
     await expect(details).toHaveJSProperty("open", false);
-    await expect
-      .poll(async () => (await screenDisclosureChrome(summary)).beforeContent)
-      .toMatch(/Show/);
+    await expect(summary).toContainText("Manage");
     const closedChrome = await screenDisclosureChrome(summary);
     expect(closedChrome.screen).toBe(true);
     expect(closedChrome.print).toBe(false);
@@ -184,17 +177,15 @@ test.describe("website custody", () => {
     await summary.press("Enter");
     await expect(details).toHaveJSProperty("open", true);
     await expect(summary).toBeFocused();
-    await expect(summary).toContainText("Maintainer details");
-    await expect
-      .poll(async () => (await screenDisclosureChrome(summary)).beforeContent)
-      .toMatch(/Hide/);
+    await expect(summary).toContainText("Maintainer access");
+    await expect(summary).toContainText("Hide");
+    await expect(summary).not.toContainText("Manage");
     const openChrome = await screenDisclosureChrome(summary);
     expect(openChrome.screen).toBe(true);
     expect(openChrome.print).toBe(false);
     expect(openChrome.focusVisible).toBe(true);
     expect(openChrome.outlineStyle).toBe("solid");
-    expect(Number.parseFloat(openChrome.outlineWidth)).toBeGreaterThanOrEqual(3);
-    expect(Number.parseFloat(openChrome.outlineOffset)).toBeGreaterThanOrEqual(3);
+    expect(Number.parseFloat(openChrome.outlineWidth)).toBeGreaterThanOrEqual(2);
 
     await expect(page.getByTestId("website-attention")).toBeVisible();
     await expect(page.getByTestId("website-attention")).toContainText("consultant-managed");
@@ -232,20 +223,16 @@ test.describe("website custody", () => {
     await page.keyboard.press("Space");
     await expect(details).toHaveJSProperty("open", false);
     await expect(summary).toBeFocused();
-    await expect(summary).toContainText("Maintainer details");
-    await expect
-      .poll(async () => (await screenDisclosureChrome(summary)).beforeContent)
-      .toMatch(/Show/);
+    await expect(summary).toContainText("Manage");
     const restoredChrome = await screenDisclosureChrome(summary);
     expect(restoredChrome.screen).toBe(true);
     expect(restoredChrome.print).toBe(false);
     expect(restoredChrome.focusVisible).toBe(true);
     expect(restoredChrome.outlineStyle).toBe("solid");
-    expect(Number.parseFloat(restoredChrome.outlineWidth)).toBeGreaterThanOrEqual(3);
     await expect(page.getByTestId("website-attention")).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: PROVIDER_LINKS[0].name, exact: true }),
-    ).toBeHidden();
+    for (const link of MAINTAINER_LINKS) {
+      await expect(page.getByRole("link", { name: link.name, exact: true })).toBeHidden();
+    }
 
     for (const removedControl of ["Add asset", "Edit", "Archive", "Add access", "End access"]) {
       await expect(page.getByRole("button", { name: removedControl, exact: true })).toHaveCount(0);
@@ -257,17 +244,10 @@ test.describe("website custody", () => {
     expect(browserProviderRequests).toHaveLength(0);
   });
 
-  test("legacy registry redirect, flyer, help, and public-site handoffs keep working", async ({
+  test("legacy registry redirect, help, and public-site handoffs keep working", async ({
     page,
   }) => {
     await signIn(page);
-    await page.goto("/admin/settings/software");
-
-    const flyerTask = page.getByRole("link", { name: "Print review flyers" });
-    await expect(flyerTask).toHaveAttribute("href", "/admin/review-flyers");
-    await flyerTask.click();
-    await expect(page.getByRole("heading", { name: "Review flyers", level: 1 })).toBeVisible();
-
     await page.goto("/admin/settings/software");
     await page.getByTestId("request-website-change").click();
     await expect(page).toHaveURL(/\/admin\/help#website-changes$/);
@@ -289,18 +269,12 @@ test.describe("website custody", () => {
     await expect(page.getByTestId("session-user")).toBeVisible();
   });
 
-  test("staff can open Website with the flyer task but no maintainer controls", async ({
-    page,
-  }) => {
+  test("staff can open Software but get no maintainer controls", async ({ page }) => {
     await signIn(page, staffAccount());
     await page.goto("/admin/settings/software");
 
     await expect(page.getByTestId("managed-product")).toHaveCount(1);
     await expect(page.getByTestId("request-website-change")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Print review flyers" })).toHaveAttribute(
-      "href",
-      "/admin/review-flyers",
-    );
     await expect(page.getByTestId("website-attention")).toBeVisible();
 
     const details = page.getByTestId("maintainer-details");

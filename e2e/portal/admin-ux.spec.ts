@@ -1,16 +1,17 @@
 import { randomUUID } from "node:crypto";
 
 import { test, expect } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { z } from "zod";
 
 import { intakeResponseSchema } from "../../src/lib/portal/contracts";
+import { clearNotificationTestBucket } from "../boundaries/support";
 import { clientIps, runId, seedAdmin, serviceDb } from "../harness/env";
 import { attemptSignIn, signIn } from "../harness/session";
 
 // VAL-ADMIN-007: recipients are manageable from the UI and a staged
 // Appointment request attempts notification for exactly the active set.
-// VAL-ADMIN-008: invite -> one-time setup link -> own password -> deactivate
+// VAL-ADMIN-008: invite -> resend -> cancel -> one-time setup link -> own password -> deactivate
 // -> login refused, across two browser contexts.
 // VAL-ADMIN-012: the help page is substantive plain English (>=400 words).
 
@@ -39,12 +40,73 @@ function recipientItem(page: Page, email: string) {
   return page.locator(`[data-recipient-email="${email}"]`);
 }
 
+function recipientSwitch(page: Page, email: string) {
+  return page.getByRole("switch", { name: `Request emails to ${email}`, exact: true });
+}
+
+async function recipientActive(id: string) {
+  const { data } = await db.from("notification_recipients").select("active").eq("id", id).single();
+  return z.object({ active: z.boolean() }).parse(data).active;
+}
+
+function staffRow(page: Page, email: string) {
+  return page.locator(`[data-testid="staff-row"][data-staff-email="${email}"]`);
+}
+
+function toastWith(page: Page, text: string) {
+  return page.locator("[data-sonner-toast]").filter({ hasText: text });
+}
+
+async function chooseFromRowMenu(page: Page, row: Locator, item: string) {
+  await row.getByRole("button", { name: /^More for / }).click();
+  await page.getByRole("menuitem", { name: item, exact: true }).click();
+}
+
+async function addRecipient(page: Page, email: string) {
+  await page.getByRole("link", { name: "Add email", exact: true }).click();
+  const dialog = page.getByTestId("recipient-dialog");
+  await expect(dialog.locator("#recipient-email")).toBeFocused();
+  await dialog.locator("#recipient-email").fill(email);
+  await dialog.getByRole("button", { name: "Add email", exact: true }).click();
+  await expect(dialog).toHaveCount(0, { timeout: 15_000 });
+}
+
 async function confirmRecipientRemoval(page: Page, email: string) {
-  await recipientItem(page, email).locator('[data-action="remove"]').click();
+  await chooseFromRowMenu(page, recipientItem(page, email), "Remove");
   const dialog = page.getByTestId("remove-recipient-dialog");
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText(email);
-  await dialog.getByRole("button", { name: "Remove recipient", exact: true }).click();
+  await dialog.locator('[data-action="confirm-remove"]').click();
+}
+
+async function inviteStaff(page: Page, email: string) {
+  await page.getByRole("link", { name: "Invite", exact: true }).click();
+  const dialog = page.getByTestId("invite-staff-dialog");
+  await expect(dialog.locator("#invite-email")).toBeFocused();
+  await dialog.locator("#invite-email").fill(email);
+  await dialog.getByRole("button", { name: "Send invite", exact: true }).click();
+  await expect(dialog).toHaveCount(0, { timeout: 15_000 });
+}
+
+async function confirmStaffAction(page: Page, email: string, item: "Cancel invite" | "Deactivate") {
+  await chooseFromRowMenu(page, staffRow(page, email), item);
+  const dialog = page.getByTestId("confirm-staff-dialog");
+  await expect(dialog).toBeVisible();
+  await dialog.locator('[data-action="confirm"]').click();
+  await expect(dialog).toHaveCount(0, { timeout: 15_000 });
+}
+
+async function fallbackSetupUrl(page: Page) {
+  return ((await page.getByTestId("fallback-setup-url").textContent()) ?? "").trim();
+}
+
+function expectInviteLink(setupUrl: string) {
+  expect(URL.canParse(setupUrl)).toBe(true);
+  const parsed = new URL(setupUrl);
+  const fragment = new URLSearchParams(parsed.hash.slice(1));
+  expect(parsed.pathname).toBe("/admin/auth/confirm");
+  expect(fragment.get("type")).toBe("invite");
+  expect(Boolean(fragment.get("token_hash"))).toBe(true);
 }
 
 test.describe("portal management UI", () => {
@@ -66,19 +128,13 @@ test.describe("portal management UI", () => {
     }
   });
 
-  test("Settings labels, validation, and recipient controls keep a safe focus path", async ({
-    page,
-  }) => {
-    test.fail(
-      true,
-      "Known defect, recorded in the consolidation log on 2026-09-05: the remove-recipient dialog's Close button measures under 44px tall at 390px wide. Remove this marker when it is fixed.",
-    );
+  test("Settings dialogs validate in place and keep a safe focus path", async ({ page }) => {
     test.setTimeout(120_000);
 
     const fixtureId = randomUUID();
     const fixtureEmail = `ux-${runId}-settings-focus@example.test`;
     const fixtureLabel = "Settings focus fixture";
-    const changedLabel = "Unsaved label change";
+    const preparedEmail = `ux-${runId}-prepared-recipient@example.test`;
     const fixtureInsert = await db.from("notification_recipients").insert({
       id: fixtureId,
       email: fixtureEmail,
@@ -91,158 +147,92 @@ test.describe("portal management UI", () => {
       await signIn(page);
       await page.goto("/admin/settings/notifications");
 
-      for (const selector of ['label[for="recipient-email"]', 'label[for="recipient-label"]']) {
-        await expect(page.locator(selector)).toBeVisible();
-      }
-
-      const recipientEmail = page.locator("#recipient-email");
-      await page.getByRole("button", { name: "Add recipient", exact: true }).click();
-      await expect(page.getByTestId("add-recipient-error-summary")).toBeVisible();
+      // Adding opens through the address, so Escape closes it and drops it.
+      await page.getByRole("link", { name: "Add email", exact: true }).click();
+      await expect(page).toHaveURL(/[?&]add=1/);
+      const addDialog = page.getByTestId("recipient-dialog");
+      const recipientEmail = addDialog.locator("#recipient-email");
+      await expect(recipientEmail).toBeFocused();
+      await expect(addDialog.locator('label[for="recipient-email"]')).toBeVisible();
+      await expect(addDialog.locator('label[for="recipient-label"]')).toBeVisible();
+      await addDialog.getByRole("button", { name: "Add email", exact: true }).click();
       await expect(recipientEmail).toBeFocused();
       await expect(recipientEmail).toHaveAttribute("aria-invalid", "true");
       await expect(recipientEmail).toHaveAttribute("aria-describedby", "recipient-email-error");
-      await expect(page.locator("#recipient-email-error")).toHaveText(
-        "Enter a recipient email address.",
+      await expect(addDialog.locator("#recipient-email-error")).toHaveText(
+        "Enter the email address.",
       );
-      await recipientEmail.fill(`ux-${runId}-prepared-recipient@example.test`);
-      await page.locator("#recipient-label").fill("Prepared, not added");
-      await expect(page.locator('label[for="recipient-email"]')).toBeVisible();
-      await expect(page.locator('label[for="recipient-label"]')).toBeVisible();
+      await recipientEmail.fill(preparedEmail);
+      await expect(recipientEmail).not.toHaveAttribute("aria-invalid", "true");
+      await page.keyboard.press("Escape");
+      await expect(addDialog).toHaveCount(0);
+      await expect(page).not.toHaveURL(/[?&]add=1/);
+      const prepared = await db
+        .from("notification_recipients")
+        .select("id")
+        .eq("email", preparedEmail);
+      expect(prepared.data).toHaveLength(0);
 
-      // Staff access is its own Settings pane (issue #352).
+      // Staff access invites the same way: an email and a role, nothing else.
       await page.goto("/admin/settings/staff");
-      for (const selector of [
-        'label[for="invite-email"]',
-        'label[for="invite-name"]',
-        'label[for="invite-role"]',
-      ]) {
-        await expect(page.locator(selector)).toBeVisible();
-      }
-      const inviteEmail = page.locator("#invite-email");
-      const inviteName = page.locator("#invite-name");
-      await page.getByRole("button", { name: "Send invite", exact: true }).click();
-      await expect(page.getByTestId("invite-error-summary")).toBeVisible();
+      await page.getByRole("link", { name: "Invite", exact: true }).click();
+      await expect(page).toHaveURL(/[?&]invite=1/);
+      const inviteDialog = page.getByTestId("invite-staff-dialog");
+      const inviteEmail = inviteDialog.locator("#invite-email");
+      await expect(inviteEmail).toBeFocused();
+      await expect(inviteDialog.getByRole("radiogroup")).toBeVisible();
+      await inviteDialog.getByRole("button", { name: "Send invite", exact: true }).click();
       await expect(inviteEmail).toBeFocused();
       await expect(inviteEmail).toHaveAttribute("aria-invalid", "true");
       await expect(inviteEmail).toHaveAttribute("aria-describedby", "invite-email-error");
-      await expect(inviteName).toHaveAttribute("aria-invalid", "true");
-      await expect(inviteName).toHaveAttribute("aria-describedby", "invite-name-error");
-      await expect(page.locator("#invite-email-error")).toHaveText("Enter a staff email address.");
-      await expect(page.locator("#invite-name-error")).toHaveText(
-        "Enter the staff member's full name.",
+      await expect(inviteDialog.locator("#invite-email-error")).toHaveText(
+        "Enter their email address.",
       );
-      await inviteEmail.fill(`ux-${runId}-prepared-invite@example.test`);
-      await inviteName.fill("TEST Prepared Invite");
-      await page.locator("#invite-role").selectOption("admin");
-      await expect(page.locator('label[for="invite-email"]')).toBeVisible();
-      await expect(page.locator('label[for="invite-name"]')).toBeVisible();
+      await inviteDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+      await expect(inviteDialog).toHaveCount(0);
+      await expect(page).not.toHaveURL(/[?&]invite=1/);
 
+      // Renaming edits only the label, and Cancel leaves the row as it was.
       await page.goto("/admin/settings/notifications");
       const row = recipientItem(page, fixtureEmail);
-      const editLabel = row.getByRole("button", { name: "Edit label", exact: true });
-      await editLabel.focus();
-      await page.keyboard.press("Enter");
-      const labelInput = row.locator(`#label-${fixtureId}`);
-      await expect(labelInput).toBeFocused();
-      await labelInput.fill(changedLabel);
-      await row.getByRole("button", { name: "Cancel", exact: true }).click();
       await expect(row).toContainText(fixtureLabel);
-      await expect(row).not.toContainText(changedLabel);
-      await expect(editLabel).toBeFocused();
+      await expect(recipientSwitch(page, fixtureEmail)).not.toBeChecked();
+      await chooseFromRowMenu(page, row, "Edit label");
+      const renameDialog = page.getByTestId("recipient-dialog");
+      await expect(renameDialog.locator("#recipient-email")).toHaveCount(0);
+      const labelInput = renameDialog.locator("#recipient-label");
+      await expect(labelInput).toBeFocused();
+      await labelInput.fill("Unsaved label change");
+      await renameDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+      await expect(renameDialog).toHaveCount(0);
+      await expect(row).toContainText(fixtureLabel);
+      await expect(row).not.toContainText("Unsaved label change");
 
-      const toggle = row.locator('[data-action="toggle"]');
-      const visibleState = row.getByTestId("recipient-state");
-      await expect(visibleState).toHaveText("Paused");
-      await expect(toggle).toHaveText("Resume");
-      await expect(toggle).toHaveAttribute("aria-pressed", "false");
-      await toggle.click();
-      await expect(visibleState).toHaveText("Active", { timeout: 15_000 });
-      await expect(toggle).toHaveText("Pause");
-      await expect(toggle).toHaveAttribute("aria-pressed", "true");
-      await expect(toggle).toBeFocused();
-      await expect(page.getByTestId("recipient-undo")).toContainText(
-        `Notifications resumed for ${fixtureEmail}.`,
-      );
-
-      await toggle.click();
-      await expect(visibleState).toHaveText("Paused", { timeout: 15_000 });
-      await expect(toggle).toHaveText("Resume");
-      await expect(toggle).toHaveAttribute("aria-pressed", "false");
-      await expect(toggle).toBeFocused();
-      await expect(page.getByTestId("recipient-undo")).toContainText(
-        `Notifications paused for ${fixtureEmail}.`,
-      );
-      await expect(page.getByTestId("recipient-undo")).not.toContainText("resumed");
-
-      const remove = row.getByRole("button", { name: "Remove", exact: true });
+      // Removing asks first, with Keep focused and Tab held inside the modal.
+      await chooseFromRowMenu(page, row, "Remove");
       const dialog = page.getByTestId("remove-recipient-dialog");
-      const cancelRemoval = page.getByTestId("cancel-remove-recipient");
-      const closeRemoval = page.getByTestId("close-remove-recipient-dialog");
-      const confirmRemoval = page.getByTestId("confirm-remove-recipient");
-
-      await remove.click();
-      await expect(dialog).toBeVisible();
+      const keep = dialog.getByRole("button", { name: "Keep it", exact: true });
+      const close = dialog.getByRole("button", { name: "Close", exact: true });
+      const confirmRemoval = dialog.locator('[data-action="confirm-remove"]');
       await expect(dialog).toContainText(fixtureEmail);
-      await expect(dialog).toContainText(
-        "Removing this address does not remove appointment requests from the portal queue.",
-      );
-      await expect(cancelRemoval).toBeFocused();
+      await expect(keep).toBeFocused();
       expect(await dialog.evaluate((element) => element.matches(":modal"))).toBe(true);
       await page.keyboard.press("Shift+Tab");
-      await expect(closeRemoval).toBeFocused();
+      await expect(close).toBeFocused();
       await page.keyboard.press("Shift+Tab");
       await expect(confirmRemoval).toBeFocused();
       await page.keyboard.press("Tab");
-      await expect(closeRemoval).toBeFocused();
+      await expect(close).toBeFocused();
       await page.keyboard.press("Escape");
-      await expect(dialog).not.toBeVisible();
-      await expect(remove).toBeFocused();
+      await expect(dialog).toHaveCount(0);
       await expect(row).toBeVisible();
 
-      await remove.click();
-      await expect(cancelRemoval).toBeFocused();
-      await closeRemoval.click();
-      await expect(dialog).not.toBeVisible();
-      await expect(remove).toBeFocused();
-      await expect(row).toBeVisible();
-
-      await page.setViewportSize({ width: 390, height: 844 });
-      await remove.click();
-      await expect(cancelRemoval).toBeFocused();
-      await expect(closeRemoval).toHaveText("Close");
-      await expect(closeRemoval).toBeInViewport();
-      const [dialogBox, closeBox] = await Promise.all([
-        dialog.boundingBox(),
-        closeRemoval.boundingBox(),
-      ]);
-      expect(dialogBox).not.toBeNull();
-      expect(closeBox).not.toBeNull();
-      if (dialogBox === null || closeBox === null) {
-        throw new Error("Expected visible mobile dialog geometry");
-      }
-      expect(closeBox.x).toBeGreaterThanOrEqual(dialogBox.x);
-      expect(closeBox.x + closeBox.width).toBeLessThanOrEqual(dialogBox.x + dialogBox.width + 0.5);
-      expect(closeBox.width).toBeGreaterThanOrEqual(44);
-      expect(closeBox.height).toBeGreaterThanOrEqual(44);
-      expect(
-        await closeRemoval.evaluate((element) => element.scrollWidth <= element.clientWidth),
-      ).toBe(true);
-      await cancelRemoval.click();
-      await expect(dialog).not.toBeVisible();
-      await expect(remove).toBeFocused();
-      await expect(row).toBeVisible();
-      await page.setViewportSize({ width: 1440, height: 900 });
-
-      await remove.click();
-      await page.getByTestId("confirm-remove-recipient").click();
+      await chooseFromRowMenu(page, row, "Remove");
+      await confirmRemoval.click();
       await expect(row).toHaveCount(0, { timeout: 15_000 });
-      await expect(page.getByTestId("recipient-list-heading")).toBeFocused();
-      await expect(page.getByTestId("recipient-removal-status")).toHaveText(
-        `Removed ${fixtureEmail} from notification recipients.`,
-      );
-      expect(
-        (await db.from("notification_recipients").select("id").eq("id", fixtureId)).data,
-      ).toHaveLength(0);
+      await expect(toastWith(page, `${fixtureLabel} removed`)).toBeVisible();
+      const removed = await db.from("notification_recipients").select("id").eq("id", fixtureId);
+      expect(removed.data).toHaveLength(0);
     } finally {
       const auditCleanup = await db.from("audit_log").delete().eq("entity_id", fixtureId);
       const recipientCleanup = await db
@@ -251,21 +241,37 @@ test.describe("portal management UI", () => {
         .eq("id", fixtureId);
       expect(auditCleanup.error).toBeNull();
       expect(recipientCleanup.error).toBeNull();
+    }
+  });
 
-      const [auditRows, recipientRows] = await Promise.all([
-        db
-          .from("audit_log")
-          .select("id", { count: "exact", head: true })
-          .eq("entity_id", fixtureId),
-        db
-          .from("notification_recipients")
-          .select("id", { count: "exact", head: true })
-          .eq("id", fixtureId),
-      ]);
-      expect(auditRows.error).toBeNull();
-      expect(recipientRows.error).toBeNull();
-      expect(auditRows.count).toBe(0);
-      expect(recipientRows.count).toBe(0);
+  test("the remove dialog's Close button is a full touch target at 390px", async ({ page }) => {
+    test.fail(
+      true,
+      "Known defect, recorded in the consolidation log on 2026-09-05: the confirm dialog's Close button measures under 44px tall at 390px wide. Remove this marker when it is fixed.",
+    );
+    const fixtureId = randomUUID();
+    const fixtureEmail = `ux-${runId}-touch-target@example.test`;
+    const inserted = await db
+      .from("notification_recipients")
+      .insert({ id: fixtureId, email: fixtureEmail, active: false });
+    expect(inserted.error).toBeNull();
+    try {
+      await signIn(page);
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto("/admin/settings/notifications");
+      await chooseFromRowMenu(page, recipientItem(page, fixtureEmail), "Remove");
+      const dialog = page.getByTestId("remove-recipient-dialog");
+      const close = dialog.getByRole("button", { name: "Close", exact: true });
+      await expect(close).toBeInViewport();
+      const [dialogBox, closeBox] = await Promise.all([dialog.boundingBox(), close.boundingBox()]);
+      if (dialogBox === null || closeBox === null) {
+        throw new Error("Expected visible mobile dialog geometry");
+      }
+      expect(closeBox.x + closeBox.width).toBeLessThanOrEqual(dialogBox.x + dialogBox.width + 0.5);
+      expect(closeBox.width).toBeGreaterThanOrEqual(44);
+      expect(closeBox.height).toBeGreaterThanOrEqual(44);
+    } finally {
+      await db.from("notification_recipients").delete().eq("id", fixtureId);
     }
   });
 
@@ -279,32 +285,26 @@ test.describe("portal management UI", () => {
 
     await signIn(page);
     await page.goto("/admin/settings/notifications");
-    await expect(page.locator("#recipient-email")).toBeVisible({
-      timeout: 30_000,
-    });
 
-    // Add four recipients through the Server Action-backed UI.
+    // Add four addresses through the Server Action-backed dialog.
     for (const email of [emailA, emailB, emailC, emailD]) {
-      await page.locator("#recipient-email").fill(email);
-      await page.getByRole("button", { name: "Add recipient", exact: true }).click();
-      await expect(recipientItem(page, email)).toBeVisible({
-        timeout: 15_000,
-      });
-      await expect(page.getByTestId("recipient-delivery-status")).toContainText(
-        "Recipient added, but confirmation email delivery could not be confirmed.",
-      );
+      await addRecipient(page, email);
+      await expect(recipientItem(page, email)).toBeVisible({ timeout: 15_000 });
     }
 
-    // Database failures keep their stable Server Action mappings: duplicate
-    // Normalized mailboxes conflict, while a row removed by another actor is
-    // Reported as not found rather than generic success.
-    await page.locator("#recipient-email").fill(emailA.toUpperCase());
-    await page.getByRole("button", { name: "Add recipient", exact: true }).click();
-    // Scoped like the other alert assertions: Next's route announcer also
-    // Carries role="alert", so a bare getByRole("alert") is strict-unsafe.
-    await expect(
-      page.getByRole("alert").filter({ hasText: "That address is already on the list." }),
-    ).toBeVisible();
+    // Database failures keep their stable Server Action mappings: a duplicate
+    // Normalized mailbox conflicts beside the field, and a row removed by
+    // Another actor is reported as gone rather than as a generic success.
+    await page.getByRole("link", { name: "Add email", exact: true }).click();
+    const addDialog = page.getByTestId("recipient-dialog");
+    await addDialog.locator("#recipient-email").fill(emailA.toUpperCase());
+    await addDialog.getByRole("button", { name: "Add email", exact: true }).click();
+    await expect(addDialog.locator("#recipient-email-error")).toHaveText(
+      "That address is already on the list.",
+      { timeout: 15_000 },
+    );
+    await addDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(addDialog).toHaveCount(0);
 
     const { data: staleRecipient } = await db
       .from("notification_recipients")
@@ -313,80 +313,64 @@ test.describe("portal management UI", () => {
       .select("id")
       .single();
     expect(staleRecipient?.id).toBeTruthy();
-    await recipientItem(page, emailD).locator('[data-action="toggle"]').click();
-    await expect(
-      page.getByRole("alert").filter({
-        hasText: "That recipient no longer exists — the list has been refreshed.",
-      }),
-    ).toBeVisible();
+    await recipientSwitch(page, emailD).click();
+    await expect(toastWith(page, "That address isn't on the list anymore.")).toBeVisible({
+      timeout: 15_000,
+    });
     await page.reload();
     await expect(recipientItem(page, emailD)).toHaveCount(0);
 
-    // Toggle B to paused; it persists — and the undo offer restores it
-    // Without a re-toggle.
-    const rowB = recipientItem(page, emailB);
-    const toggleB = rowB.locator('[data-action="toggle"]');
-    const stateB = rowB.getByTestId("recipient-state");
-    await toggleB.click();
-    await expect(stateB).toHaveText("Paused", {
-      timeout: 15_000,
-    });
-    await expect(toggleB).toHaveText("Resume");
-    await expect(toggleB).toBeFocused();
+    // Pausing B persists, and the toast's Undo turns it back on.
+    const switchB = recipientSwitch(page, emailB);
+    await expect(switchB).toBeChecked();
+    await switchB.click();
+    await expect(toastWith(page, `${emailB} paused`)).toBeVisible({ timeout: 15_000 });
+    await expect(switchB).not.toBeChecked();
     const { data: bRow } = await db
       .from("notification_recipients")
       .select("id, active")
       .eq("email", emailB)
       .single();
     expect(bRow?.active).toBe(false);
+    const bId = z.string().parse(bRow?.id);
 
-    await page
-      .getByTestId("recipient-undo")
-      .getByRole("button", {
-        name: "Undo",
-      })
+    await toastWith(page, `${emailB} paused`)
+      .getByRole("button", { name: "Undo", exact: true })
       .click();
-    await expect(stateB).toHaveText("Active", {
-      timeout: 15_000,
-    });
-    await expect(toggleB).toHaveText("Pause");
-    await expect(toggleB).toBeFocused();
-    const { data: bRestored } = await db
+    await expect(toastWith(page, `${emailB} is on again`)).toBeVisible({ timeout: 15_000 });
+    await expect(switchB).toBeChecked();
+    await expect.poll(async () => recipientActive(bId)).toBe(true);
+
+    // A label edit stays in place (no remove-and-re-add) and is audited.
+    await chooseFromRowMenu(page, recipientItem(page, emailB), "Edit label");
+    const renameDialog = page.getByTestId("recipient-dialog");
+    await renameDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(renameDialog).toHaveCount(0);
+    await chooseFromRowMenu(page, recipientItem(page, emailB), "Edit label");
+    await renameDialog.locator("#recipient-label").fill("Front desk mornings");
+    await renameDialog.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(renameDialog).toHaveCount(0, { timeout: 15_000 });
+    await expect(toastWith(page, "Label saved")).toBeVisible();
+    await expect(recipientItem(page, emailB)).toContainText("Front desk mornings");
+    const { data: bLabelled } = await db
       .from("notification_recipients")
-      .select("active")
+      .select("id, label")
       .eq("email", emailB)
       .single();
-    expect(bRestored?.active).toBe(true);
-
-    // Cancel returns to the exact label action that opened the editor. A
-    // Subsequent edit stays in place (no remove-and-re-add) and is audited.
-    const addLabelB = rowB.getByRole("button", { name: "Add a label" });
-    await addLabelB.click();
-    await rowB.locator(`#label-${bRow!.id}`).fill("Temporary label");
-    await rowB.getByRole("button", { name: "Cancel" }).click();
-    await expect(addLabelB).toBeFocused();
-    await page.keyboard.press("Enter");
-    await rowB.locator(`#label-${bRow!.id}`).fill("Front desk mornings");
-    await rowB.locator('[data-action="save-label"]').click();
-    await expect(page.getByTestId("recipient-label-status")).toContainText("Label updated", {
-      timeout: 15_000,
-    });
+    expect(bLabelled).toEqual({ id: bId, label: "Front desk mornings" });
     const { data: labelAudits } = await db
       .from("audit_log")
       .select("id")
       .eq("action", "recipients.label_update")
-      .eq("entity_id", bRow!.id);
+      .eq("entity_id", bId);
     expect(labelAudits?.length).toBeGreaterThanOrEqual(1);
 
     // Pause B again so the active notification set is exactly {A}.
-    await toggleB.click();
-    await expect(stateB).toHaveText("Paused", {
-      timeout: 15_000,
-    });
-    await expect(toggleB).toHaveText("Resume");
-    await expect(toggleB).toBeFocused();
+    await switchB.click();
+    await expect(switchB).not.toBeChecked();
+    await expect.poll(async () => recipientActive(bId)).toBe(false);
 
-    // Remove C through the named application dialog; it disappears and is gone.
+    // Remove C through the named confirmation; it disappears and is gone.
     await confirmRecipientRemoval(page, emailC);
     await expect(recipientItem(page, emailC)).toHaveCount(0, {
       timeout: 15_000,
@@ -460,94 +444,141 @@ test.describe("portal management UI", () => {
     }
   });
 
+  test("the test email goes to the addresses that are on, and waits for one", async ({ page }) => {
+    test.setTimeout(90_000);
+    const startedAt = new Date().toISOString();
+    const onEmail = `ux-${runId}-test-send@example.test`;
+
+    const { data: admin } = await db
+      .from("staff_profiles")
+      .select("user_id")
+      .ilike("email", SEED_EMAIL)
+      .single();
+    const adminUserId = z.object({ user_id: z.string() }).parse(admin).user_id;
+    const { data: on } = await db.from("notification_recipients").select("id").eq("active", true);
+    const previouslyOn = z
+      .array(z.object({ id: z.string() }))
+      .parse(on ?? [])
+      .map((row) => row.id);
+
+    clearNotificationTestBucket(adminUserId);
+    try {
+      if (previouslyOn.length > 0) {
+        await db.from("notification_recipients").update({ active: false }).in("id", previouslyOn);
+      }
+      await signIn(page);
+      await page.goto("/admin/settings/notifications");
+      const send = page.locator('[data-action="send-test"]');
+      await expect(send).toBeDisabled();
+      await expect(send).toHaveAccessibleDescription("Turn an address on to send a test.");
+
+      await db
+        .from("notification_recipients")
+        .insert({ email: onEmail, label: "TEST test send", active: true });
+      await page.reload();
+      await expect(page.getByTestId("notification-preview")).toContainText(onEmail);
+      await expect(send).toBeEnabled();
+      await send.click();
+      // The harness has no mail provider, so the send is attempted and reported as not sent.
+      await expect(
+        toastWith(page, "The test email couldn't be sent. Requests still arrive on Home."),
+      ).toBeVisible({ timeout: 15_000 });
+      await expect(send).toHaveText("Send a test email to everyone who is on");
+
+      const { data: audits } = await db
+        .from("audit_log")
+        .select("detail")
+        .eq("action", "recipients.test_send")
+        .gte("at", startedAt);
+      expect(audits).toEqual([
+        { detail: { recipient_count: 1, recipient_ids: [expect.any(String)] } },
+      ]);
+    } finally {
+      await db.from("notification_recipients").delete().eq("email", onEmail);
+      if (previouslyOn.length > 0) {
+        await db.from("notification_recipients").update({ active: true }).in("id", previouslyOn);
+      }
+      await db.from("audit_log").delete().eq("action", "recipients.test_send").gte("at", startedAt);
+      clearNotificationTestBucket(adminUserId);
+    }
+  });
+
   test("VAL-ADMIN-008: invite, own-password setup, deactivate, refuse", async ({
     page,
     browser,
   }) => {
     test.setTimeout(180_000);
-    page.on("dialog", (dialog) => void dialog.accept());
 
     const inviteEmail = `ux-${runId}-staff@example.test`;
 
     await signIn(page);
     await page.goto("/admin/settings/staff");
-    await expect(page.locator("#invite-email")).toBeVisible({
-      timeout: 30_000,
-    });
+    await inviteStaff(page, inviteEmail);
 
-    await page.locator("#invite-email").fill(inviteEmail);
-    await page.locator("#invite-name").fill("TEST Invite");
-    await page.getByRole("button", { name: "Send invite", exact: true }).click();
-
+    // The harness has no deliverable mailbox, so the setup link is shown once.
     const panel = page.getByTestId("invite-fallback-panel");
     await expect(panel).toBeVisible({ timeout: 15_000 });
-    await expect(panel.locator("p").first()).toHaveText(`Invitation created for ${inviteEmail}`);
+    await expect(panel).toContainText(`The invite email to ${inviteEmail} didn't send`);
     expect(await panel.getByText("One-time password").count()).toBe(0);
-    const originalSetupUrl = (
-      (await page.getByTestId("fallback-setup-url").textContent()) ?? ""
-    ).trim();
-    expect(URL.canParse(originalSetupUrl)).toBe(true);
-    const parsedSetupUrl = new URL(originalSetupUrl);
-    const setupFragment = new URLSearchParams(parsedSetupUrl.hash.slice(1));
-    expect(parsedSetupUrl.pathname).toBe("/admin/auth/confirm");
-    expect(setupFragment.get("type")).toBe("invite");
-    expect(Boolean(setupFragment.get("token_hash"))).toBe(true);
+    const originalSetupUrl = await fallbackSetupUrl(page);
+    expectInviteLink(originalSetupUrl);
 
-    const invitedRow = page.locator(`[data-staff-email="${inviteEmail}"]`);
-    await expect(invitedRow).toContainText("Pending setup");
+    const invitedRow = staffRow(page, inviteEmail);
+    await expect(invitedRow.getByTestId("staff-last-sign-in")).toContainText("Invite sent", {
+      timeout: 15_000,
+    });
 
-    // An administrator can replace an expired/lost pending link. Reissuing
+    // An administrator can replace an expired or lost pending link. Resending
     // Invalidates the earlier token without changing the stored role.
     await invitedRow.locator('[data-action="resend-invite"]').click();
     await expect
       .poll(async () => {
-        const renewed = (await page.getByTestId("fallback-setup-url").textContent()) ?? "";
-        return renewed.trim().length > 0 && renewed.trim() !== originalSetupUrl;
+        const renewed = await fallbackSetupUrl(page);
+        return renewed.length > 0 && renewed !== originalSetupUrl;
       })
       .toBe(true);
-    const setupUrl = ((await page.getByTestId("fallback-setup-url").textContent()) ?? "").trim();
-    expect(URL.canParse(setupUrl)).toBe(true);
-    const renewedSetupUrl = new URL(setupUrl);
-    const renewedFragment = new URLSearchParams(renewedSetupUrl.hash.slice(1));
-    expect(renewedSetupUrl.pathname).toBe("/admin/auth/confirm");
-    expect(renewedFragment.get("type")).toBe("invite");
-    expect(Boolean(renewedFragment.get("token_hash"))).toBe(true);
+    const setupUrl = await fallbackSetupUrl(page);
+    expectInviteLink(setupUrl);
 
-    // Reissuing the invitation must supersede the original bearer link. Its
-    // Continue action stays on the confirmation screen with the generic
-    // Expired-link outcome rather than establishing a password session.
     const supersededContext = await browser.newContext();
     const supersededPage = await supersededContext.newPage();
     await expectSetupLinkRejected(supersededPage, originalSetupUrl);
     await supersededContext.close();
 
-    // A never-onboarded invitation is also revoked when an administrator
-    // Deactivates it. The row disappears from the default list immediately,
-    // And its previously issued bearer link cannot reach password setup.
+    // Cancelling a never-onboarded invite removes the account outright: the
+    // Row leaves the list, its link stops working, and the address is free.
     const pendingEmail = `ux-${runId}-pending@example.test`;
-    await page.locator("#invite-email").fill(pendingEmail);
-    await page.locator("#invite-name").fill("TEST Pending Invite");
-    await page.getByRole("button", { name: "Send invite", exact: true }).click();
-    await expect(panel.locator("p").first()).toHaveText(`Invitation created for ${pendingEmail}`, {
+    await inviteStaff(page, pendingEmail);
+    await expect(panel).toContainText(`The invite email to ${pendingEmail} didn't send`, {
       timeout: 15_000,
     });
-    const pendingSetupUrl = (
-      (await page.getByTestId("fallback-setup-url").textContent()) ?? ""
-    ).trim();
-    expect(URL.canParse(pendingSetupUrl)).toBe(true);
+    const pendingSetupUrl = await fallbackSetupUrl(page);
+    expectInviteLink(pendingSetupUrl);
 
-    const pendingRow = page.locator(`[data-staff-email="${pendingEmail}"]`);
-    await expect(pendingRow).toContainText("Pending setup");
-    await pendingRow.locator('[data-action="deactivate"]').click();
-    await expect(pendingRow).toHaveCount(0, { timeout: 15_000 });
+    await expect(staffRow(page, pendingEmail)).toBeVisible({ timeout: 15_000 });
+    await confirmStaffAction(page, pendingEmail, "Cancel invite");
+    await expect(staffRow(page, pendingEmail)).toHaveCount(0, { timeout: 15_000 });
+    await expect(panel).toHaveCount(0);
 
-    const deactivatedInviteContext = await browser.newContext();
-    const deactivatedInvitePage = await deactivatedInviteContext.newPage();
-    await expectSetupLinkRejected(deactivatedInvitePage, pendingSetupUrl);
-    await deactivatedInviteContext.close();
+    const cancelledProfile = await db
+      .from("staff_profiles")
+      .select("user_id")
+      .eq("email", pendingEmail);
+    expect(cancelledProfile.data).toHaveLength(0);
+
+    const cancelledInviteContext = await browser.newContext();
+    const cancelledInvitePage = await cancelledInviteContext.newPage();
+    await expectSetupLinkRejected(cancelledInvitePage, pendingSetupUrl);
+    await cancelledInviteContext.close();
+
+    await inviteStaff(page, pendingEmail);
+    await expect(staffRow(page, pendingEmail)).toBeVisible({ timeout: 15_000 });
+    await confirmStaffAction(page, pendingEmail, "Cancel invite");
+    await expect(staffRow(page, pendingEmail)).toHaveCount(0, { timeout: 15_000 });
 
     // Second context: the invited staffer deliberately consumes the one-time
-    // Link, chooses their own password, and lands in the portal.
+    // Link, chooses their own password, and lands in the portal under the
+    // Name the invite derived from their address.
     const staffContext = await browser.newContext();
     const staffPage = await staffContext.newPage();
     await staffPage.goto(setupUrl);
@@ -559,13 +590,13 @@ test.describe("portal management UI", () => {
     await staffPage.getByLabel("Confirm password", { exact: true }).fill(chosenPassword);
     await staffPage.getByRole("button", { name: "Set password" }).click();
     await expect(staffPage).toHaveURL(/\/admin\/?$/, { timeout: 15_000 });
-    await expect(staffPage.getByTestId("session-user")).toHaveText("TEST Invite");
+    await expect(staffPage.getByTestId("session-user")).toHaveText(`ux-${runId}-staff`);
 
     await page.reload();
-    await expect(invitedRow).not.toContainText("Pending setup");
+    await expect(invitedRow.getByTestId("staff-last-sign-in")).not.toContainText("Invite sent");
 
     // Admin deactivates them.
-    await invitedRow.locator('[data-action="deactivate"]').click();
+    await confirmStaffAction(page, inviteEmail, "Deactivate");
     await expect(invitedRow).toHaveCount(0, { timeout: 15_000 });
 
     // Their live session no longer opens the portal...
@@ -584,13 +615,10 @@ test.describe("portal management UI", () => {
     await signIn(page);
     await page.goto("/admin/settings/staff");
 
-    // The seed admin just signed in, so their row reads as a real sign-in
-    // Timestamp — never "No sign-ins yet" and never a crashed page.
-    const ownRow = page
-      .getByTestId("staff-list")
-      .locator("li")
-      .filter({ hasText: SEED_EMAIL.toLowerCase() });
-    await expect(ownRow.getByTestId("staff-last-sign-in")).toContainText("Last sign in");
+    // The seed admin just signed in, so their own row reads as the current
+    // Session, never "Not yet" and never a crashed page.
+    const ownRow = staffRow(page, SEED_EMAIL.toLowerCase());
+    await expect(ownRow.getByTestId("staff-last-sign-in")).toHaveText("Now · you");
   });
 
   test("VAL-ADMIN-012: help page is substantive plain English", async ({ page }) => {

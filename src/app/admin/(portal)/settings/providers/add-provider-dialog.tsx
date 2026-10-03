@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 
+import { showModalWithInitialFocus } from "@/app/admin/(portal)/settings/open-dialog";
 import { addDay } from "@/app/admin/(portal)/settings/providers/providers-model";
 import type { WeekWindow } from "@/app/admin/(portal)/settings/providers/providers-model";
 import { placeName } from "@/app/admin/(portal)/settings/settings-model";
@@ -85,7 +86,7 @@ export function AddProviderDialog({
   return (
     <dialog
       ref={(dialog) => {
-        if (dialog !== null && !dialog.open) dialog.showModal();
+        if (dialog !== null && !dialog.open) showModalWithInitialFocus(dialog);
       }}
       aria-modal="true"
       aria-labelledby="add-provider-title"
@@ -129,7 +130,7 @@ export function AddProviderDialog({
               <FieldLabel htmlFor="provider-name-input">Name</FieldLabel>
               <Input
                 id="provider-name-input"
-                autoFocus
+                data-initial-focus
                 required
                 maxLength={120}
                 autoComplete="off"

@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 import { expect } from "@playwright/test";
@@ -222,6 +222,16 @@ export function queryTestDatabase(sql: string): void {
   } catch {
     throw new Error("Destructive test database query failed");
   }
+}
+
+/** Empties one admin's test-send rate-limit bucket (Settings › Notifications), keyed the way
+    `sendTestNotificationMutation` keys it, so a spec starts from a full allowance. */
+export function clearNotificationTestBucket(userId: string): void {
+  const hash = createHmac("sha256", requiredEnv("SUPABASE_SERVICE_ROLE_KEY"))
+    .update("wgi:notification-test-rate-limit:actor:v1\0")
+    .update(userId)
+    .digest("hex");
+  queryTestDatabase(`delete from private.intake_rate_limits where client_hash = '${hash}'`);
 }
 
 export function recipientRpcMigrationStatements(): string[] {

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 
+import { showModalWithInitialFocus } from "@/app/admin/(portal)/settings/open-dialog";
 import type { SettingsSend } from "@/app/admin/(portal)/settings/use-settings-command";
 import { Button } from "@/components/ui/button";
 import type { SettingsType } from "@/lib/portal/scheduling/settings-contracts";
@@ -57,7 +58,7 @@ export function DeleteTypeDialog({
   return (
     <dialog
       ref={(dialog) => {
-        if (dialog !== null && !dialog.open) dialog.showModal();
+        if (dialog !== null && !dialog.open) showModalWithInitialFocus(dialog);
       }}
       aria-modal="true"
       aria-labelledby="delete-type-title"
@@ -94,7 +95,7 @@ export function DeleteTypeDialog({
         </p>
       </div>
       <div className="portal-confirm-dialog-actions">
-        <Button type="button" autoFocus disabled={pending} onClick={onClose}>
+        <Button type="button" data-initial-focus disabled={pending} onClick={onClose}>
           Cancel
         </Button>
         <button
