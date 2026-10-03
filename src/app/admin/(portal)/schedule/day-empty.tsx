@@ -21,7 +21,7 @@ export function DayEmpty({ admin }: Readonly<{ admin: boolean }>) {
     <Empty className="wgi-dayview-empty">
       <EmptyHeader className="wgi-dayview-empty-header">
         <EmptyMedia variant="icon" className="wgi-dayview-empty-disc" aria-hidden="true">
-          <Users width={22} height={22} />
+          <Users className="size-[22px]" />
         </EmptyMedia>
         <EmptyTitle className="wgi-dayview-empty-title">No providers yet</EmptyTitle>
         <EmptyDescription className="wgi-dayview-empty-text">

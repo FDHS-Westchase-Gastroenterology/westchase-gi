@@ -480,7 +480,8 @@
 .wgi-day-preview-title {
   margin: 0;
   font-family: inherit;
-  line-height: inherit;
+  /* The heading step the h2 carried before ui/popover's title. */
+  line-height: 1.12;
   color: var(--wgi-name-ink);
   font-size: 0.9375rem;
   font-weight: 700;

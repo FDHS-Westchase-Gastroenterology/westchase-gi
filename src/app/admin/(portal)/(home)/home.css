@@ -28,7 +28,7 @@
    portal-workbench.css and the site's base outline on the portaled
    surfaces. */
 .wgi-home :where(a, button, input, [tabindex]):focus-visible,
-[data-slot="popover-content"][data-paint="card"]
+[data-paint="card"]:where([data-slot="popover-content"])
   :where(
     a,
     button,
