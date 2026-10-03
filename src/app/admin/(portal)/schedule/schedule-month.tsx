@@ -4,15 +4,14 @@ import { Popover } from "@base-ui/react/popover";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
-import type { CSSProperties, FocusEvent, KeyboardEvent, MouseEvent, ReactNode } from "react";
+import type { CSSProperties, FocusEvent, KeyboardEvent, MouseEvent } from "react";
 
-import { ChevronLeft, ChevronRight, Search } from "@/components/icons";
-import { SegmentedControl } from "@/components/ui/segmented-control";
-import type { SegmentedControlOption } from "@/components/ui/segmented-control";
+import { ChevronLeft, ChevronRight } from "@/components/icons";
 
 import { CellBody, DayPreviewPopup, Legend } from "./month-day-preview";
 import type { DayPreview, ScheduleCell, ScheduleMonth } from "./schedule-model";
-import { weekHref } from "./week-calendar";
+import { ScheduleArrow, ScheduleToolsWithShortcuts } from "./schedule-toolbar";
+import { dayHref, weekHref, weekStartOf } from "./week-calendar";
 
 /* The Schedule's month view (Figma Ypf9ohpRcGWF5C9T9bSvWW, section 08, S1;
    the day preview is H1, node 656:8201). Every practice day says how many
@@ -30,18 +29,12 @@ import { weekHref } from "./week-calendar";
    - Keyboard focus on a day opens it at once and it follows focus; the
      day keeps focus (the popover holds nothing to press), and Escape
      closes it without moving focus.
-   - A click does nothing yet: opening a day is a later view.
+   - A click on a day, or Return or Space on the focused one, opens it in
+     the day view (issue #351); the preview's "Open day" does the same
+     for a pointer resting there.
 
    One popover serves every day through a handle, so there is never more
    than one open. */
-
-type View = "day" | "week" | "month";
-
-const VIEW_OPTIONS: readonly SegmentedControlOption<View>[] = [
-  { value: "day", label: "Day", disabledReason: "Coming soon" },
-  { value: "week", label: "Week" },
-  { value: "month", label: "Month" },
-];
 
 const WEEKDAY_NAMES = [
   "Sunday",
@@ -68,24 +61,6 @@ function monthHref(month: string): string {
   return `/admin/schedule?month=${month}`;
 }
 
-function MonthArrow({
-  month,
-  label,
-  children,
-}: Readonly<{ month: string | null; label: string; children: ReactNode }>) {
-  if (month === null)
-    return (
-      <button type="button" className="wgi-schedule-arrow" disabled aria-label={label}>
-        {children}
-      </button>
-    );
-  return (
-    <Link href={monthHref(month)} className="wgi-schedule-arrow" aria-label={label}>
-      {children}
-    </Link>
-  );
-}
-
 export function ScheduleMonthView({ view }: Readonly<{ view: ScheduleMonth }>) {
   const router = useRouter();
   const baseId = useId();
@@ -94,6 +69,10 @@ export function ScheduleMonthView({ view }: Readonly<{ view: ScheduleMonth }>) {
   const days = view.weeks.flat().filter((cell) => cell.kind !== "blank");
   const firstDay = days[0]?.date ?? "";
   const lastDay = days.at(-1)?.date ?? "";
+  /* Where D and W go: today in this month, else its first day with hours. */
+  const anchor = days.some((cell) => cell.today)
+    ? null
+    : (days.find((cell) => cell.kind !== "closed")?.date ?? null);
   const [active, setActive] = useState(() => days.find((cell) => cell.today)?.date ?? firstDay);
   const [handle] = useState(() => Popover.createHandle<DayPreview>());
   /* Warm: a preview is open, or one closed within the grace — the next
@@ -144,6 +123,13 @@ export function ScheduleMonthView({ view }: Readonly<{ view: ScheduleMonth }>) {
     } else if (event.key === "Home" || event.key === "End") {
       event.preventDefault();
       moveTo(event.key === "Home" ? firstDay : lastDay);
+    } else if (
+      (event.key === "Enter" || event.key === " ") &&
+      event.target instanceof HTMLElement &&
+      event.target.id === cellId(active)
+    ) {
+      event.preventDefault();
+      router.push(dayHref(active));
     }
   }
 
@@ -182,7 +168,6 @@ export function ScheduleMonthView({ view }: Readonly<{ view: ScheduleMonth }>) {
       );
     const shared = {
       id: cellId(cell.date),
-      role: "gridcell",
       tabIndex: cell.date === active ? 0 : -1,
       "aria-label": cell.label,
       "aria-current": cell.today ? ("date" as const) : undefined,
@@ -194,9 +179,13 @@ export function ScheduleMonthView({ view }: Readonly<{ view: ScheduleMonth }>) {
       return (
         <div
           key={cell.date}
+          role="gridcell"
           {...shared}
           onFocus={(event) => {
             onDayFocus(event, cell);
+          }}
+          onClick={() => {
+            router.push(dayHref(cell.date));
           }}
         >
           <CellBody cell={cell} narrow={narrow} />
@@ -205,6 +194,7 @@ export function ScheduleMonthView({ view }: Readonly<{ view: ScheduleMonth }>) {
     return (
       <Popover.Trigger
         key={cell.date}
+        role="gridcell"
         {...shared}
         handle={handle}
         payload={cell.preview}
@@ -218,6 +208,7 @@ export function ScheduleMonthView({ view }: Readonly<{ view: ScheduleMonth }>) {
         }}
         onClick={(event: MouseEvent<HTMLElement> & { preventBaseUIHandler: () => void }) => {
           event.preventBaseUIHandler();
+          router.push(dayHref(cell.date));
         }}
       >
         <CellBody cell={cell} narrow={narrow} />
@@ -233,38 +224,34 @@ export function ScheduleMonthView({ view }: Readonly<{ view: ScheduleMonth }>) {
             {view.title}
           </h1>
           <div className="wgi-schedule-arrows">
-            <MonthArrow month={view.previous} label="Previous month">
+            <ScheduleArrow
+              href={view.previous === null ? null : monthHref(view.previous)}
+              label="Previous month"
+            >
               <ChevronLeft width={20} height={20} />
-            </MonthArrow>
-            <MonthArrow month={view.next} label="Next month">
+            </ScheduleArrow>
+            <ScheduleArrow
+              href={view.next === null ? null : monthHref(view.next)}
+              label="Next month"
+            >
               <ChevronRight width={20} height={20} />
-            </MonthArrow>
+            </ScheduleArrow>
           </div>
           <Link href="/admin/schedule" className="wgi-schedule-today">
             Today
           </Link>
         </div>
-        <div className="wgi-schedule-tools">
-          <label className="wgi-schedule-search">
-            <Search width={18} height={18} />
-            <input
-              type="search"
-              placeholder="Search patients"
-              aria-label="Search patients"
-              disabled
-            />
-          </label>
-          <SegmentedControl<View>
-            aria-label="View"
-            paper="glass"
-            options={VIEW_OPTIONS}
-            value="month"
-            onValueChange={(next) => {
-              if (next === "week") router.push(weekHref(null, []));
-            }}
-            className="w-auto"
-          />
-        </div>
+        <ScheduleToolsWithShortcuts
+          value="month"
+          targets={{
+            today: "/admin/schedule",
+            next: view.next === null ? null : monthHref(view.next),
+            previous: view.previous === null ? null : monthHref(view.previous),
+            day: dayHref(anchor),
+            week: weekHref(anchor === null ? null : weekStartOf(anchor), []),
+            month: null,
+          }}
+        />
       </header>
       <div className="wgi-schedule-surface" style={columns}>
         <div

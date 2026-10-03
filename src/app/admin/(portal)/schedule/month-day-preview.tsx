@@ -1,6 +1,9 @@
 "use client";
 
 import { Popover } from "@base-ui/react/popover";
+import Link from "next/link";
+
+import { ChevronRight } from "@/components/icons";
 
 import type { DayPreview, ScheduleCell } from "./schedule-model";
 
@@ -54,6 +57,10 @@ export function DayPreviewPopup({
               </li>
             ))}
           </ul>
+          <Link href={preview.href} className="wgi-day-preview-open">
+            Open day
+            <ChevronRight width={16} height={16} aria-hidden="true" />
+          </Link>
         </Popover.Popup>
       </Popover.Positioner>
     </Popover.Portal>

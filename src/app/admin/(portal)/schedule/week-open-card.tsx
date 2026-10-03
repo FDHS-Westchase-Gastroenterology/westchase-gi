@@ -9,11 +9,11 @@ import { Input } from "@/components/ui/input";
 
 import type { WeekOpenCell } from "./schedule-week-model";
 import { bookOpenTime, searchWeekPatients } from "./week-actions";
-import { appointmentWhen } from "./week-calendar";
+import { appointmentAt, appointmentWhen } from "./week-calendar";
 import { startClock } from "./week-card-model";
 import type { WeekPatient } from "./week-card-model";
 import { CardError, useCommand } from "./week-card-parts";
-import type { ReferenceType } from "./week-card-parts";
+import type { DoneHandler, ReferenceType } from "./week-card-parts";
 
 /* ---- The open-time card ---- */
 
@@ -26,7 +26,7 @@ export function OpenTimeCard({
 }: Readonly<{
   cell: WeekOpenCell;
   referenceType: ReferenceType;
-  onDone: (message: string) => void;
+  onDone: DoneHandler;
 }>) {
   const titleId = useId();
   const [query, setQuery] = useState("");
@@ -47,7 +47,12 @@ export function OpenTimeCard({
             start: { date: cell.date, time: startClock(cell.startsAt) },
           },
         }),
-      `${chosen.name} is booked at ${cell.time}.`,
+      {
+        subject: chosen.name,
+        rest: ` is booked at ${cell.time}`,
+        headline: `${chosen.name} is booked`,
+        detail: `${appointmentAt(cell.startsAt)} · ${cell.providerName}, ${cell.locationName}`,
+      },
     );
   }
 

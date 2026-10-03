@@ -1,0 +1,847 @@
+/* The Schedule's day view (issue #351; Figma Ypf9ohpRcGWF5C9T9bSvWW, page
+   02, S5, B5–B6 and the keyboard frames). It shares the header, surface
+   and click card with the week (schedule.css, schedule-week.css) and the
+   --wgi-* paints from wgi-paints.css; the sizes below are the frame's at
+   1440×900, and the hour shrinks with a shorter window (S5 1366×768 and
+   1280×800). Unlayered, like schedule.css. */
+
+.wgi-dayview {
+  --dayview-hour: 77px;
+  --dayview-minute: calc(var(--dayview-hour) / 60);
+  /* The frame's 83px gutter counts the surface's 23px padding. */
+  --dayview-gutter: 60px;
+  /* The head row is 74px in the frame; the first hour's label is centred
+     on its line, so 7px of it sit in the body to keep the label whole. */
+  --dayview-head: 67px;
+  --dayview-inset: 7px;
+}
+
+@media (max-height: 50rem) {
+  .wgi-dayview {
+    --dayview-hour: 64px;
+  }
+}
+
+@media (max-height: 48rem) {
+  .wgi-dayview {
+    --dayview-hour: 60px;
+  }
+}
+
+/* ---------- The grid ---------- */
+
+/* The foot row (hints, who is off) sits in the surface's bottom padding,
+   under the last hour line. */
+.wgi-dayview-surface {
+  position: relative;
+  padding-bottom: 29px;
+}
+
+/* A day longer than the window scrolls under its pinned provider row. */
+.wgi-dayview-scroll {
+  max-height: calc(100dvh - 208px);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.wgi-dayview-grid {
+  display: grid;
+  grid-template-columns: var(--dayview-gutter) repeat(
+      max(var(--dayview-columns), 1),
+      minmax(0, 1fr)
+    );
+}
+
+.wgi-dayview-heads,
+.wgi-dayview-body {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+}
+
+.wgi-dayview-heads {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  height: var(--dayview-head);
+  background: var(--wgi-surface);
+}
+
+.wgi-dayview-head {
+  min-width: 0;
+  padding: 6px 14px 0;
+  box-shadow: inset 1px 0 var(--wgi-rule);
+}
+
+.wgi-dayview-heads > .wgi-dayview-gutter-head + .wgi-dayview-head {
+  box-shadow: none;
+}
+
+.wgi-dayview-name {
+  overflow: hidden;
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wgi-dayview-place {
+  overflow: hidden;
+  margin: 3px 0 0;
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wgi-dayview-place b {
+  color: var(--wgi-name-ink);
+  font-weight: 700;
+}
+
+.wgi-dayview-dot {
+  padding: 0 2px;
+}
+
+.wgi-dayview-body {
+  position: relative;
+  padding-top: var(--dayview-inset);
+}
+
+.wgi-dayview-gutter,
+.wgi-dayview-column {
+  position: relative;
+  min-width: 0;
+  height: calc(var(--dayview-height) * var(--dayview-minute));
+}
+
+/* Hour lines: one at every whole hour, and the closing one below. */
+.wgi-dayview-column {
+  background-image: linear-gradient(var(--wgi-rule) 0 1px, transparent 1px);
+  background-size: 100% calc(60 * var(--dayview-minute));
+  box-shadow: inset 0 -1px var(--wgi-rule);
+}
+
+/* Provider rules run from the head row to the foot, left of every column
+   after the first. */
+.wgi-dayview-column + .wgi-dayview-column {
+  box-shadow:
+    inset 1px 0 var(--wgi-rule),
+    inset 0 -1px var(--wgi-rule);
+}
+
+.wgi-dayview-hour {
+  position: absolute;
+  top: calc(var(--top) * var(--dayview-minute) - 6.5px);
+  left: 0;
+  color: var(--wgi-muted-ink);
+  font-size: 0.75rem;
+  line-height: 13px;
+  white-space: nowrap;
+}
+
+/* The closing hour is a line, not a time to book. */
+.wgi-dayview-hour:last-child {
+  display: none;
+}
+
+/* Lunch, and any time the provider is not working. */
+.wgi-dayview-shade {
+  position: absolute;
+  top: calc(var(--top) * var(--dayview-minute) + 1px);
+  right: 0;
+  left: 1px;
+  height: calc(var(--height) * var(--dayview-minute) - 1px);
+  background: var(--color-slate-50);
+}
+
+/* ---------- Blocks ---------- */
+
+.wgi-dayview-block,
+.wgi-dayview-open {
+  position: absolute;
+  top: calc(var(--top) * var(--dayview-minute) + 3px);
+  right: 8px;
+  left: 8px;
+  height: calc(var(--height) * var(--dayview-minute) - 7px);
+  box-sizing: border-box;
+  border-radius: 8px;
+}
+
+.wgi-dayview-block {
+  container: dayview-block / size;
+  border: 1px solid transparent;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    border-color var(--motion-fast-duration) var(--motion-standard),
+    box-shadow var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-dayview-block:has(.wgi-dayview-block-open:active) {
+  transform: scale(0.98);
+}
+
+/* The whole block opens its card; Check in rides on top of it. */
+.wgi-dayview-block-open {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: start;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 8px;
+  row-gap: 3px;
+  padding: 10px 11px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wgi-dayview-block-name,
+.wgi-dayview-block-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wgi-dayview-block-name {
+  grid-row: 1;
+  grid-column: 1;
+  color: var(--wgi-name-ink);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 17px;
+}
+
+.wgi-dayview-block-line {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  color: var(--wgi-muted-ink);
+  font-size: 0.75rem;
+  line-height: 15px;
+}
+
+.wgi-dayview-block-tag {
+  grid-row: 1;
+  grid-column: 2;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 17px;
+  white-space: nowrap;
+}
+
+/* A block shorter than the frame's hour keeps what fits: both lines
+   centred, then the name and its status alone, then a single small line
+   for a 15-minute visit. */
+@container dayview-block (max-height: 54px) {
+  .wgi-dayview-block-open {
+    align-content: center;
+    padding-block: 0;
+  }
+}
+
+@container dayview-block (max-height: 38px) {
+  .wgi-dayview-block-line {
+    display: none;
+  }
+}
+
+@container dayview-block (max-height: 22px) {
+  .wgi-dayview-block-name,
+  .wgi-dayview-block-tag {
+    font-size: 0.6875rem;
+    line-height: 12px;
+  }
+}
+
+/* Tones: scheduled is pale navy; checked in a blue wash; done pale mint
+   and faded; a no-show slate. */
+.wgi-dayview-block[data-tone="booked"] {
+  border-color: var(--color-navy-100);
+  background: var(--color-navy-100);
+}
+
+.wgi-dayview-block[data-tone="here"] {
+  border-color: var(--color-teal-200);
+  background: linear-gradient(var(--color-teal-100), var(--color-teal-200));
+}
+
+.wgi-dayview-block[data-tone="here"] .wgi-dayview-block-tag {
+  color: var(--color-teal-800);
+}
+
+.wgi-dayview-block[data-tone="done"] {
+  border-color: var(--color-mint);
+  background: var(--color-mint);
+}
+
+.wgi-dayview-block[data-tone="done"] .wgi-dayview-block-name {
+  color: var(--color-mint-800);
+}
+
+.wgi-dayview-block[data-tone="done"] :is(.wgi-dayview-block-line, .wgi-dayview-block-tag) {
+  color: var(--color-mint-600);
+}
+
+.wgi-dayview-block[data-tone="missed"] {
+  border-color: var(--color-slate-100);
+  background: var(--color-slate-100);
+}
+
+.wgi-dayview-block[data-tone="missed"] .wgi-dayview-block-name {
+  color: var(--wgi-muted-ink);
+}
+
+.wgi-dayview-block[data-tone="missed"] .wgi-dayview-block-tag {
+  color: var(--color-amber-800);
+}
+
+/* Pointed at, focused or opened, a block lifts to white, above the now
+   line. */
+.wgi-dayview-block:is(:focus-within, :has([data-popup-open])) {
+  z-index: 2;
+  border-color: var(--wgi-rule);
+  background: #fff;
+  box-shadow: var(--wgi-card-shadow);
+}
+
+/* The focused block wears the portal ring on its own corners. */
+.wgi-dayview-block:has(:focus-visible) {
+  box-shadow:
+    var(--wgi-card-shadow),
+    0 0 0 2px var(--portal-surface, #fff),
+    0 0 0 4px var(--color-teal);
+}
+
+/* Check in: a pill on the block's right, from an hour before the visit
+   until it ends. It shows on a block pointed at or holding focus. */
+.wgi-dayview-checkin {
+  position: absolute;
+  top: 50%;
+  right: 11px;
+  display: none;
+  height: 30px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-teal);
+  color: #fff;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition:
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    transform var(--motion-micro-duration) var(--motion-exit);
+}
+
+@container dayview-block (max-height: 38px) {
+  .wgi-dayview-checkin {
+    height: 24px;
+  }
+}
+
+@container dayview-block (max-height: 22px) {
+  .wgi-dayview-checkin {
+    height: 18px;
+    padding-inline: 8px 10px;
+    font-size: 0.6875rem;
+  }
+}
+
+.wgi-dayview-block:is(:focus-within, :has([data-popup-open])) .wgi-dayview-checkin {
+  display: inline-flex;
+}
+
+.wgi-dayview-checkin:active {
+  transform: translateY(-50%) scale(0.98);
+}
+
+.wgi-dayview-checkin:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.wgi-dayview-checkin:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 4px var(--color-teal);
+}
+
+/* The name and line end where the pill begins. */
+.wgi-dayview-block:is(:focus-within, :has([data-popup-open])):has(.wgi-dayview-checkin)
+  .wgi-dayview-block-open {
+  padding-right: 112px;
+}
+
+/* ---------- Open time ---------- */
+
+/* White, a dashed mint edge and a plus disc; pointed at or opened, the
+   edge turns solid teal over a mint wash and the label offers the time
+   (B6). */
+.wgi-dayview-open {
+  container: dayview-open / size;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  /* 9px above the line, or less to centre it in a short opening. */
+  padding: clamp(0px, (var(--height) * var(--dayview-minute) - 25px) / 2, 9px) 11px;
+  border: 1.5px dashed var(--color-mint-400);
+  background: #fff;
+  color: var(--color-mint-800);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 18px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    border-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-dayview-open:active {
+  transform: scale(0.98);
+}
+
+.wgi-dayview-open:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--portal-surface, #fff),
+    0 0 0 4px var(--color-teal);
+}
+
+.wgi-dayview-open-disc {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border-radius: 999px;
+  background:
+    linear-gradient(#fff, #fff) center / 9px 1.5px no-repeat,
+    linear-gradient(#fff, #fff) center / 1.5px 9px no-repeat,
+    var(--color-mint-500);
+}
+
+.wgi-dayview-open-word,
+.wgi-dayview-open-book {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wgi-dayview-open-length {
+  margin-left: auto;
+  color: var(--color-mint-600);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.wgi-dayview-open-book,
+.wgi-dayview-open:is([data-popup-open], :focus-visible) .wgi-dayview-open-word {
+  display: none;
+}
+
+.wgi-dayview-open:is([data-popup-open], :focus-visible) {
+  border-style: solid;
+  border-color: var(--color-teal-600);
+  background: var(--color-mint);
+}
+
+.wgi-dayview-open:is([data-popup-open], :focus-visible) .wgi-dayview-open-book {
+  display: inline;
+}
+
+/* A 15-minute opening shrinks to the week's compact cell: the start
+   alone, its length in the label. */
+@container dayview-open (max-height: 22px) {
+  .wgi-dayview-open-word,
+  .wgi-dayview-open-book {
+    font-size: 0.75rem;
+    line-height: 12px;
+  }
+
+  .wgi-dayview-open-disc {
+    width: 12px;
+    height: 12px;
+    background-size:
+      7px 1.5px,
+      1.5px 7px,
+      auto;
+  }
+
+  .wgi-dayview-open-length {
+    display: none;
+  }
+}
+
+/* ---------- Now ---------- */
+
+/* Coral across every column, the time in a pill in the gutter. */
+.wgi-dayview-now {
+  position: absolute;
+  z-index: 1;
+  top: calc(var(--dayview-inset) + var(--top) * var(--dayview-minute) - 1px);
+  right: 0;
+  left: var(--dayview-gutter);
+  height: 2px;
+  background: var(--color-coral-500);
+  pointer-events: none;
+}
+
+.wgi-dayview-now-time {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 5px);
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--color-coral-500);
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 14px;
+  font-variant-numeric: tabular-nums;
+  transform: translateY(-50%);
+}
+
+/* ---------- Foot: the keyboard hints and who is off ---------- */
+
+.wgi-dayview-foot {
+  position: absolute;
+  right: 23px;
+  bottom: 0;
+  left: calc(23px + var(--dayview-gutter));
+  display: flex;
+  height: 29px;
+  align-items: center;
+  gap: 16px;
+  color: var(--wgi-muted-ink);
+  font-size: 0.75rem;
+  line-height: 16px;
+}
+
+.wgi-dayview-hints {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 16px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.wgi-dayview-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wgi-dayview-hint-button {
+  margin: -3px -6px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--wgi-name-ink);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-dayview-hint-button:active {
+  transform: scale(0.98);
+}
+
+.wgi-dayview-hint-button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--portal-surface, #fff),
+    0 0 0 4px var(--color-teal);
+}
+
+.wgi-dayview-off {
+  min-width: 0;
+  margin: 0 0 0 auto;
+  text-align: end;
+}
+
+/* ---------- Keycaps and the shortcuts list ---------- */
+
+.wgi-keycap {
+  display: inline-grid;
+  min-width: 22px;
+  height: 22px;
+  box-sizing: border-box;
+  place-items: center;
+  padding: 0 5px;
+  border: 1px solid var(--color-slate-300);
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 1px 0 var(--color-slate-300);
+  color: var(--wgi-name-ink);
+  font-family: inherit;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.wgi-shortcuts-caps {
+  display: inline-flex;
+  gap: 4px;
+}
+
+/* About the frame's 378px, radius 16, on the popover layer the click
+   card uses. */
+.wgi-shortcuts {
+  width: 23.625rem;
+  max-width: calc(100vw - 1.5rem);
+  box-sizing: border-box;
+  padding: 18px 0 8px;
+  border: 1px solid var(--wgi-rule);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--color-body);
+  box-shadow: var(--shadow-popover);
+  outline: none;
+  transform-origin: var(--transform-origin);
+  /* Scale and fade from "All shortcuts" on the base beat of the standard
+     curve; the exit takes the fast beat. Both read the registry. */
+  transition:
+    transform var(--motion-base-duration) var(--motion-standard),
+    opacity var(--motion-base-duration) var(--motion-standard);
+}
+
+.wgi-shortcuts[data-starting-style],
+.wgi-shortcuts[data-ending-style] {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.wgi-shortcuts[data-ending-style] {
+  transition-duration: var(--motion-fast-duration);
+}
+
+/* Opened with ? or by Base UI's keyboard paths: no animation. */
+.wgi-shortcuts[data-instant],
+.wgi-shortcuts[data-keyed] {
+  transition-duration: 0ms;
+}
+
+.wgi-shortcuts-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px 6px 20px;
+}
+
+.wgi-shortcuts-title {
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.wgi-shortcuts-close {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--wgi-muted-ink);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-shortcuts-close:active {
+  transform: scale(0.98);
+}
+
+.wgi-shortcuts-close:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 4px var(--color-teal);
+}
+
+.wgi-shortcuts-group {
+  padding: 12px 20px 10px;
+}
+
+.wgi-shortcuts-group + .wgi-shortcuts-group {
+  border-top: 1px solid var(--wgi-rule);
+}
+
+.wgi-shortcuts-group-title {
+  margin: 0 0 8px;
+  color: var(--wgi-muted-ink);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.wgi-shortcuts-rows {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.wgi-shortcuts-row {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: center;
+}
+
+.wgi-shortcuts-keys,
+.wgi-shortcuts-does {
+  margin: 0;
+}
+
+.wgi-shortcuts-does {
+  color: var(--wgi-name-ink);
+  font-size: 0.8125rem;
+  line-height: 18px;
+}
+
+/* ---------- No one to show ---------- */
+
+/* With no columns, what stands over the hours sits in the middle of the
+   part of the day on screen, not of the whole day. */
+.wgi-dayview-overlay {
+  position: absolute;
+  display: grid;
+  inset: 0 0 29px;
+  place-items: center;
+  padding: 24px;
+  pointer-events: none;
+}
+
+.wgi-dayview-overlay > * {
+  pointer-events: auto;
+}
+
+.wgi-dayview-nobody {
+  margin: 0;
+  color: var(--wgi-muted-ink);
+}
+
+/* No providers yet (S5): a white card over the hours, 440px wide; the
+   one command is the teal pill. */
+.wgi-dayview-empty {
+  display: flex;
+  width: min(27.5rem, 100%);
+  box-sizing: border-box;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 40px;
+  border: 1px solid var(--wgi-rule);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: var(--wgi-card-shadow);
+  text-align: center;
+}
+
+.wgi-dayview-empty-disc {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--color-teal-50);
+  color: var(--color-teal-700);
+}
+
+.wgi-dayview-empty-title {
+  margin: 24px 0 0;
+  color: var(--wgi-name-ink);
+  font-family: inherit;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 28px;
+}
+
+.wgi-dayview-empty-text {
+  margin: 8px 0 0;
+  color: var(--wgi-muted-ink);
+  font-size: 0.9375rem;
+  line-height: 22px;
+}
+
+.wgi-dayview-empty-add {
+  --btn-lift: 0px;
+  --btn-hover-shadow: none;
+  min-height: 2.5rem;
+  margin-top: 24px;
+  gap: 8px;
+  border-radius: 999px;
+  padding-inline: 20px;
+  background: linear-gradient(var(--color-teal-600), var(--color-teal-700));
+  font-size: 0.9375rem;
+}
+
+/* Hover, for a pointer that can hover. */
+@media (hover: hover) and (pointer: fine) {
+  .wgi-dayview-empty-add:hover {
+    background: linear-gradient(var(--color-teal-500), var(--color-teal-600));
+  }
+
+  .wgi-dayview-block:hover {
+    z-index: 2;
+    border-color: var(--wgi-rule);
+    background: #fff;
+    box-shadow: var(--wgi-card-shadow);
+  }
+
+  .wgi-dayview-block:hover .wgi-dayview-checkin {
+    display: inline-flex;
+  }
+
+  .wgi-dayview-block:hover:has(.wgi-dayview-checkin) .wgi-dayview-block-open {
+    padding-right: 112px;
+  }
+
+  .wgi-dayview-checkin:not(:disabled):hover {
+    background: var(--color-teal-ink);
+  }
+
+  .wgi-dayview-open:hover {
+    border-style: solid;
+    border-color: var(--color-teal-600);
+    background: var(--color-mint);
+  }
+
+  .wgi-dayview-open:hover .wgi-dayview-open-word {
+    display: none;
+  }
+
+  .wgi-dayview-open:hover .wgi-dayview-open-book {
+    display: inline;
+  }
+
+  .wgi-dayview-hint-button:hover,
+  .wgi-shortcuts-close:hover {
+    background: var(--color-slate-100);
+  }
+}

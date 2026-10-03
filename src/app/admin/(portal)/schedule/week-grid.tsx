@@ -3,9 +3,9 @@
 import { Popover } from "@base-ui/react/popover";
 import { Tooltip } from "@base-ui/react/tooltip";
 import Link from "next/link";
-import { useSyncExternalStore } from "react";
 import type { CSSProperties, KeyboardEvent } from "react";
 
+import { useMinuteClock } from "./minute-clock";
 import type {
   ScheduleWeek,
   WeekAppointmentCell,
@@ -15,7 +15,7 @@ import type {
   WeekOpenCell,
 } from "./schedule-week-model";
 import { rememberWeekProvider } from "./week-actions";
-import { weekHref } from "./week-calendar";
+import { dayHref, dayTitle, weekHref } from "./week-calendar";
 import type { WeekCardPayload } from "./week-cards";
 import { nowOffset } from "./week-hours";
 
@@ -51,25 +51,6 @@ function place(values: Readonly<Record<`--${string}`, number>>): CssVars {
   return { ...values };
 }
 
-/* ---- The browser's clock, by the minute ---- */
-
-const MINUTE_MS = 60_000;
-
-function subscribeMinute(onChange: () => void) {
-  const timer = window.setInterval(onChange, MINUTE_MS / 4);
-  return () => {
-    window.clearInterval(timer);
-  };
-}
-
-function minuteNow(): number {
-  return Math.floor(Date.now() / MINUTE_MS) * MINUTE_MS;
-}
-
-function noClock(): number | null {
-  return null;
-}
-
 function cellDomId(baseId: string, cell: Readonly<WeekCell>): string {
   return `${baseId}-${cell.kind === "appointment" ? cell.id : cell.key}`;
 }
@@ -79,7 +60,7 @@ function cellDomId(baseId: string, cell: Readonly<WeekCell>): string {
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- Base UI handles carry store member types that cannot be made readonly
 export function WeekGrid({ grid }: Readonly<{ grid: Grid }>) {
   const { view } = grid;
-  const now = useSyncExternalStore(subscribeMinute, minuteNow, noClock);
+  const now = useMinuteClock();
   /* A day without hours folds to a strip beside the days that have them; a
      week without hours anywhere keeps its seven days at full width. */
   const fold = view.columns.some((column) => column.kind === "day");
@@ -159,10 +140,15 @@ function WeekDay({
       data-today={column.today || undefined}
     >
       <div className="wgi-week-day-head">
-        <p className="wgi-week-day-date" aria-hidden="true">
+        {/* The day's head opens it in the day view (issue #351). */}
+        <Link
+          href={dayHref(column.date)}
+          className="wgi-week-day-date"
+          aria-label={`Open ${dayTitle(column.date)}`}
+        >
           {column.weekday}
           <span className="wgi-week-day-number">{column.day}</span>
-        </p>
+        </Link>
         <p className="wgi-week-day-count" aria-hidden="true">
           {column.count === null ? null : column.count.value === null ? (
             <b>{column.count.word}</b>

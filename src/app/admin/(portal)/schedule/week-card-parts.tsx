@@ -14,8 +14,33 @@ import { failureMessage } from "./week-card-model";
 
 export type ReferenceType = ScheduleWeek["referenceType"];
 
+/** The words a command's toast says once it lands: the week's sentence is
+   the subject and the rest; the day's headline drops what its detail line,
+   when and where, already says. */
+export interface Said {
+  readonly subject: string;
+  readonly rest: string;
+  /** The day's headline when it is shorter than the sentence: "X is booked". */
+  readonly headline?: string;
+  readonly detail: string | null;
+}
+
+/** What a landed command names: the appointment and its new version, which
+   Undo sends back, and the toast's words. */
+export interface Landed {
+  readonly id: string;
+  readonly version: number;
+  /** "James Okonkwo is booked at 2:00 PM.": the week's toast. */
+  readonly message: string;
+  /** "James Okonkwo is booked": the day's toast, over its detail. */
+  readonly headline: string;
+  readonly detail: string | null;
+}
+
+export type DoneHandler = (message: string, landed: Landed) => void;
+
 export interface CardHandlers {
-  readonly onDone: (message: string) => void;
+  readonly onDone: DoneHandler;
   readonly onOpenRecord: (line: HomeLine, appointmentId: string) => void;
 }
 
@@ -29,12 +54,15 @@ export function CardError({ children }: Readonly<{ children: ReactNode }>) {
 
 /** One attempt at a command: a fresh idempotency key per attempt, kept
    while it is in flight so a double press cannot send it twice. */
-export function useCommand(onDone: (message: string) => void) {
+export function useCommand(onDone: DoneHandler) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const busy = useRef(false);
 
-  function run(attempt: (idempotencyKey: string) => Promise<WeekCommandOutcome>, done: string) {
+  function run(
+    attempt: (idempotencyKey: string) => Promise<WeekCommandOutcome>,
+    said: Readonly<Said>,
+  ) {
     if (busy.current) return;
     busy.current = true;
     setPending(true);
@@ -43,7 +71,14 @@ export function useCommand(onDone: (message: string) => void) {
       try {
         const outcome = await attempt(crypto.randomUUID());
         if (outcome.ok) {
-          onDone(done);
+          const message = `${said.subject}${said.rest}.`;
+          onDone(message, {
+            id: outcome.id,
+            version: outcome.version,
+            message,
+            headline: said.headline ?? `${said.subject}${said.rest}`,
+            detail: said.detail,
+          });
           return;
         }
         setError(failureMessage(outcome.code));

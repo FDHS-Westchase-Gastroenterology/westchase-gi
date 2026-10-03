@@ -113,11 +113,12 @@ test("each day names its date and state in the words staff hear", () => {
   assert.equal(on(18).tone, "mid");
 });
 
-test("the day preview reads the open count, the booked share and each provider's first openings", () => {
+test("the day preview reads the open count, the booked share and each provider's first openings, and opens the day", () => {
   const cells = scheduleMonthFor(summary(september())).weeks.flat();
   const day = cells.find((cell) => cell.kind === "future" && cell.day === 22);
   assert.deepEqual(day.preview, {
     heading: "Tuesday, September 22",
+    href: "/admin/schedule?view=day&date=2026-09-22",
     summary: "4 open · 10 of 14 booked",
     providers: [
       {

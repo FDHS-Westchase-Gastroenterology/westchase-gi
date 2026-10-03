@@ -155,6 +155,25 @@ export function Minus(p: IconProps) {
   );
 }
 
+export function Plus(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M5 12h14" />
+      <path d="M12 5v14" />
+    </svg>
+  );
+}
+
+/* The sidebar toggle (lucide panel-left). */
+export function PanelLeft(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M9 3v18" />
+    </svg>
+  );
+}
+
 // "Forward" arrow: mirrors under RTL so it always points in reading direction.
 export function ArrowRight(p: IconProps) {
   return (
