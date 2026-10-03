@@ -48,6 +48,8 @@ export interface Lifted {
   readonly rect: Readonly<{ left: number; top: number; width: number; height: number }>;
   /** Where the card is drawn: above the grid, whose blocks clip their contents. */
   readonly host: HTMLElement;
+  /** Which lift this is: a card still gliding home is dropped, not its successor. */
+  readonly lift: number;
 }
 
 interface Session {
@@ -107,6 +109,7 @@ export function useDayDrag({
   const cardRef = useRef<HTMLDivElement | null>(null);
   const session = useRef<Session | null>(null);
   const swallowClick = useRef(false);
+  const lifts = useRef(0);
   /* The listeners outlive a render; they read the latest day and handlers here. */
   const latest = useRef({ view, onLift, onDrop });
   useEffect(() => {
@@ -237,11 +240,12 @@ export function useDayDrag({
     const origin = card.getBoundingClientRect();
     const dx = live.dx + from.left - origin.left;
     const dy = live.dy + from.top - origin.top;
+    const lift = lifts.current;
     let done = false;
     const settle = () => {
       if (done) return;
       done = true;
-      setLifted(null);
+      setLifted((current) => (current?.lift === lift ? null : current));
     };
     card.dataset.returning = "";
     card.addEventListener("transitionend", settle, { once: true });
@@ -286,7 +290,8 @@ export function useDayDrag({
   function onPointerDown(event: ReactPointerEvent<HTMLElement>, cell: DayAppointmentCell) {
     swallowClick.current = false;
     if (!cell.movable || event.button !== 0 || event.pointerType === "touch") return;
-    if (session.current !== null || lifted !== null) return;
+    // A card still gliding home does not hold the next press: the new lift replaces it.
+    if (session.current !== null) return;
     const handle = event.currentTarget;
     const block = handle.parentElement;
     if (block === null) return;
@@ -356,10 +361,12 @@ export function useDayDrag({
         stop,
       };
       latest.current.onLift();
+      lifts.current += 1;
       setLifted({
         cell,
         rect: { left: box.left, top: box.top, width: box.width, height: box.height },
         host: handle.ownerDocument.body,
+        lift: lifts.current,
       });
     }
 
@@ -395,6 +402,7 @@ export function LiftedCard({ drag }: Readonly<{ drag: DayDrag }>) {
   const tone = shown ? toneOf(target.verdict) : null;
   return createPortal(
     <div
+      key={lifted.lift}
       ref={cardRef}
       className="wgi-dayview-lifted"
       aria-hidden="true"
