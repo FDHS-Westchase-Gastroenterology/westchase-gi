@@ -204,6 +204,30 @@ const portalCaptures = [
     ready: "main h1",
   },
   {
+    name: "desktop-portal-settings-providers",
+    path: "/admin/settings/providers",
+    viewport: { width: 1440, height: 900 },
+    ready: "main h1",
+  },
+  {
+    name: "desktop-portal-settings-appointment-types",
+    path: "/admin/settings/appointment-types",
+    viewport: { width: 1440, height: 900 },
+    ready: "main h1",
+  },
+  {
+    name: "desktop-portal-settings-locations",
+    path: "/admin/settings/locations",
+    viewport: { width: 1440, height: 900 },
+    ready: "main h1",
+  },
+  {
+    name: "desktop-portal-settings-staff",
+    path: "/admin/settings/staff",
+    viewport: { width: 1440, height: 900 },
+    ready: "main h1",
+  },
+  {
     name: "desktop-portal-settings-notifications",
     path: "/admin/settings/notifications",
     viewport: { width: 1440, height: 900 },
@@ -254,6 +278,30 @@ const portalCaptures = [
   {
     name: "mobile-portal-review-flyers",
     path: "/admin/review-flyers",
+    viewport: { width: 390, height: 844 },
+    ready: "main h1",
+  },
+  {
+    name: "mobile-portal-settings-providers",
+    path: "/admin/settings/providers",
+    viewport: { width: 390, height: 844 },
+    ready: "main h1",
+  },
+  {
+    name: "mobile-portal-settings-appointment-types",
+    path: "/admin/settings/appointment-types",
+    viewport: { width: 390, height: 844 },
+    ready: "main h1",
+  },
+  {
+    name: "mobile-portal-settings-locations",
+    path: "/admin/settings/locations",
+    viewport: { width: 390, height: 844 },
+    ready: "main h1",
+  },
+  {
+    name: "mobile-portal-settings-staff",
+    path: "/admin/settings/staff",
     viewport: { width: 390, height: 844 },
     ready: "main h1",
   },

@@ -21,7 +21,7 @@ contracts are not yet on `main`.
 | --- | --- | --- | --- |
 | Finish a contact without another call | One contact-and-close save, combined history, and Undo | Connected: both Home No call choices use completion; regression coverage includes history, replay, stale input, reload, and Undo | [Contact completion](#contact-completion) |
 | Manage patients | Registration, search, demographics, reviewed request links, archive/restore, and history | Patient search, registration, detail, identity review, and administrator controls | [Patients](#patients) |
-| Set up scheduling | Providers, locations, appointment types, hours, exceptions, and preparation buffers | Administrator configuration screens with complete reads and validation | [Scheduling](#scheduling) |
+| Set up scheduling | Providers, locations, appointment types, hours, time off, closed days, and preparation buffers | Connected: the Settings window's Schedule group (`/admin/settings/providers`, `/appointment-types`, `/locations`) applies each change as it is made, warns before time off or a closed day covers bookings and lists them to rebook after, and offers Undo. Staff read every pane with no edit controls | [Settings window](#settings-window) |
 | See month availability | One summary per practice date: open count, booked share, seen visits, closed days, and per-provider openings | Connected: `/admin/schedule` month view with the day preview, the week view (`week_schedule`), and the Day view (`day_schedule`): one column per working provider, open time that books, and the no-providers empty state | [Scheduling](#scheduling) |
 | Book and manage appointments | Availability, conflict checks, booking, rescheduling, cancellation, arrival/outcomes, and Undo | Connected on the week and Day views: the appointment card checks in, reschedules, cancels and marks no-show or complete, and the open-time card books a found patient. The Day view's booking and Check in offer Undo for 15 minutes (`undoAppointmentChange`). Remaining: appointment history, and Undo on the week view | [Scheduling](#scheduling) |
 | Schedule from an intake request | One operation updates both the reservation and its reviewed request | Connected for a linked request: the Home record card books from its month (`month_availability`, then one `book` with `sourceRequestId`). Remaining: patient selection/linking, paired rescheduling/cancellation/Undo | [Requests and appointments](#requests-and-appointments) |
@@ -218,6 +218,52 @@ page; history reads return 50. Follow cursors instead of treating the first page
 Handle `provider_conflict`, `patient_conflict`, `time_unavailable`, `schedule_in_use`, resource
 unavailability, and `type_changed` distinctly. Preserve the chosen values and refresh the relevant
 availability or configuration. A failed read must not display an apparently empty calendar.
+
+### Settings window
+
+The Settings window's Schedule group does not call `POST /api/admin/scheduling`. Its server action
+`applySettingsCommand` in
+[settings/schedule-actions.ts](src/app/admin/(portal)/settings/schedule-actions.ts) takes one
+`SchedulingSettingsCommandInput` (`idempotencyKey` plus one granular `command`) from
+[scheduling/settings-contracts.ts](src/lib/portal/scheduling/settings-contracts.ts), and each pane
+reads `readSchedulingSettings` on the server. The client hook `useSettingsCommand` in
+[settings/use-settings-command.ts](src/app/admin/(portal)/settings/use-settings-command.ts) mints
+the key, shows the result as a toast, and registers Undo by sending the inverse command.
+
+| Command | Inputs beyond `id` and `expectedVersion` |
+| --- | --- |
+| `add_provider` | `name`, `credentials`, weekly `hours`; creates without `id`. |
+| `set_provider_profile` | `name`, `credentials`, `bookable`, `active`. |
+| `set_provider_weekly_hours` | The full weekly `hours`: weekday, location, open and close minute on the 15-minute grid. |
+| `add_time_off` / `remove_time_off` | `startsOn`, `endsOn`, `allDay` (or one day's `startMinute`/`endMinute`), `reason`, `dryRun`; removal takes `timeOffId`. |
+| `set_provider_types` | The full `typeIds` the provider sees. |
+| `save_appointment_type` | `name`, `durationMinutes`, buffers, `icon`, `description`, `providerIds`; a new type sends null `id` and `expectedVersion` and joins the end of the booking order. |
+| `reorder_appointment_types` | The 1-based `position` in the booking order. |
+| `set_appointment_type_active` / `delete_appointment_type` | `active`; deletion takes no more. |
+| `save_location_details` | `name`, address, `mapsQuery`, and the office's open `hours`. |
+| `add_location_closure` / `remove_location_closure` | `closedOn`, `note`, `dryRun`; removal takes `closureId`. |
+
+The action refuses a staff session with `forbidden`, and the database refuses it again. A dry run
+(`dryRun: true`) saves nothing and returns the `conflicts` the change would cover; the pane shows
+their count before the change is added. Neither time off nor a closed day cancels a booking: the
+saved result returns the same `conflicts`, which the pane lists as links to their Day view.
+A turned-off type leaves `portal_scheduling_catalog`, so it is no longer offered for booking;
+booked appointments keep it.
+
+| Code | Meaning in the Settings window |
+| --- | --- |
+| `outside_office_hours` | Provider hours would leave the office's hours, or office hours would cut into a provider's. |
+| `provider_not_bookable` / `provider_not_eligible` | `book` and `reschedule` refuse a provider who is not bookable or not offered the type. |
+| `location_closed` | `book` and `reschedule` refuse a closed day; its open counts read zero. |
+| `type_in_use` | A type that appointments have used can only be turned off, not deleted. |
+| `already_closed` | The office already has that closed day. |
+| `stale_version` | Another change landed first; the pane refreshes and an open editor keeps its draft. |
+
+Acceptance: [e2e/portal/settings-schedule.spec.ts](e2e/portal/settings-schedule.spec.ts) covers
+time off over a booking and its rebooking link, a type turned off and back on with Undo, a keyboard
+reorder with Undo, a closed day and its reopening, and staff reading every pane without edit
+controls. [e2e/boundaries/scheduling-settings.spec.ts](e2e/boundaries/scheduling-settings.spec.ts)
+covers each refusal against the database.
 
 ## Requests and appointments
 
