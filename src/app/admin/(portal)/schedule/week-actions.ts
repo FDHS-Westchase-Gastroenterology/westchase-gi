@@ -1,12 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 import type { HomeLine } from "@/app/admin/(portal)/(home)/home-line";
 import { lineFor } from "@/app/admin/(portal)/(home)/home-line-for";
 import { fetchWorkedRow } from "@/app/admin/(portal)/requests/queue";
 import { requireRole } from "@/lib/portal/auth";
-import { searchPatients } from "@/lib/portal/patients/reads";
+import type { FoundPerson } from "@/lib/portal/patients/contracts";
+import { findPeople, searchPatients } from "@/lib/portal/patients/reads";
 import type { SchedulingFailureCode } from "@/lib/portal/scheduling/contracts";
 import { executeSchedulingOperation } from "@/lib/portal/scheduling/service";
 import { serviceClient } from "@/lib/portal/server";
@@ -166,6 +168,27 @@ export async function searchWeekPatients(query: string): Promise<WeekPatientSear
   };
 }
 
+export type SchedulePeopleOutcome =
+  | {
+      readonly ok: true;
+      /** False on the portal's first day: no patient and no open request at all. */
+      readonly anyone: boolean;
+      readonly total: number;
+      readonly people: readonly FoundPerson[];
+    }
+  | { readonly ok: false };
+
+/** The Schedule's search (issue #356): patients and open requests by any
+   word of the name or the digits of the phone. A POST, so the query stays
+   out of addresses and logs; nothing here records it. An empty query only
+   says whether anyone exists yet. */
+export async function findSchedulePeople(query: string): Promise<SchedulePeopleOutcome> {
+  const session = await requireRole("staff", { unauthenticated: "throw" });
+  const outcome = await findPeople(serviceClient(), session.id, { query, limit: 20 });
+  if (!outcome.ok) return { ok: false };
+  return { ok: true, anyone: outcome.anyone, total: outcome.total, people: outcome.people };
+}
+
 export async function bookOpenTime(
   input: Readonly<{ idempotencyKey: string; command: WeekBookCommand }>,
 ): Promise<WeekCommandOutcome> {
@@ -201,9 +224,11 @@ export async function undoAppointmentChange(
 
 /** The line the full-record sheet opens with for an appointment's request,
    built the way Home builds its rows; null when the request is gone or the
-   read failed, and the card says so. */
+   read failed, and the card says so. The id may come from the address
+   (`?request=`), so anything that isn't one is no record. */
 export async function readWeekRecordLine(requestId: string): Promise<HomeLine | null> {
   await requireRole("staff", { unauthenticated: "throw" });
+  if (!z.uuid().safeParse(requestId).success) return null;
   const db = serviceClient();
   const now = new Date();
   try {

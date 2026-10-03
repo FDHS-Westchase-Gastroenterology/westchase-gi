@@ -9,13 +9,20 @@ export const EMPTY_STAFF_REQUEST_DRAFT = {
   message: "",
 } as const;
 
-export function isStaffRequestDraftDirty(draft: StaffRequestDraft): boolean {
+/** What the form opens with when the Schedule's search starts it (issue #356): the name, or the number, that was typed. */
+export type StaffRequestPrefill = Readonly<Partial<Pick<StaffRequestDraft, "name" | "phone">>>;
+
+/** True once the draft differs from what the form opened with, so a prefill alone is nothing to discard. */
+export function isStaffRequestDraftDirty(
+  draft: StaffRequestDraft,
+  opened: StaffRequestDraft = EMPTY_STAFF_REQUEST_DRAFT,
+): boolean {
   return (
-    draft.name !== EMPTY_STAFF_REQUEST_DRAFT.name ||
-    draft.phone !== EMPTY_STAFF_REQUEST_DRAFT.phone ||
-    draft.email !== EMPTY_STAFF_REQUEST_DRAFT.email ||
-    draft.location !== EMPTY_STAFF_REQUEST_DRAFT.location ||
-    draft.time !== EMPTY_STAFF_REQUEST_DRAFT.time ||
-    draft.message !== EMPTY_STAFF_REQUEST_DRAFT.message
+    draft.name !== opened.name ||
+    draft.phone !== opened.phone ||
+    draft.email !== opened.email ||
+    draft.location !== opened.location ||
+    draft.time !== opened.time ||
+    draft.message !== opened.message
   );
 }

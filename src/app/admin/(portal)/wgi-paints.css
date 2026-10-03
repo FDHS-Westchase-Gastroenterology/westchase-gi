@@ -5,8 +5,8 @@
    to body, joins both selector lists below. */
 
 /* The record card, the full-record sheet, its history popover, the card's
-   booking day popover, the Schedule's day preview, week card and shortcuts list, and
-   Settings' popovers are portaled to body, outside their page, so they read the same paints from
+   booking day popover, the Schedule's day preview, week card, shortcuts list and patient
+   search, and Settings' popovers are portaled to body, outside their page, so they read the same paints from
    this shared rule rather than restating them. */
 .wgi-home,
 .wgi-record-card,
@@ -18,7 +18,8 @@
 .wgi-week-card,
 .wgi-shortcuts,
 .wgi-settings,
-.wgi-settings-popover {
+.wgi-settings-popover,
+.wgi-people-popup {
   /* Figma parity: the paints below are the design file's own variables
      (Ypf9ohpRcGWF5C9T9bSvWW, "Home · Approved baseline", node 88:1176,
      which carries these names), scoped to the staff surfaces so the brand
@@ -115,7 +116,8 @@
   .wgi-week-card,
   .wgi-shortcuts,
   .wgi-settings,
-  .wgi-settings-popover {
+  .wgi-settings-popover,
+  .wgi-people-popup {
     --wgi-surface: color(display-p3 0.988 0.992 0.996);
     --wgi-rule: color(display-p3 0.875 0.902 0.937);
     --wgi-band: color(display-p3 0.918 0.945 0.969);
