@@ -289,6 +289,7 @@ function ActivityDays({
   loadingMore,
   moreFailed,
   sentinel,
+  firstDay,
   onMore,
 }: Readonly<{
   rows: readonly ActivityRow[];
@@ -297,6 +298,8 @@ function ActivityDays({
   loadingMore: boolean;
   moreFailed: boolean;
   sentinel: RefObject<HTMLDivElement | null>;
+  /** The log holds only sign-ins: the first-day sentence closes it. */
+  firstDay: boolean;
   onMore: () => void;
 }>) {
   return (
@@ -317,9 +320,11 @@ function ActivityDays({
           </ol>
         </section>
       ))}
-      {cursor === null ? (
+      {firstDay ? <ActivityFirstDay /> : null}
+      {cursor === null && !firstDay ? (
         <p className="wgi-activity-end">That is everything the log holds for this view.</p>
-      ) : (
+      ) : null}
+      {cursor === null ? null : (
         <div ref={sentinel} className="wgi-activity-more">
           {moreFailed ? (
             <p className="wgi-activity-more-error" data-testid="activity-more-error">
@@ -346,6 +351,27 @@ function ActivityDays({
   );
 }
 
+/* The first day (issue #357, U1): the admin's own sign-in is the first
+   entry, so the sentence sits under it rather than in a blank card. */
+function ActivityFirstDay() {
+  return (
+    <Empty className="wgi-activity-empty wgi-activity-first" data-testid="activity-empty-first">
+      <EmptyHeader>
+        <EmptyMedia variant="icon" className="wgi-activity-empty-disc" aria-hidden="true">
+          <Activity width={22} height={22} />
+        </EmptyMedia>
+        <EmptyTitle className="wgi-activity-empty-title">
+          The log fills in as your team works
+        </EmptyTitle>
+        <EmptyDescription className="wgi-activity-empty-text">
+          Bookings, calls, check-ins, hours and settings changes appear here as they happen, newest
+          first, with the person who made each one.
+        </EmptyDescription>
+      </EmptyHeader>
+    </Empty>
+  );
+}
+
 function ActivityEmpty({
   firstDay,
   appointments,
@@ -359,24 +385,7 @@ function ActivityEmpty({
   filtered: boolean;
   onClear: () => void;
 }>) {
-  if (firstDay) {
-    return (
-      <Empty className="wgi-activity-empty" data-testid="activity-empty-first">
-        <EmptyHeader>
-          <EmptyMedia variant="icon" className="wgi-activity-empty-disc" aria-hidden="true">
-            <Activity width={22} height={22} />
-          </EmptyMedia>
-          <EmptyTitle className="wgi-activity-empty-title">
-            The log fills in as your team works
-          </EmptyTitle>
-          <EmptyDescription className="wgi-activity-empty-text">
-            Bookings, calls, check-ins, hours and settings changes appear here as they happen,
-            newest first, with the person who made each one.
-          </EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    );
-  }
+  if (firstDay) return <ActivityFirstDay />;
   if (appointments) {
     return (
       <Empty className="wgi-activity-empty" data-testid="activity-empty-appointments">
@@ -483,6 +492,7 @@ export function ActivityFeed({
   onClear: () => void;
   onMore: () => void;
 }>) {
+  const quiet = !hasFilters(shown.filters) && shown.query === "" && hidden === 0;
   let body;
   if (failed === "unavailable" || failed === "unauthorized") {
     body = <ActivityUnavailable onRetry={onRetry} />;
@@ -491,7 +501,7 @@ export function ActivityFeed({
   } else if (rows.length === 0) {
     body = (
       <ActivityEmpty
-        firstDay={!hasFilters(shown.filters) && shown.query === "" && hidden === 0}
+        firstDay={quiet}
         appointments={
           activityHref(shown.filters) === "/admin/audit?category=appointments" && shown.query === ""
         }
@@ -509,6 +519,7 @@ export function ActivityFeed({
         loadingMore={loadingMore}
         moreFailed={moreFailed}
         sentinel={sentinel}
+        firstDay={quiet && cursor === null && rows.every((row) => row.category === "sign_ins")}
         onMore={onMore}
       />
     );
