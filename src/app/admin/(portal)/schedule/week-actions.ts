@@ -11,7 +11,11 @@ import type { ClinicalOutcome } from "@/lib/portal/clinical/contracts";
 import { executeClinicalOperation } from "@/lib/portal/clinical/service";
 import type { FoundPerson, PatientSummary, PatientVisit } from "@/lib/portal/patients/contracts";
 import { findPeople, readPatient, searchPatients } from "@/lib/portal/patients/reads";
-import type { SchedulingFailureCode } from "@/lib/portal/scheduling/contracts";
+import type {
+  SchedulingFailureCode,
+  SchedulingOutcome,
+} from "@/lib/portal/scheduling/contracts";
+import type { PlacementRefusal } from "@/lib/portal/scheduling/grid-contracts";
 import { executeSchedulingOperation } from "@/lib/portal/scheduling/service";
 import { serviceClient } from "@/lib/portal/server";
 import { fetchStaffNameMap } from "@/lib/portal/staff-identity";
@@ -95,11 +99,40 @@ export async function readWeekAppointment(id: string): Promise<WeekAppointmentOu
   };
 }
 
+/** The request a request-linked command moved: where it went, which the
+   cancel toast says, and its new version, which that command's Undo sends. */
+export interface WeekCommandRequest {
+  readonly state: string;
+  readonly version: number;
+  readonly callAgainAt: string | null;
+}
+
 /** A command that lands names the appointment and its new version, which
    is what Undo sends back. */
 export type WeekCommandOutcome =
-  | { readonly ok: true; readonly id: string; readonly version: number }
+  | {
+      readonly ok: true;
+      readonly id: string;
+      readonly version: number;
+      readonly request: WeekCommandRequest | null;
+    }
   | Failure;
+
+function landed(outcome: SchedulingOutcome): WeekCommandOutcome {
+  if (!outcome.ok) return { ok: false, code: outcome.code };
+  if (!("version" in outcome) || !("entity" in outcome)) return { ok: false, code: "unavailable" };
+  changed();
+  const { request } = outcome;
+  return {
+    ok: true,
+    id: outcome.id,
+    version: outcome.version,
+    request:
+      request === undefined
+        ? null
+        : { state: request.state, version: request.version, callAgainAt: request.callAgainAt },
+  };
+}
 
 export async function weekAppointmentCommand(
   input: Readonly<{ idempotencyKey: string; command: WeekAppointmentCommand }>,
@@ -110,10 +143,7 @@ export async function weekAppointmentCommand(
     idempotencyKey: input.idempotencyKey,
     command: input.command,
   });
-  if (!outcome.ok) return { ok: false, code: outcome.code };
-  if (!("version" in outcome)) return { ok: false, code: "unavailable" };
-  changed();
-  return { ok: true, id: outcome.id, version: outcome.version };
+  return landed(outcome);
 }
 
 export type WeekRescheduleOutcome =
@@ -200,28 +230,32 @@ export async function bookOpenTime(
     idempotencyKey: input.idempotencyKey,
     command: { kind: "book", ...input.command, sourceRequestId: null, requestVersion: null },
   });
-  if (!outcome.ok) return { ok: false, code: outcome.code };
-  if (!("version" in outcome)) return { ok: false, code: "unavailable" };
-  changed();
-  return { ok: true, id: outcome.id, version: outcome.version };
+  return landed(outcome);
 }
 
 /** Undo the appointment's latest change: the server reverts it only while
    it is still the latest and under 15 minutes old, and otherwise refuses
    with undo_unavailable. */
 export async function undoAppointmentChange(
-  input: Readonly<{ idempotencyKey: string; id: string; expectedVersion: number }>,
+  input: Readonly<{
+    idempotencyKey: string;
+    id: string;
+    expectedVersion: number;
+    requestVersion?: number | null;
+  }>,
 ): Promise<WeekCommandOutcome> {
   const session = await requireRole("staff", { unauthenticated: "throw" });
   const outcome = await executeSchedulingOperation(serviceClient(), session.id, {
     action: "command",
     idempotencyKey: input.idempotencyKey,
-    command: { kind: "undo", id: input.id, expectedVersion: input.expectedVersion },
+    command: {
+      kind: "undo",
+      id: input.id,
+      expectedVersion: input.expectedVersion,
+      requestVersion: input.requestVersion ?? null,
+    },
   });
-  if (!outcome.ok) return { ok: false, code: outcome.code };
-  if (!("version" in outcome)) return { ok: false, code: "unavailable" };
-  changed();
-  return { ok: true, id: outcome.id, version: outcome.version };
+  return landed(outcome);
 }
 
 /** The line the full-record sheet opens with for an appointment's request,
@@ -346,4 +380,27 @@ export async function readSchedulePatient(patientId: string): Promise<SchedulePa
   } catch {
     return { ok: false, code: "unavailable" };
   }
+}
+
+export type CanPlaceAnswer =
+  | { readonly ok: true; readonly placeable: true }
+  | { readonly ok: true; readonly placeable: false; readonly refusal: PlacementRefusal }
+  | Failure;
+
+/** Whether a dragged appointment can land on one open time. The Day view
+   asks once per destination while the card is over it; Reschedule still
+   checks every rule when the card drops. */
+export async function canPlaceAppointment(
+  input: Readonly<{ appointmentId: string; providerId: string; locationId: string; startsAt: string }>,
+): Promise<CanPlaceAnswer> {
+  const session = await requireRole("staff", { unauthenticated: "throw" });
+  const read = await executeSchedulingOperation(serviceClient(), session.id, {
+    action: "can_place",
+    ...input,
+  });
+  if (!read.ok) return { ok: false, code: read.code };
+  if (!("placeable" in read)) return { ok: false, code: "unavailable" };
+  return read.placeable
+    ? { ok: true, placeable: true }
+    : { ok: true, placeable: false, refusal: read.refusal };
 }
