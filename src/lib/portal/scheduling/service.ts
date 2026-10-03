@@ -7,6 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { schedulingCommandOutcomeSchema, schedulingInputSchema } from "./contracts";
 import type { SchedulingInput, SchedulingOutcome } from "./contracts";
 import {
+  canPlaceOutcomeSchema,
   dayScheduleOutcomeSchema,
   rememberWeekProviderOutcomeSchema,
   weekProviderOutcomeSchema,
@@ -63,7 +64,8 @@ export async function executeSchedulingOperation(
     const intent = Object.fromEntries(
       Object.entries(operation.command).filter(
         ([field, value]) =>
-          value !== null || (field !== "requestVersion" && field !== "callAgainOn"),
+          value !== null ||
+          (field !== "requestVersion" && field !== "callAgainOn" && field !== "requestOutcome"),
       ),
     );
     const fingerprint = commandFingerprint(
@@ -230,6 +232,20 @@ export async function executeSchedulingOperation(
         .abortSignal(AbortSignal.timeout(10_000));
       if (result.error !== null) return { ok: false, code: "unavailable" };
       const outcome = dayScheduleOutcomeSchema.safeParse(result.data);
+      return outcome.success ? outcome.data : { ok: false, code: "unavailable" };
+    }
+    case "can_place": {
+      const result = await db
+        .rpc("portal_can_place_appointment", {
+          p_actor_id: actorId,
+          p_appointment_id: operation.appointmentId,
+          p_provider_id: operation.providerId,
+          p_location_id: operation.locationId,
+          p_starts_at: operation.startsAt,
+        })
+        .abortSignal(AbortSignal.timeout(10_000));
+      if (result.error !== null) return { ok: false, code: "unavailable" };
+      const outcome = canPlaceOutcomeSchema.safeParse(result.data);
       return outcome.success ? outcome.data : { ok: false, code: "unavailable" };
     }
     case "week_provider": {

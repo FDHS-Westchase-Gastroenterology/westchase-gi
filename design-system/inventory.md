@@ -63,6 +63,9 @@ Bold marks the default; a required prop has none.
 - [`popover.tsx`](../src/components/ui/popover.tsx) · `"use client"` · built on `@base-ui/react/popover`
   - `PopoverContent`: `paint` **`paper`** · `card`; `motion` **`wgi`** · `none`
   - Also exports: `Popover`, `PopoverArrow`, `PopoverClose`, `PopoverTitle`, `PopoverTrigger`
+- [`radio-group.tsx`](../src/components/ui/radio-group.tsx) · `"use client"` · built on `@base-ui/react/radio`, `@base-ui/react/radio-group`
+  - `RadioGroupItem`: `motion` **`wgi`** · `none`
+  - Also exports: `RadioGroup`
 - [`scroll-area.tsx`](../src/components/ui/scroll-area.tsx) · `"use client"` · built on `@base-ui/react/scroll-area`
   - `ScrollBar`: `orientation` **`vertical`**
   - Also exports: `ScrollArea`, `ScrollAreaThumb`, `ScrollAreaViewport`

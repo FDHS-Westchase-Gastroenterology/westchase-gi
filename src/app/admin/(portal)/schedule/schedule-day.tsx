@@ -8,8 +8,9 @@ import { toast } from "sonner";
 import { ChevronLeft, ChevronRight } from "@/components/icons";
 import { Popover } from "@/components/ui/popover";
 import { createPopoverHandle } from "@/components/ui/popover-behavior";
-import { showUndoToast } from "@/components/ui/undo-toast";
 
+import type { DropTarget, PendingMove } from "./day-drag-model";
+import { withMove } from "./day-drag-model";
 import { DayEmpty } from "./day-empty";
 import { DayFoot } from "./day-foot";
 import { DayGrid } from "./day-grid";
@@ -18,9 +19,11 @@ import { useSchedulePeople } from "./schedule-people";
 import { ShortcutsList, useScheduleShortcuts } from "./schedule-shortcuts";
 import type { ShortcutTargets } from "./schedule-shortcuts";
 import { ScheduleArrow, ScheduleTools } from "./schedule-toolbar";
-import { undoAppointmentChange, weekAppointmentCommand } from "./week-actions";
-import { failureMessage } from "./week-card-model";
-import type { Landed } from "./week-card-parts";
+import { weekAppointmentCommand } from "./week-actions";
+import type { WeekAppointmentOutcome } from "./week-actions";
+import { practiceTime } from "./week-calendar";
+import { checkedInDetail, failureMessage, movedFromDetail } from "./week-card-model";
+import { useUndoLanded } from "./week-card-parts";
 import { WeekCardPopup } from "./week-cards";
 import type { WeekCardPayload } from "./week-cards";
 
@@ -37,6 +40,9 @@ import "./schedule-day.css";
    - A booking, or a Check in from a block, re-reads the day and raises
      the undo toast: what landed, when and where, and Undo while the
      server still allows it.
+   - A visit dragged to open time lands there at once and the server is
+     told after (day-drag.tsx); if the server refuses, the day is read
+     again and the card is back where it was.
    - The day is one focus group (day-grid.tsx); the Schedule's shortcuts
      (schedule-shortcuts.tsx) move between days and views, and ? or "All
      shortcuts" lists them. */
@@ -50,6 +56,7 @@ export function ScheduleDayView({ view, admin }: Readonly<{ view: ScheduleDay; a
   const [keyed, setKeyed] = useState(false);
   const { openRecord } = useSchedulePeople();
   const [checking, setChecking] = useState<string | null>(null);
+  const [move, setMove] = useState<PendingMove | null>(null);
   const [hints, setHints] = useState(false);
   const [shortcuts, setShortcuts] = useState(false);
   const [shortcutsHandle] = useState(() => createPopoverHandle<undefined>());
@@ -69,28 +76,7 @@ export function ScheduleDayView({ view, admin }: Readonly<{ view: ScheduleDay; a
     setShortcuts(true);
   });
 
-  /** A change landed: say it with Undo, and re-read the day. */
-  function landed(change: Readonly<Pick<Landed, "id" | "version" | "headline" | "detail">>) {
-    const idempotencyKey = crypto.randomUUID();
-    showUndoToast({
-      headline: change.headline,
-      detail: change.detail,
-      undo: async () => {
-        const outcome = await undoAppointmentChange({
-          idempotencyKey,
-          id: change.id,
-          expectedVersion: change.version,
-        });
-        return outcome.ok
-          ? { ok: true, message: "Undone." }
-          : { ok: false, message: failureMessage(outcome.code) };
-      },
-      onSettled: () => {
-        router.refresh();
-      },
-    });
-    router.refresh();
-  }
+  const landed = useUndoLanded();
 
   function checkIn(cell: Readonly<DayAppointmentCell>) {
     if (checking !== null) return;
@@ -106,7 +92,8 @@ export function ScheduleDayView({ view, admin }: Readonly<{ view: ScheduleDay; a
             id: outcome.id,
             version: outcome.version,
             headline: `${cell.name} is checked in`,
-            detail: cell.detail,
+            detail: checkedInDetail(new Date(), cell.startsAt, cell.providerName),
+            request: outcome.request,
           });
         else {
           toast.error(failureMessage(outcome.code));
@@ -120,14 +107,61 @@ export function ScheduleDayView({ view, admin }: Readonly<{ view: ScheduleDay; a
     });
   }
 
+  /* Figma Ap3: an accepted drop lands before the server answers, then the
+     undo toast says where it went and where it was. */
+  function moveTo(
+    cell: Readonly<DayAppointmentCell>,
+    target: Readonly<DropTarget>,
+    read: Promise<WeekAppointmentOutcome>,
+  ) {
+    const { locationId } = target;
+    if (locationId === null) return;
+    setMove({ view, id: cell.id, target });
+    startTransition(async () => {
+      try {
+        const current = await read;
+        const outcome = await weekAppointmentCommand({
+          idempotencyKey: crypto.randomUUID(),
+          command: {
+            kind: "reschedule",
+            id: cell.id,
+            expectedVersion: current.ok ? current.detail.version : cell.version,
+            providerId: target.providerId,
+            locationId,
+            start: { date: target.date, time: target.time },
+            requestVersion: current.ok ? current.detail.requestVersion : null,
+          },
+        });
+        if (outcome.ok) {
+          landed({
+            id: outcome.id,
+            version: outcome.version,
+            headline: `${cell.name} moved to ${practiceTime(target.startsAt)} with ${target.providerName}`,
+            detail: movedFromDetail(cell.startsAt, cell.providerName),
+            request: outcome.request,
+          });
+          return;
+        }
+        setMove(null);
+        toast.error(failureMessage(outcome.code));
+        router.refresh();
+      } catch {
+        setMove(null);
+        toast.error("The schedule couldn't be reached. Try again.");
+      }
+    });
+  }
+
+  const shown = withMove(view, move);
   const nobody = view.activeProviderCount === 0;
   return (
     <section className="wgi-schedule wgi-dayview" aria-labelledby={titleId}>
       <DayHeader view={view} titleId={titleId} targets={targets} />
       <DayGrid
-        view={view}
+        view={shown}
         baseId={baseId}
         card={card}
+        onMove={moveTo}
         onKeyed={setKeyed}
         onArrow={() => {
           setHints(true);

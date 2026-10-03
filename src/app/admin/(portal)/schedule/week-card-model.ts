@@ -1,6 +1,13 @@
 import type { SchedulingFailureCode, SchedulingInput } from "@/lib/portal/scheduling/contracts";
 
-import { addDays, practiceDate, practiceMinute } from "./week-calendar";
+import {
+  addDays,
+  cardDay,
+  practiceDate,
+  practiceMinute,
+  practiceTime,
+  timeRange,
+} from "./week-calendar";
 
 /* The week view's two click cards (issue #345; Figma section 08, H3 and
    H4): the appointment card, which reads one appointment and offers the
@@ -66,36 +73,50 @@ export interface WeekRescheduleTimes {
 
 export type MoreCommand = "cancel" | "no_show" | "complete";
 
+/** The one command the hour calls for, led in navy: Check in on the
+   visit's day, No-show once a visit nobody checked in for is over, and
+   Complete once the patient is here. */
+export type LeadCommand = "check_in" | "no_show" | "complete";
+
 export interface CardActions {
   /** Details and Open full record only. */
   readonly readOnly: boolean;
-  readonly checkIn: boolean;
+  readonly lead: LeadCommand | null;
   readonly reschedule: boolean;
   readonly more: readonly MoreCommand[];
 }
 
-const NO_ACTIONS: CardActions = { readOnly: true, checkIn: false, reschedule: false, more: [] };
+const NO_ACTIONS: CardActions = { readOnly: true, lead: null, reschedule: false, more: [] };
 
 /** The commands an appointment's status allows at the read's clock. A
    finished appointment, or one on a day already gone, opens read-only. */
 export function cardActions(detail: Readonly<WeekAppointmentDetail>): CardActions {
   const day = practiceDate(new Date(detail.startsAt));
   const today = practiceDate(new Date(detail.observedAt));
-  const started = Date.parse(detail.startsAt) <= Date.parse(detail.observedAt);
+  const now = Date.parse(detail.observedAt);
   if (day < today) return NO_ACTIONS;
   if (detail.status === "scheduled") {
+    const started = Date.parse(detail.startsAt) <= now;
+    const over = Date.parse(detail.endsAt) <= now;
+    if (over) return { readOnly: false, lead: "no_show", reschedule: false, more: ["cancel"] };
     return {
       readOnly: false,
-      checkIn: day === today,
-      reschedule: true,
+      lead: day === today ? "check_in" : null,
+      reschedule: !started,
       more: started ? ["cancel", "no_show"] : ["cancel"],
     };
   }
   if (detail.status === "checked_in") {
-    return { readOnly: false, checkIn: false, reschedule: false, more: ["complete", "cancel"] };
+    return { readOnly: false, lead: "complete", reschedule: false, more: ["cancel"] };
   }
   return NO_ACTIONS;
 }
+
+export const LEAD_LABEL = {
+  check_in: "Check in",
+  no_show: "Mark no-show",
+  complete: "Complete",
+} as const satisfies Record<LeadCommand, string>;
 
 export const MORE_LABEL = {
   cancel: "Cancel appointment…",
@@ -114,7 +135,7 @@ export interface StatusBadge {
 const STATUS_BADGE = {
   scheduled: { label: "Scheduled", variant: "settled" },
   checked_in: { label: "Checked in", variant: "current" },
-  completed: { label: "Completed", variant: "quiet" },
+  completed: { label: "Done", variant: "quiet" },
   no_show: { label: "No-show", variant: "attention" },
   cancelled: { label: "Cancelled", variant: "quiet" },
 } as const satisfies Record<WeekAppointmentStatus, StatusBadge>;
@@ -135,12 +156,56 @@ export const BADGE_PAINT = {
 
 /* ---- Cancel ---- */
 
+/** Why staff cancel, in the order the form offers them; the first is the default. */
+export const CANCEL_REASONS = [
+  "Patient cancelled",
+  "Provider unavailable",
+  "Booked in error",
+] as const;
+export type CancelReason = (typeof CANCEL_REASONS)[number];
+
 /** A request-managed cancel sets when to call the patient again: the next
    weekday after today, which staff can change. */
 export function nextCallAgainDay(today: string): string {
   let day = addDays(today, 1);
   while ([0, 6].includes(new Date(`${day}T12:00:00Z`).getUTCDay())) day = addDays(day, 1);
   return day;
+}
+
+/** "1:00 – 2:00 PM with Dr. John Chang": the time a cancel frees. */
+export function freedTime(
+  detail: Readonly<Pick<WeekAppointmentDetail, "startsAt" | "endsAt" | "providerName">>,
+): string {
+  return `${timeRange(detail.startsAt, detail.endsAt)} with ${detail.providerName}`;
+}
+
+/** The cancelled toast's second line: where the request went, or, for an
+   appointment no request manages, the time it opens. */
+export function cancelledDetail(
+  detail: Readonly<Pick<WeekAppointmentDetail, "startsAt" | "endsAt" | "providerName">>,
+  request: Readonly<{ state: string; callAgainAt: string | null }> | null,
+): string {
+  if (request === null) return `${freedTime(detail)} opens for booking again`;
+  if (request.callAgainAt !== null)
+    return `Back on Home as Call again, ${cardDay(request.callAgainAt)}`;
+  return "Request closed";
+}
+
+/* ---- Toasts ---- */
+
+/** "11:46 AM · 1:00 PM with Dr. John Chang": when the patient arrived, and
+   the visit they are here for. */
+export function checkedInDetail(
+  at: Readonly<Date>,
+  startsAt: string,
+  providerName: string,
+): string {
+  return `${practiceTime(at.toISOString())} · ${practiceTime(startsAt)} with ${providerName}`;
+}
+
+/** "Was 1:00 PM with Dr. John Chang": a move's second line. */
+export function movedFromDetail(startsAt: string, providerName: string): string {
+  return `Was ${practiceTime(startsAt)} with ${providerName}`;
 }
 
 /* ---- Times ---- */

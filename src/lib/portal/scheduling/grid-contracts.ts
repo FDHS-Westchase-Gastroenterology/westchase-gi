@@ -134,3 +134,34 @@ export const dayScheduleOutcomeSchema = z.union([
 ]);
 export type DayProvider = z.output<typeof dayProviderSchema>;
 export type DaySchedule = Extract<z.output<typeof dayScheduleOutcomeSchema>, { ok: true }>;
+
+/* Whether a dragged appointment can land on a candidate provider, location and start. A refusal
+   is an answer, not a failure: the Day view shows why while the card is over that time. */
+export const PLACEMENT_REFUSALS = [
+  "slot_booked",
+  "type_not_offered",
+  "outside_hours",
+  "closed_day",
+  "in_past",
+] as const;
+export type PlacementRefusal = (typeof PLACEMENT_REFUSALS)[number];
+export const canPlaceOutcomeSchema = z.union([
+  z
+    .object({
+      ok: z.literal(true),
+      placeable: z.literal(true),
+      startsAt: schedulingTimestampSchema,
+      endsAt: schedulingTimestampSchema,
+    })
+    .readonly(),
+  z
+    .object({
+      ok: z.literal(true),
+      placeable: z.literal(false),
+      refusal: z.enum(PLACEMENT_REFUSALS),
+      conflictId: z.uuid().optional(),
+    })
+    .readonly(),
+  schedulingFailureSchema,
+]);
+export type CanPlaceOutcome = z.output<typeof canPlaceOutcomeSchema>;

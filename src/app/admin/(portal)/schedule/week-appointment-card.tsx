@@ -17,14 +17,22 @@ import { appointmentAt, appointmentWhen } from "./week-calendar";
 import { CancelFace, RescheduleFace } from "./week-card-faces";
 import {
   BADGE_PAINT,
+  cancelledDetail,
   cardActions,
+  checkedInDetail,
   failureMessage,
+  LEAD_LABEL,
   MORE_LABEL,
   statusBadge,
 } from "./week-card-model";
-import type { MoreCommand, WeekAppointmentCommand, WeekAppointmentDetail } from "./week-card-model";
+import type {
+  LeadCommand,
+  MoreCommand,
+  WeekAppointmentCommand,
+  WeekAppointmentDetail,
+} from "./week-card-model";
 import { CardError, useCommand } from "./week-card-parts";
-import type { CardHandlers, RecordHint } from "./week-card-parts";
+import type { CardHandlers, RecordHint, Said } from "./week-card-parts";
 
 /* ---- The appointment card ---- */
 
@@ -111,19 +119,21 @@ function AppointmentDetails({
   const badge = statusBadge(detail.status);
   const existing = { id: detail.id, expectedVersion: detail.version };
 
-  /* The toast names the patient, then what happened; the day view adds
-     when and where under it. A move's new time is the grid's to show. */
-  function send(next: Readonly<WeekAppointmentCommand>, rest: string) {
+  /* The toast names the patient, then what happened; under it, when and
+     where, unless the command says something closer: when the patient
+     arrived, or where a cancel sent the request. A move's new time is the
+     grid's to show. */
+  function send(
+    next: Readonly<WeekAppointmentCommand>,
+    rest: string,
+    line: Said["detail"] = next.kind === "reschedule"
+      ? null
+      : `${appointmentAt(detail.startsAt)} · ${detail.providerName}, ${detail.locationName}`,
+    after?: Said["detailAfter"],
+  ) {
     command.run(
       async (idempotencyKey) => weekAppointmentCommand({ idempotencyKey, command: next }),
-      {
-        subject: detail.patientName,
-        rest,
-        detail:
-          next.kind === "reschedule"
-            ? null
-            : `${appointmentAt(detail.startsAt)} · ${detail.providerName}, ${detail.locationName}`,
-      },
+      { subject: detail.patientName, rest, detail: line, detailAfter: after },
     );
   }
 
@@ -131,6 +141,35 @@ function AppointmentDetails({
     command.clear();
     setFace(next);
   }
+
+  /* Figma Ap4: the cancel form is its own card, titled for what it does. */
+  if (face === "cancel")
+    return (
+      <CancelFace
+        detail={detail}
+        titleId={titleId}
+        pending={command.pending}
+        error={command.error}
+        onKeep={() => {
+          turnTo("details");
+        }}
+        onCancel={(reason, afterwards) => {
+          send(
+            {
+              kind: "cancel",
+              ...existing,
+              reason,
+              requestVersion: detail.requestVersion,
+              callAgainOn: afterwards?.outcome === "call_again" ? afterwards.callAgainOn : null,
+              requestOutcome: afterwards?.outcome ?? null,
+            },
+            "'s appointment is cancelled",
+            null,
+            (request) => cancelledDetail(detail, request),
+          );
+        }}
+      />
+    );
 
   return (
     <>
@@ -182,28 +221,6 @@ function AppointmentDetails({
           }}
         />
       ) : null}
-      {face === "cancel" ? (
-        <CancelFace
-          detail={detail}
-          pending={command.pending}
-          error={command.error}
-          onBack={() => {
-            turnTo("details");
-          }}
-          onCancel={(reason, callAgainOn) => {
-            send(
-              {
-                kind: "cancel",
-                ...existing,
-                reason,
-                requestVersion: detail.requestVersion,
-                callAgainOn,
-              },
-              "'s appointment is cancelled",
-            );
-          }}
-        />
-      ) : null}
     </>
   );
 }
@@ -220,14 +237,21 @@ function DetailsFace({
   detail: WeekAppointmentDetail;
   pending: boolean;
   error: string | null;
-  send: (next: Readonly<WeekAppointmentCommand>, rest: string) => void;
+  send: (next: Readonly<WeekAppointmentCommand>, rest: string, line?: Said["detail"]) => void;
   onTurn: (face: Face) => void;
 }>) {
   const actions = cardActions(detail);
+  const { lead } = actions;
   const existing = { id: detail.id, expectedVersion: detail.version };
 
-  function more(kind: MoreCommand) {
+  function run(kind: LeadCommand | MoreCommand) {
     if (kind === "cancel") onTurn("cancel");
+    else if (kind === "check_in")
+      send(
+        { kind: "check_in", ...existing },
+        " is checked in",
+        checkedInDetail(new Date(), detail.startsAt, detail.providerName),
+      );
     else if (kind === "no_show") send({ kind: "no_show", ...existing }, " is marked no-show");
     else send({ kind: "complete", ...existing }, "'s visit is complete");
   }
@@ -247,35 +271,33 @@ function DetailsFace({
           <MapPin width={16} height={16} />
           {detail.locationName}
         </li>
-        {detail.patientPhone === null ? null : (
-          <li>
-            <Phone width={16} height={16} />
-            <a
-              href={telHref(detail.patientPhone)}
-              className="wgi-week-card-phone"
-              data-ui-redact="patient-contact"
-            >
-              {formatPhoneForDisplay(detail.patientPhone)}
-            </a>
-          </li>
-        )}
       </ul>
+      {detail.patientPhone === null ? null : (
+        <a
+          href={telHref(detail.patientPhone)}
+          className="wgi-week-card-call"
+          data-ui-redact="patient-contact"
+        >
+          <Phone width={15} height={15} />
+          {formatPhoneForDisplay(detail.patientPhone)}
+        </a>
+      )}
       {error === null ? null : <CardError>{error}</CardError>}
       {actions.readOnly ? null : (
         <div className="wgi-week-card-actions">
-          {actions.checkIn ? (
+          {lead === null ? null : (
             <Button
               size="sm"
               className="wgi-week-card-go"
               disabled={pending}
               onClick={() => {
-                send({ kind: "check_in", ...existing }, " is checked in");
+                run(lead);
               }}
             >
-              <Check data-icon="inline-start" />
-              Check in
+              {lead === "check_in" ? <Check data-icon="inline-start" /> : null}
+              {LEAD_LABEL[lead]}
             </Button>
-          ) : null}
+          )}
           {actions.reschedule ? (
             <Button
               variant="outline"
@@ -303,7 +325,7 @@ function DetailsFace({
                     <MenuItem
                       key={kind}
                       onClick={() => {
-                        more(kind);
+                        run(kind);
                       }}
                     >
                       {MORE_LABEL[kind]}

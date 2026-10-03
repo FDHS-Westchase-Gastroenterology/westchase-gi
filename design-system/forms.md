@@ -56,7 +56,7 @@ as the select did), and the thumb slides on the staff home's fast beat.
 Which control?
 ├── Free text → Input; more than one line → Textarea
 ├── One of a fixed list
-│   ├── A request's outcome or follow-up → a choice list (below)
+│   ├── A request's outcome, a follow-up or a reason → a choice list (below)
 │   ├── Two to four short options that fit side by side → SegmentedControl
 │   └── Anything else → NativeSelect
 ├── An independent yes or no → Checkbox
@@ -69,12 +69,13 @@ input, practice-local days and instants, and the `TimePicker` wheel.
 
 ## Choices
 
-Staff choose outcomes and follow-ups from visible rows, not a menu. The record card renders them
-with `RadioGroup` and `ToggleGroup` from `stock/`, a
-[recorded import](components.md#recorded-stock-imports); `outcome-choice-list.tsx` and
-`workflow-panel.tsx` hand-roll the same rows in `.portal-choice-*`. Both stay as they render until
-[item 3](roadmap.md#3-choice-lists) adopts the two primitives into `ui/`. Until then, a new choice
-list copies `outcome-choice-list.tsx`.
+Staff choose outcomes and follow-ups from visible rows, not a menu. A new choice list composes
+`RadioGroup` and `RadioGroupItem` from `ui/radio-group.tsx`, each row a `Label` wrapping its item
+and its words, so the whole row chooses: the Schedule's cancel form does
+(`week-card-faces.tsx`). The record card still renders its rows with `RadioGroup` and
+`ToggleGroup` from `stock/`, a [recorded import](components.md#recorded-stock-imports), and
+`outcome-choice-list.tsx` and `workflow-panel.tsx` hand-roll the same rows in `.portal-choice-*`.
+Those stay as they render until [item 3](roadmap.md#3-choice-lists) moves them onto the recipe.
 
 ## Saving
 

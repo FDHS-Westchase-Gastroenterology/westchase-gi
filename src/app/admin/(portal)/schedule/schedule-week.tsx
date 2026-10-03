@@ -4,7 +4,6 @@ import { Tooltip } from "@base-ui/react/tooltip";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
-import { toast } from "sonner";
 
 import { ChevronDown, ChevronLeft, ChevronRight } from "@/components/icons";
 import { Popover } from "@/components/ui/popover";
@@ -16,6 +15,7 @@ import { ScheduleArrow, ScheduleToolsWithShortcuts } from "./schedule-toolbar";
 import type { ScheduleWeek, WeekProviderChoice } from "./schedule-week-model";
 import { rememberWeekProvider } from "./week-actions";
 import { dayHref, weekHref } from "./week-calendar";
+import { useUndoLanded } from "./week-card-parts";
 import { WeekCardPopup } from "./week-cards";
 import type { WeekCardPayload } from "./week-cards";
 import { WeekGrid } from "./week-grid";
@@ -63,7 +63,6 @@ export function ScheduleWeekView({
   view,
   catalog,
 }: Readonly<{ view: ScheduleWeek; catalog: readonly WeekProviderChoice[] }>) {
-  const router = useRouter();
   const baseId = useId();
   const titleId = `${baseId}-title`;
   const [tip] = useState(() => Tooltip.createHandle<TipPayload>());
@@ -72,6 +71,7 @@ export function ScheduleWeekView({
   /* Opened from the keyboard: the card appears and leaves at once. */
   const [keyed, setKeyed] = useState(false);
   const { openRecord } = useSchedulePeople();
+  const landed = useUndoLanded();
   const grid: Grid = { view, baseId, tip, band, card, onKeyed: setKeyed };
 
   return (
@@ -93,10 +93,9 @@ export function ScheduleWeekView({
               key={payload.kind === "appointment" ? payload.cell.id : payload.cell.key}
               payload={payload}
               keyed={keyed}
-              onDone={(message) => {
+              onDone={(_message, change) => {
                 card.close();
-                toast(message);
-                router.refresh();
+                landed(change);
               }}
               onOpenRecord={(patient, appointmentId) => {
                 card.close();

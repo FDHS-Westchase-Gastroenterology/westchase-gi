@@ -398,6 +398,132 @@
   padding-right: 112px;
 }
 
+/* ---------- Dragging a visit (Ap3) ---------- */
+
+/* The lifted visit's place stays behind as a ghost: a dashed slate edge,
+   its words faded, no press scale and no Check in. The pointer stays
+   captured by the block, so its cursor is the drag's: grabbing, or
+   not-allowed over a time the card cannot take. */
+.wgi-dayview-block[data-lifted]:has(.wgi-dayview-block-open) {
+  z-index: auto;
+  border: 1.5px dashed var(--color-slate-300);
+  background: #fff;
+  box-shadow: none;
+  transform: none;
+}
+
+.wgi-dayview-block[data-lifted] .wgi-dayview-block-open {
+  cursor: grabbing;
+  opacity: 0.45;
+}
+
+.wgi-dayview-block[data-lifted="refused"] .wgi-dayview-block-open {
+  cursor: not-allowed;
+}
+
+.wgi-dayview-block[data-lifted] .wgi-dayview-checkin {
+  display: none;
+}
+
+/* The visit already holding the time the card is over. */
+.wgi-dayview-block[data-conflict] {
+  border-color: var(--color-coral-600);
+}
+
+/* Where the card would land: a teal edge over a pale wash when it can;
+   a solid coral edge over the visit in the way; a dashed coral wash for
+   any other refusal. */
+.wgi-dayview-target {
+  position: absolute;
+  z-index: 1;
+  top: calc(var(--top) * var(--dayview-minute) + 3px);
+  right: 8px;
+  left: 8px;
+  height: calc(var(--height) * var(--dayview-minute) - 7px);
+  box-sizing: border-box;
+  border: 2px solid var(--color-teal-600);
+  border-radius: 8px;
+  background: var(--color-teal-50);
+  pointer-events: none;
+}
+
+/* Until the server answers, a plain outline: neither yes nor no. */
+.wgi-dayview-target[data-verdict="checking"] {
+  border: 1.5px dashed var(--color-slate-300);
+  background: none;
+}
+
+.wgi-dayview-target[data-verdict="booked"] {
+  z-index: 3;
+  border-color: var(--color-coral-600);
+  background: none;
+}
+
+.wgi-dayview-target[data-verdict="refused"] {
+  border: 1.5px dashed var(--color-coral-500);
+  background: var(--color-coral-50);
+}
+
+/* The card under the pointer, drawn over everything at the block's own
+   size; it follows the pointer through `translate`. Lifting, its shadow
+   arrives on the fast beat. A refused drop glides it back to its ghost
+   on the base beat. */
+.wgi-dayview-lifted {
+  position: fixed;
+  z-index: 40;
+  container: dayview-block / size;
+  box-sizing: border-box;
+  border: 1px solid var(--wgi-rule);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--wgi-card-shadow);
+  pointer-events: none;
+  transition: box-shadow var(--motion-fast-duration) var(--motion-standard);
+}
+
+@starting-style {
+  .wgi-dayview-lifted {
+    box-shadow: 0 0 0 transparent;
+  }
+}
+
+.wgi-dayview-lifted[data-returning] {
+  transition:
+    box-shadow var(--motion-base-duration) var(--motion-standard),
+    translate var(--motion-base-duration) var(--motion-standard);
+  box-shadow: 0 0 0 transparent;
+}
+
+.wgi-dayview-lifted .wgi-dayview-block-open {
+  cursor: inherit;
+}
+
+/* Who and when, or why not, just above the card's right corner. */
+.wgi-dayview-readout {
+  position: absolute;
+  right: 8px;
+  bottom: calc(100% + 6px);
+  display: inline-flex;
+  height: 24px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border-radius: 6px;
+  background: var(--color-navy);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.wgi-dayview-readout:is([data-verdict="booked"], [data-verdict="refused"]) {
+  background: var(--color-coral-700);
+}
+
+.wgi-dayview-lifted[data-returning] .wgi-dayview-readout {
+  display: none;
+}
+
 /* ---------- Open time ---------- */
 
 /* White, a dashed mint edge and a plus disc; pointed at or opened, the

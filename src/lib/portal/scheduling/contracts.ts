@@ -4,6 +4,7 @@ import { REQUEST_LOCATIONS } from "@/lib/portal/contracts";
 import { REQUEST_STATES } from "@/lib/portal/workflow/contracts";
 
 import type {
+  canPlaceOutcomeSchema,
   dayScheduleOutcomeSchema,
   rememberWeekProviderOutcomeSchema,
   weekProviderOutcomeSchema,
@@ -152,8 +153,16 @@ export const appointmentCommandSchema = z.discriminatedUnion("kind", [
       reason: reasonSchema,
       requestVersion: schedulingVersionSchema.nullable().default(null),
       callAgainOn: dateSchema.nullable().default(null),
+      requestOutcome: z.enum(["call_again", "close"]).nullable().default(null),
     })
-    .refine((command) => (command.requestVersion === null) === (command.callAgainOn === null)),
+    // A request-linked cancel says what becomes of the request: a call-again date, or closed.
+    .refine((command) =>
+      command.requestVersion === null
+        ? command.callAgainOn === null && command.requestOutcome === null
+        : command.requestOutcome === "close"
+          ? command.callAgainOn === null
+          : command.callAgainOn !== null,
+    ),
   z.strictObject({ kind: z.literal("check_in"), ...existingAppointment }),
   z.strictObject({ kind: z.literal("complete"), ...existingAppointment }),
   z.strictObject({ kind: z.literal("no_show"), ...existingAppointment }),
@@ -258,6 +267,13 @@ export const schedulingInputSchema = z.discriminatedUnion("action", [
     date: dateSchema.refine((date) => /^2[01]/.test(date)),
     appointmentTypeId: z.uuid().nullable().default(null),
   }),
+  z.strictObject({
+    action: z.literal("can_place"),
+    appointmentId: z.uuid(),
+    providerId: z.uuid(),
+    locationId: z.uuid(),
+    startsAt: schedulingTimestampSchema,
+  }),
   z.strictObject({ action: z.literal("week_provider") }),
   z.strictObject({ action: z.literal("remember_week_provider"), providerId: z.uuid() }),
 ]);
@@ -341,4 +357,5 @@ export type SchedulingOutcome =
   | z.output<typeof weekScheduleOutcomeSchema>
   | z.output<typeof weekProviderOutcomeSchema>
   | z.output<typeof rememberWeekProviderOutcomeSchema>
-  | z.output<typeof dayScheduleOutcomeSchema>;
+  | z.output<typeof dayScheduleOutcomeSchema>
+  | z.output<typeof canPlaceOutcomeSchema>;

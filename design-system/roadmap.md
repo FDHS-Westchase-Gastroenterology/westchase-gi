@@ -25,9 +25,10 @@ literal `text-[…rem]` sizes in `src/app/admin` route files
 ## 3. Choice lists
 
 **Ready.** `outcome-choice-list.tsx` and `workflow-panel.tsx` hand-roll radio rows in 30
-`.portal-choice-*` rules with a 180ms reveal. Adopt `RadioGroup` and `ToggleGroup`, which the record
-card [imports from `stock/`](components.md#recorded-stock-imports), into `ui/` with one variant per
-paint; unifying the three looks is Jason's. Their date inputs (`outcome-choice-list.tsx#L84`,
+`.portal-choice-*` rules with a 180ms reveal. `RadioGroup` is in `ui/radio-group.tsx` (the
+Schedule's cancel form, issue #354); move these rows and the record card's
+[`stock/` import](components.md#recorded-stock-imports) onto it, adding a variant per paint, and
+adopt `ToggleGroup` the same way; unifying the three looks is Jason's. Their date inputs (`outcome-choice-list.tsx#L84`,
 `call-again-fieldset.tsx#L114`) hand-write the `Input` geometry and join as they look, their invalid
 red moving onto `--destructive` ([color.md](color.md#recorded-drift)).
 

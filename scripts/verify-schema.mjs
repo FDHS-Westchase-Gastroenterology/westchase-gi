@@ -144,6 +144,8 @@ const RPC_SIGNATURES = {
   portal_read_appointment: "p_actor_id uuid, p_id uuid, p_history_before bigint",
   portal_available_appointment_slots:
     "p_actor_id uuid, p_provider_id uuid, p_location_id uuid, p_date date, p_appointment_type_id uuid, p_patient_id uuid, p_appointment_id uuid, p_interval_minutes integer",
+  portal_can_place_appointment:
+    "p_actor_id uuid, p_appointment_id uuid, p_provider_id uuid, p_location_id uuid, p_starts_at timestamp with time zone",
   portal_schedule_month_summary:
     "p_actor_id uuid, p_month date, p_location_id uuid, p_appointment_type_id uuid",
   portal_schedule_month_availability:
@@ -254,6 +256,7 @@ const RPC_RESULTS = {
   portal_list_appointments: "jsonb",
   portal_read_appointment: "jsonb",
   portal_available_appointment_slots: "jsonb",
+  portal_can_place_appointment: "jsonb",
   portal_schedule_month_summary: "jsonb",
   portal_schedule_month_availability: "jsonb",
   portal_schedule_working:

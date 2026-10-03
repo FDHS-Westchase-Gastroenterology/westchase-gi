@@ -1,19 +1,20 @@
 "use client";
 
-import { startTransition, useEffect, useId, useState } from "react";
+import { startTransition, useEffect, useId, useRef, useState } from "react";
 
 import { dayHorizon } from "@/app/admin/(portal)/(home)/record-card-model";
+import { ChevronDown, CircleAlert } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { CalendarDay } from "@/components/ui/calendar";
-import { FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 import { readRescheduleTimes } from "./week-actions";
-import { addDays, practiceDate, practiceTime } from "./week-calendar";
-import { nextCallAgainDay } from "./week-card-model";
-import type { WeekAppointmentDetail, WeekRescheduleTimes } from "./week-card-model";
+import { addDays, cardDay, noon, practiceDate, practiceTime } from "./week-calendar";
+import { CANCEL_REASONS, freedTime, nextCallAgainDay } from "./week-card-model";
+import type { CancelReason, WeekAppointmentDetail, WeekRescheduleTimes } from "./week-card-model";
 import { CardError } from "./week-card-parts";
 
 /* ---- Reschedule: a day and its open starts ---- */
@@ -115,82 +116,188 @@ export function RescheduleFace({
   );
 }
 
-/* ---- Cancel: why, and when to call again ---- */
+/* ---- Cancel: why, and what happens to the request ---- */
 
+/** What a cancel tells the server about the request it managed: a day to
+   call the patient again, or that the request closes. */
+export type CancelAfterwards =
+  | { readonly outcome: "call_again"; readonly callAgainOn: string }
+  | { readonly outcome: "close" };
+
+/* Figma Ap4: the card turns into the cancel form at 380 wide. A coral well
+   says what the cancel frees and asks why; a request-managed visit then
+   asks what happens to the request. Nothing here is a form: Return on a
+   choice chooses it, and only a press on the coral command cancels. Keep
+   appointment comes first and takes the opening focus's neighbor. */
 export function CancelFace({
   detail,
+  titleId,
   pending,
   error,
-  onBack,
+  onKeep,
   onCancel,
 }: Readonly<{
   detail: WeekAppointmentDetail;
+  titleId: string;
   pending: boolean;
   error: string | null;
-  onBack: () => void;
-  onCancel: (reason: string, callAgainOn: string | null) => void;
+  onKeep: () => void;
+  onCancel: (reason: CancelReason, afterwards: CancelAfterwards | null) => void;
 }>) {
   const today = practiceDate(new Date(detail.observedAt));
   const managed = detail.requestVersion !== null;
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState<CancelReason>(CANCEL_REASONS[0]);
+  const [after, setAfter] = useState<CancelAfterwards["outcome"]>("call_again");
   const [callAgain, setCallAgain] = useState(() => nextCallAgainDay(today));
   const reasonId = useId();
-  const callId = useId();
-  const trimmed = reason.trim();
+  const afterId = useId();
+  const reasonsRef = useRef<HTMLDivElement>(null);
+
+  /* The card turns over from a menu that has just closed: focus lands on
+     the chosen reason, so Return there chooses, never cancels. */
+  useEffect(() => {
+    reasonsRef.current?.querySelector<HTMLElement>("[data-checked]")?.focus();
+  }, []);
 
   return (
-    <form
-      className="wgi-week-card-face"
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (trimmed === "") return;
-        onCancel(trimmed, managed ? callAgain : null);
-      }}
-    >
-      <FieldLabel htmlFor={reasonId} className="wgi-week-card-label">
-        Reason
-      </FieldLabel>
-      <Textarea
-        id={reasonId}
-        value={reason}
-        maxLength={500}
-        rows={2}
-        required
-        onChange={(event) => {
-          setReason(event.currentTarget.value);
-        }}
-      />
+    <div className="wgi-week-card-cancel">
+      <PopoverTitle id={titleId} className="wgi-week-card-name">
+        Cancel appointment
+      </PopoverTitle>
+      <p className="wgi-week-card-sub">
+        <span data-ui-redact="patient-name">{detail.patientName}</span>
+        {` · ${cardDay(detail.startsAt)} · ${practiceTime(detail.startsAt)}`}
+      </p>
+      <div className="wgi-week-card-well">
+        <p className="wgi-week-card-warn">
+          <CircleAlert width={15} height={15} />
+          {freedTime(detail)} opens for booking again.
+        </p>
+        <p id={reasonId} className="wgi-week-card-caps">
+          Reason
+        </p>
+        <RadioGroup
+          ref={reasonsRef}
+          aria-labelledby={reasonId}
+          className="wgi-week-card-choices"
+          value={reason}
+          disabled={pending}
+          onValueChange={(value) => {
+            const picked = CANCEL_REASONS.find((row) => row === value);
+            if (picked !== undefined) setReason(picked);
+          }}
+        >
+          {CANCEL_REASONS.map((row) => (
+            <Label key={row} className="wgi-week-card-choice">
+              <RadioGroupItem value={row} />
+              {row}
+            </Label>
+          ))}
+        </RadioGroup>
+      </div>
       {managed ? (
         <>
-          <FieldLabel htmlFor={callId} className="wgi-week-card-label">
-            Call again on
-          </FieldLabel>
-          <Input
-            id={callId}
-            type="date"
-            value={callAgain}
-            min={today}
-            required
-            onChange={(event) => {
-              setCallAgain(event.currentTarget.value);
+          <p id={afterId} className="wgi-week-card-caps">
+            Afterwards
+          </p>
+          <RadioGroup
+            aria-labelledby={afterId}
+            className="wgi-week-card-choices"
+            value={after}
+            disabled={pending}
+            onValueChange={(value) => {
+              setAfter(value === "close" ? "close" : "call_again");
             }}
-          />
+          >
+            <div className="wgi-week-card-choice-line">
+              <Label className="wgi-week-card-choice">
+                <RadioGroupItem value="call_again" />
+                Call again on
+              </Label>
+              <CallAgainChip
+                day={callAgain}
+                today={today}
+                disabled={pending}
+                onPick={(day) => {
+                  setCallAgain(day);
+                  setAfter("call_again");
+                }}
+              />
+            </div>
+            <Label className="wgi-week-card-choice">
+              <RadioGroupItem value="close" />
+              Close the request
+            </Label>
+          </RadioGroup>
         </>
       ) : null}
       {error === null ? null : <CardError>{error}</CardError>}
-      <div className="wgi-week-card-actions">
+      <div className="wgi-week-card-band">
+        <Button type="button" variant="outline" size="sm" disabled={pending} onClick={onKeep}>
+          Keep appointment
+        </Button>
         <Button
-          type="submit"
+          type="button"
           size="sm"
-          className="wgi-week-card-go"
-          disabled={pending || trimmed === ""}
+          className="wgi-week-card-stop"
+          disabled={pending}
+          onClick={() => {
+            onCancel(
+              reason,
+              managed
+                ? after === "close"
+                  ? { outcome: "close" }
+                  : { outcome: "call_again", callAgainOn: callAgain }
+                : null,
+            );
+          }}
         >
           Cancel appointment
         </Button>
-        <Button type="button" variant="outline" size="sm" onClick={onBack}>
-          Back
-        </Button>
       </div>
-    </form>
+    </div>
+  );
+}
+
+/* The day to call again: a chip that opens the registry calendar beside
+   it, the next weekday until staff pick another. */
+function CallAgainChip({
+  day,
+  today,
+  disabled,
+  onPick,
+}: Readonly<{
+  day: string;
+  today: string;
+  disabled: boolean;
+  onPick: (day: string) => void;
+}>) {
+  const [open, setOpen] = useState(false);
+  const label = cardDay(noon(day).toISOString());
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        className="wgi-week-card-chip"
+        disabled={disabled}
+        aria-label={`Call again on ${label}. Change the day`}
+      >
+        {label}
+        <ChevronDown width={12} height={12} />
+      </PopoverTrigger>
+      <PopoverContent side="bottom" align="start" sideOffset={6} className="wgi-week-card-chip-cal">
+        <PopoverTitle className="sr-only">Call again on</PopoverTitle>
+        <CalendarDay
+          className="wgi-editor-cal"
+          day={day}
+          min={today}
+          max={addDays(today, dayHorizon("no_answer"))}
+          disabled={false}
+          onChange={(next) => {
+            onPick(next);
+            setOpen(false);
+          }}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }

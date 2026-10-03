@@ -1,13 +1,18 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { startTransition, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
-import type { WeekCommandOutcome } from "./week-actions";
+import { showUndoToast } from "@/components/ui/undo-toast";
+
+import { undoAppointmentChange } from "./week-actions";
+import type { WeekCommandOutcome, WeekCommandRequest } from "./week-actions";
 import { failureMessage } from "./week-card-model";
 
 /* What the week's click cards (week-cards.tsx) share: their handlers, the
-   failure line, and one command in flight at a time. */
+   failure line, one command in flight at a time, and the undo toast a
+   landed command raises on the week and the day. */
 
 /** The words a command's toast says once it lands: the week's sentence is
    the subject and the rest; the day's headline drops what its detail line,
@@ -17,7 +22,11 @@ export interface Said {
   readonly rest: string;
   /** The day's headline when it is shorter than the sentence: "X is booked". */
   readonly headline?: string;
+  /** The line under the headline. */
   readonly detail: string | null;
+  /** A cancel's line depends on where the server moved its request, so it
+     is read from the landed request and takes the place of `detail`. */
+  readonly detailAfter?: (request: WeekCommandRequest | null) => string;
 }
 
 /** What a landed command names: the appointment and its new version, which
@@ -30,6 +39,9 @@ export interface Landed {
   /** "James Okonkwo is booked": the day's toast, over its detail. */
   readonly headline: string;
   readonly detail: string | null;
+  /** The request the command moved with the appointment; its Undo sends
+     the request's new version back. */
+  readonly request: WeekCommandRequest | null;
 }
 
 export type DoneHandler = (message: string, landed: Landed) => void;
@@ -80,7 +92,8 @@ export function useCommand(onDone: DoneHandler) {
             version: outcome.version,
             message,
             headline: said.headline ?? `${said.subject}${said.rest}`,
-            detail: said.detail,
+            detail: said.detailAfter?.(outcome.request) ?? said.detail,
+            request: outcome.request,
           });
           return;
         }
@@ -101,5 +114,36 @@ export function useCommand(onDone: DoneHandler) {
     clear: () => {
       setError(null);
     },
+  };
+}
+
+/** Says a landed change with Undo, and re-reads the page. Undo sends the
+   appointment's new version, and the request's when the change moved one,
+   so the server can tell the change is still the latest. */
+export function useUndoLanded() {
+  const router = useRouter();
+  return function landed(
+    change: Readonly<Pick<Landed, "id" | "version" | "headline" | "detail" | "request">>,
+  ) {
+    const idempotencyKey = crypto.randomUUID();
+    showUndoToast({
+      headline: change.headline,
+      detail: change.detail,
+      undo: async () => {
+        const outcome = await undoAppointmentChange({
+          idempotencyKey,
+          id: change.id,
+          expectedVersion: change.version,
+          requestVersion: change.request?.version ?? null,
+        });
+        return outcome.ok
+          ? { ok: true, message: "Undone." }
+          : { ok: false, message: failureMessage(outcome.code) };
+      },
+      onSettled: () => {
+        router.refresh();
+      },
+    });
+    router.refresh();
   };
 }
