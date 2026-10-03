@@ -9,6 +9,7 @@ import type {
   CardType,
   StripAction,
 } from "@/app/admin/(portal)/(home)/card-booking-model";
+import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { NativeSelect } from "@/components/ui/native-select";
 import type { MonthAvailability } from "@/lib/portal/scheduling/read-contracts";
@@ -97,8 +98,10 @@ export function BookingStrip({
             )}
           </p>
           {line.action === null ? null : (
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
+              motion="none"
               className="wgi-booking-action"
               disabled={locked}
               onClick={() => {
@@ -106,7 +109,7 @@ export function BookingStrip({
               }}
             >
               {ACTION_LABELS[line.action]}
-            </button>
+            </Button>
           )}
         </div>
       </div>

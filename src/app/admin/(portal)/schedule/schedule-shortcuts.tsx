@@ -6,6 +6,7 @@ import type { RefObject } from "react";
 
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Popover, PopoverClose, PopoverContent, PopoverTitle } from "@/components/ui/popover";
+import type { PopoverChangeDetails, PopoverHandle } from "@/components/ui/popover-behavior";
 
 /* The Schedule's single-key shortcuts and the list that names them (issue
    #351; Figma S5 shortcuts frame). Day, Week and Month all answer them:
@@ -17,7 +18,9 @@ import { Popover, PopoverClose, PopoverContent, PopoverTitle } from "@/component
      or inside an open card or menu, which own their keys.
 
    The list is a popover: Escape or a click outside closes it and focus
-   goes back where it was (HIG Popovers). */
+   goes back where it was (HIG Popovers). Where the view shows a button
+   for it (the day's "All shortcuts"), that button is its trigger through
+   a handle, so it says whether the list is open and takes focus back. */
 
 export interface ShortcutTargets {
   readonly today: string;
@@ -115,7 +118,10 @@ const SPOKEN: ReadonlyMap<string, string> = new Map([
 
 export interface ShortcutsListProps {
   readonly open: boolean;
-  readonly onOpenChange: (open: boolean) => void;
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- Base UI event details carry platform member types that cannot be made readonly
+  readonly onOpenChange: (open: boolean, details: PopoverChangeDetails) => void;
+  /** Ties the list to a visible trigger, where the view has one. */
+  readonly handle?: PopoverHandle<undefined>;
   /** What the list opens from: the strip's "All shortcuts", or the view switch. */
   readonly anchor: RefObject<HTMLElement | null>;
   readonly side: "top" | "bottom";
@@ -123,14 +129,17 @@ export interface ShortcutsListProps {
   readonly keyed: boolean;
 }
 
-export function ShortcutsList({ open, onOpenChange, anchor, side, keyed }: ShortcutsListProps) {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- Base UI handles carry store member types that cannot be made readonly
+export function ShortcutsList({
+  open,
+  onOpenChange,
+  handle,
+  anchor,
+  side,
+  keyed,
+}: ShortcutsListProps) {
   return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        onOpenChange(next);
-      }}
-    >
+    <Popover handle={handle} open={open} onOpenChange={onOpenChange}>
       <PopoverContent
         className="wgi-shortcuts"
         motion={keyed ? "none" : "wgi"}

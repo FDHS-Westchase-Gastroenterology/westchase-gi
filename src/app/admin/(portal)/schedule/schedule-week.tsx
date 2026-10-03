@@ -1,6 +1,5 @@
 "use client";
 
-import { Popover } from "@base-ui/react/popover";
 import { Tooltip } from "@base-ui/react/tooltip";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -10,6 +9,8 @@ import { toast } from "sonner";
 import { FullRecordSheet } from "@/app/admin/(portal)/(home)/full-record-sheet";
 import type { HomeLine } from "@/app/admin/(portal)/(home)/home-line";
 import { ChevronDown, ChevronLeft, ChevronRight } from "@/components/icons";
+import { Popover } from "@/components/ui/popover";
+import { createPopoverHandle } from "@/components/ui/popover-behavior";
 import { TooltipContent } from "@/components/ui/tooltip";
 
 import { ScheduleArrow, ScheduleToolsWithShortcuts } from "./schedule-toolbar";
@@ -74,7 +75,7 @@ export function ScheduleWeekView({
   const titleId = `${baseId}-title`;
   const [tip] = useState(() => Tooltip.createHandle<TipPayload>());
   const [band] = useState(() => Tooltip.createHandle<TipPayload>());
-  const [card] = useState(() => Popover.createHandle<WeekCardPayload>());
+  const [card] = useState(() => createPopoverHandle<WeekCardPayload>());
   /* Opened from the keyboard: the card appears and leaves at once. */
   const [keyed, setKeyed] = useState(false);
   const [record, setRecord] = useState<RecordOpen | null>(null);
@@ -93,7 +94,7 @@ export function ScheduleWeekView({
       <Tooltip.Root handle={band} disableHoverablePopup trackCursorAxis="y">
         {renderTip}
       </Tooltip.Root>
-      <Popover.Root handle={card}>
+      <Popover handle={card}>
         {({ payload }) =>
           payload === undefined ? null : (
             <WeekCardPopup
@@ -114,7 +115,7 @@ export function ScheduleWeekView({
             />
           )
         }
-      </Popover.Root>
+      </Popover>
       <FullRecordSheet
         line={record?.line ?? null}
         instant={record?.instant ?? false}

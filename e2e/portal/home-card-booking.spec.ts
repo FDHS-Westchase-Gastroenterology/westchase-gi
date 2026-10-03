@@ -20,6 +20,17 @@ const LONG_DAY = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
 });
 
+type Box = Readonly<{ x: number; y: number; width: number; height: number }>;
+
+function inBox(point: readonly [number, number], box: Box): boolean {
+  return (
+    point[0] >= box.x &&
+    point[0] <= box.x + box.width &&
+    point[1] >= box.y &&
+    point[1] <= box.y + box.height
+  );
+}
+
 function clockTime(label: string): string {
   const match = /^(\d+):(\d+)\s*(AM|PM)$/u.exec(label.trim());
   if (match === null) throw new Error(`Unexpected start label ${label}`);
@@ -93,22 +104,60 @@ test("Home Book recovers a start taken before it lands and books the nearest one
       await dayButton.hover();
       await expect(popover).toBeVisible({ timeout: 2_000 });
     }).toPass({ timeout: 20_000 });
-    const starts = popover.getByRole("list", {
+    const starts = popover.getByRole("group", {
       name: `TEST ${prefix} First, TEST ${prefix} First`,
     });
     const tile = starts.getByRole("button").first();
     await expect(tile).toBeVisible();
-    /* The way from the day to its popover crosses other days; they do not
-       take the popover on the way, as a menu aims at its submenu. */
     const title = popover.getByRole("heading", {
       name: LONG_DAY.format(new Date(`${day}T12:00:00Z`)),
     });
     await expect(title).toBeVisible();
+
+    /* A pointer resting on another open day moves the popover there, and
+       resting on the first day again brings it back (issue #360). */
+    const openDays = card.getByRole("button", { name: /, \d+ open times?$/u });
+    const otherName = await openDays.evaluateAll(
+      (buttons, first) =>
+        buttons
+          .map((button) => button.getAttribute("aria-label") ?? "")
+          .find((name) => !name.startsWith(first)),
+      LONG_DAY.format(new Date(`${day}T12:00:00Z`)),
+    );
+    if (otherName === undefined) throw new Error("The month offers only one open day");
+    const otherTitle = popover.getByRole("heading", {
+      name: otherName.replace(/, \d+ open times?$/u, ""),
+    });
+    await card.getByRole("button", { name: otherName, exact: true }).hover();
+    await expect(otherTitle).toBeVisible();
+    await expect(title).toHaveCount(0);
+    await dayButton.hover();
+    await expect(title).toBeVisible();
+
+    /* The way from the day to its popover crosses other days; they do not
+       take the popover on the way, as a menu aims at its submenu. */
     const from = await dayButton.boundingBox();
     const to = await tile.boundingBox();
     if (from === null || to === null) throw new Error("The day or its first start has no box");
-    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
-    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 20 });
+    const start = [from.x + from.width / 2, from.y + from.height / 2] as const;
+    const end = [to.x + to.width / 2, to.y + to.height / 2] as const;
+    /* The path does cross another day, or the check below proves nothing. */
+    const triggers = await card.locator('button[id*="-day-"]').evaluateAll((buttons) =>
+      buttons.map((button) => {
+        const rect = button.getBoundingClientRect();
+        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+      }),
+    );
+    const path = Array.from({ length: 21 }, (_, step) => {
+      const t = step / 20;
+      return [start[0] + (end[0] - start[0]) * t, start[1] + (end[1] - start[1]) * t] as const;
+    });
+    const crossed = triggers.filter(
+      (box) => !inBox(start, box) && path.some((point) => inBox(point, box)),
+    );
+    expect(crossed.length).toBeGreaterThan(0);
+    await page.mouse.move(...start);
+    await page.mouse.move(...end, { steps: 20 });
     await expect(title).toBeVisible();
     const label = (await tile.textContent()) ?? "";
     await tile.click();

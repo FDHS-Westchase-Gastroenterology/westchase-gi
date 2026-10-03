@@ -198,12 +198,35 @@ test("Schedule day lays out the providers, moves by arrows and shortcuts, and re
     if ((await card.count()) > 0) await page.keyboard.press("Escape");
     await expect(card).toHaveCount(0);
 
-    /* The shortcuts list, asked for from the open time the card returned focus to. */
+    /* The shortcuts list, asked for from the open time the card returned
+       focus to; Escape gives focus back to that time. */
+    const asker = await page.evaluate(() => document.activeElement?.id ?? "");
+    expect(asker).not.toBe("");
     await page.keyboard.press("?");
     const list = page.getByRole("dialog", { name: "Keyboard shortcuts" });
     await expect(list).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(list).toHaveCount(0);
+    await expect(page.locator(`[id="${asker}"]`)).toBeFocused();
+
+    /* "All shortcuts" is the list's trigger: it says whether the list is
+       open, and takes focus back when the list closes. */
+    const allShortcuts = page.getByRole("button", { name: "All shortcuts" });
+    await expect(allShortcuts).toHaveAttribute("aria-expanded", "false");
+    await allShortcuts.focus();
+    await page.keyboard.press("Enter");
+    await expect(list).toBeVisible();
+    await expect(allShortcuts).toHaveAttribute("aria-expanded", "true");
+    await page.keyboard.press("Escape");
+    await expect(list).toHaveCount(0);
+    await expect(allShortcuts).toBeFocused();
+    await expect(allShortcuts).toHaveAttribute("aria-expanded", "false");
+    await allShortcuts.click();
+    await expect(list).toBeVisible();
+    await list.getByRole("button", { name: "Close" }).click();
+    await expect(list).toHaveCount(0);
+    await expect(allShortcuts).toBeFocused();
+    await page.locator(`[id="${asker}"]`).focus();
 
     /* J and K step a day; W, D and M switch the view; T goes to today. */
     await page.keyboard.press("j");
@@ -274,11 +297,38 @@ test("Schedule day books an open time in place, and Undo opens it again", async 
     const heading = card.getByText(/^Book \d/u).first();
     await expect(heading).toBeVisible();
     const time = (await heading.textContent())?.replace(/^Book /u, "") ?? "";
-    await card.getByPlaceholder("Search by name or phone").fill(patient);
-    await card
-      .getByRole("list", { name: "Patients" })
-      .getByRole("button", { name: patient })
-      .click();
+    /* The patient search is a combobox (issue #360): focus stays in the
+       field, the list is a listbox, and its count is announced. Escape
+       clears a query first and closes the card second. */
+    const search = card.getByRole("combobox", { name: "Patient" });
+    await search.fill(patient);
+    const patients = card.getByRole("listbox", { name: "Patients" });
+    const match = patients.getByRole("option", { name: patient });
+    await expect(match).toBeVisible();
+    await expect(card.locator('[data-slot="combobox-status"]')).toHaveText(/^\d+ patients?$/u);
+    await expect(search).toHaveAttribute(
+      "aria-controls",
+      (await patients.getAttribute("id")) ?? "",
+    );
+    await page.keyboard.press("Escape");
+    await expect(search).toHaveValue("");
+    await expect(search).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(card).toHaveCount(0);
+
+    /* Typed again, the arrows walk the list and Return picks. */
+    await open.first().click();
+    await card.getByRole("combobox", { name: "Patient" }).fill(patient);
+    await expect(match).toBeVisible();
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowUp");
+    await expect(patients.locator("[data-highlighted]")).toHaveCount(1);
+    await expect(search).toHaveAttribute(
+      "aria-activedescendant",
+      (await patients.locator("[data-highlighted]").getAttribute("id")) ?? "",
+    );
+    await page.keyboard.press("Enter");
+    await expect(card.locator(".wgi-week-card-chosen")).toHaveText(patient);
     await card.getByRole("button", { name: `Book ${time}` }).click();
 
     await expect(page.getByText(`${patient} is booked`)).toBeVisible();

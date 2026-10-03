@@ -5,9 +5,9 @@ import { useId, useRef, useState } from "react";
 
 import { Printer } from "@/components/icons";
 import { buttonVariants } from "@/components/ui/button-variants";
+import { PopoverContainer } from "@/components/ui/popover-behavior";
 
 import type { HomeLine } from "./home-line";
-import { HomePopoverContainer } from "./parts/popover";
 import { PrintSheetBody } from "./print-sheet-body";
 
 /* Print requests, opened from Home's header (issue #332, P1–P4). A native
@@ -110,7 +110,7 @@ export function PrintRequestsSheet({
           <p>Filters here don&rsquo;t change Home, and printing changes no status.</p>
         </header>
         {seed === null ? null : (
-          <HomePopoverContainer value={dialogRef}>
+          <PopoverContainer value={dialogRef}>
             <PrintSheetBody
               key={seed.count}
               open={open}
@@ -122,7 +122,7 @@ export function PrintRequestsSheet({
               printedBy={printedBy}
               onClose={close}
             />
-          </HomePopoverContainer>
+          </PopoverContainer>
         )}
       </dialog>
     </>

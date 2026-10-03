@@ -1,10 +1,11 @@
 "use client";
 
-import { Popover } from "@base-ui/react/popover";
 import { useState } from "react";
 import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
 
 import { Check } from "@/components/icons";
+import { PopoverTrigger } from "@/components/ui/popover";
+import type { PopoverHandle } from "@/components/ui/popover-behavior";
 
 import { moveFor, nextCell } from "./day-keyboard";
 import { useMinuteClock } from "./minute-clock";
@@ -61,7 +62,7 @@ function clockOnly(now: number): string {
 export interface DayGridProps {
   readonly view: ScheduleDay;
   readonly baseId: string;
-  readonly card: Popover.Handle<WeekCardPayload>;
+  readonly card: PopoverHandle<WeekCardPayload>;
   readonly onKeyed: (keyed: boolean) => void;
   /** The first arrow press: the view shows its keyboard hints. */
   readonly onArrow: () => void;
@@ -242,20 +243,20 @@ function DayCellView({
 
   if (cell.kind === "open")
     return (
-      <Popover.Trigger
+      <PopoverTrigger
         {...shared}
         payload={{ kind: "open", cell }}
         className="wgi-dayview-open"
         style={position}
       >
         <OpenBody cell={cell} />
-      </Popover.Trigger>
+      </PopoverTrigger>
     );
 
   const offer = canCheckIn(cell, now);
   return (
     <div className="wgi-dayview-block" data-tone={cell.tone} style={position}>
-      <Popover.Trigger
+      <PopoverTrigger
         {...shared}
         payload={{ kind: "appointment", cell }}
         className="wgi-dayview-block-open"
@@ -266,7 +267,7 @@ function DayCellView({
         </span>
         <span className="wgi-dayview-block-line">{cell.line}</span>
         {cell.tag === null ? null : <span className="wgi-dayview-block-tag">{cell.tag}</span>}
-      </Popover.Trigger>
+      </PopoverTrigger>
       {offer ? (
         <button
           type="button"

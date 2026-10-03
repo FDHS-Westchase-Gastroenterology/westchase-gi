@@ -142,14 +142,16 @@ export const buttonVariants = cva(
         /* Kept from the upstream registry as vocabulary; no consumer today. */
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)]",
-        /* No consumer today. */
+        /* The booking strip's text actions ((home)/parts/booking-strip.tsx),
+           whose paint home.css restates. */
         ghost:
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
         /* The Add sheet's Discard (staff-request-form-footer.tsx), which
            wears it under data-glass="destructive". */
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20",
-        /* No consumer today. Cancels the wgi hover lift on purpose. */
+        /* The week card's Open full record (schedule/week-appointment-card.tsx).
+           Cancels the wgi hover lift on purpose. */
         link: "text-primary underline-offset-4 hover:translate-y-0 hover:underline",
       },
       size: {

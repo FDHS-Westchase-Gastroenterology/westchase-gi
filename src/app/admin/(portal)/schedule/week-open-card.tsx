@@ -1,11 +1,18 @@
 "use client";
 
-import { Popover } from "@base-ui/react/popover";
 import { startTransition, useEffect, useId, useState } from "react";
 
 import { Clock, MapPin, Search, User } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  Combobox,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxStatus,
+} from "@/components/ui/combobox";
+import { FieldLabel } from "@/components/ui/field";
+import { PopoverTitle } from "@/components/ui/popover";
 
 import type { WeekOpenCell } from "./schedule-week-model";
 import { bookOpenTime, searchWeekPatients } from "./week-actions";
@@ -58,9 +65,9 @@ export function OpenTimeCard({
 
   return (
     <section className="wgi-week-card-body" aria-labelledby={titleId}>
-      <Popover.Title id={titleId} className="wgi-week-card-name">
+      <PopoverTitle id={titleId} className="wgi-week-card-name">
         Book {cell.time}
-      </Popover.Title>
+      </PopoverTitle>
       <ul className="wgi-week-card-facts">
         <li>
           <Clock width={16} height={16} />
@@ -112,8 +119,23 @@ export function OpenTimeCard({
   );
 }
 
+const SEARCHING = "Searching…";
+const NO_MATCH = "No patients match.";
+
+/** What the search's live region says: nothing under two characters or
+   after a failed search (the error is its own alert), otherwise the wait,
+   the miss, or the count. */
+function searchStatus(term: string, results: readonly WeekPatient[] | null | undefined) {
+  if (term.length < 2 || results === null) return "";
+  if (results === undefined) return SEARCHING;
+  if (results.length === 0) return NO_MATCH;
+  return `${results.length} ${results.length === 1 ? "patient" : "patients"}`;
+}
+
 /* ---- Patient search: two characters, then a short rest. The card keeps
-   the query, so "Change patient" comes back to the same search. ---- */
+   the query, so "Change patient" comes back to the same search. The list
+   is a combobox: arrows walk it while focus stays in the field, Return
+   picks, and Escape clears a query before it closes the card. ---- */
 
 function PatientSearch({
   query,
@@ -152,55 +174,67 @@ function PatientSearch({
   }, [term]);
 
   const results = found?.query === term ? found.patients : undefined;
+  const status = searchStatus(term, results);
+  const patients = term.length < 2 ? [] : (results ?? []);
 
   return (
     <div className="wgi-week-card-face">
-      <label htmlFor={searchId} className="wgi-week-card-label">
+      <FieldLabel htmlFor={searchId} className="wgi-week-card-label">
         Patient
-      </label>
-      <div className="wgi-week-card-search">
-        <Search width={16} height={16} />
-        <Input
-          id={searchId}
-          type="search"
-          placeholder="Search by name or phone"
-          autoComplete="off"
-          value={query}
-          onChange={(event) => {
-            onQuery(event.currentTarget.value);
-          }}
-        />
-      </div>
-      {term.length < 2 ? null : results === undefined ? (
-        <p className="wgi-week-card-quiet" aria-live="polite">
-          Searching…
-        </p>
-      ) : results === null ? (
-        <CardError>Patients couldn&apos;t be searched. Try again.</CardError>
-      ) : results.length === 0 ? (
-        <p className="wgi-week-card-quiet">No patients match.</p>
-      ) : (
-        <ul className="wgi-week-card-patients" aria-label="Patients">
-          {results.map((result) => (
-            <li key={result.id}>
-              <button
-                type="button"
-                className="wgi-week-card-patient"
-                onClick={() => {
-                  onPick(result);
-                }}
-              >
-                <span data-ui-redact="patient-name">{result.name}</span>
-                {result.dateOfBirth === null ? null : (
-                  <span className="wgi-week-card-quiet" data-ui-redact="patient-contact">
-                    {result.dateOfBirth}
-                  </span>
-                )}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      </FieldLabel>
+      <Combobox
+        inline
+        open
+        items={patients}
+        filter={null}
+        autoHighlight
+        itemToStringLabel={(patient: WeekPatient) => patient.name}
+        inputValue={query}
+        onInputValueChange={(value) => {
+          onQuery(value);
+        }}
+        value={null}
+        onValueChange={(patient: WeekPatient | null) => {
+          if (patient !== null) onPick(patient);
+        }}
+      >
+        <div className="wgi-week-card-search">
+          <Search width={16} height={16} />
+          <ComboboxInput
+            id={searchId}
+            type="search"
+            placeholder="Search by name or phone"
+            onKeyDown={(event) => {
+              if (event.key !== "Escape" || query === "") return;
+              /* The first Escape clears the query; the card stays. */
+              event.preventBaseUIHandler();
+              event.stopPropagation();
+              onQuery("");
+            }}
+          />
+        </div>
+        <ComboboxStatus className="sr-only">{status}</ComboboxStatus>
+        {results === null ? (
+          <CardError>Patients couldn&apos;t be searched. Try again.</CardError>
+        ) : null}
+        {status === SEARCHING || status === NO_MATCH ? (
+          <p className="wgi-week-card-quiet" aria-hidden="true">
+            {status}
+          </p>
+        ) : null}
+        <ComboboxList className="wgi-week-card-patients" aria-label="Patients">
+          {(patient: WeekPatient) => (
+            <ComboboxItem key={patient.id} value={patient} className="wgi-week-card-patient">
+              <span data-ui-redact="patient-name">{patient.name}</span>
+              {patient.dateOfBirth === null ? null : (
+                <span className="wgi-week-card-quiet" data-ui-redact="patient-contact">
+                  {patient.dateOfBirth}
+                </span>
+              )}
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </Combobox>
     </div>
   );
 }

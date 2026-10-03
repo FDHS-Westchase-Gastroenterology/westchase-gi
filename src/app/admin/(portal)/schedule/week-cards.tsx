@@ -1,6 +1,6 @@
 "use client";
 
-import { Popover } from "@base-ui/react/popover";
+import { PopoverArrow, PopoverContent } from "@/components/ui/popover";
 
 import type { WeekAppointmentCell, WeekOpenCell } from "./schedule-week-model";
 import { AppointmentCard } from "./week-appointment-card";
@@ -32,6 +32,8 @@ export type WeekCardPayload =
   | { readonly kind: "appointment"; readonly cell: WeekAppointmentCell }
   | { readonly kind: "open"; readonly cell: WeekOpenCell };
 
+const CARD_COLLISION = { side: "flip", align: "shift", fallbackAxisSide: "end" } as const;
+
 export function WeekCardPopup({
   payload,
   keyed,
@@ -42,25 +44,24 @@ export function WeekCardPopup({
   CardHandlers & { payload: WeekCardPayload; keyed: boolean; referenceType: ReferenceType }
 >) {
   return (
-    <Popover.Portal>
-      <Popover.Positioner
-        className="wgi-week-card-positioner"
-        side="right"
-        align="center"
-        sideOffset={10}
-        collisionPadding={12}
-        arrowPadding={14}
-        collisionAvoidance={{ side: "flip", align: "shift", fallbackAxisSide: "end" }}
-      >
-        <Popover.Popup className="wgi-week-card" data-keyed={keyed || undefined}>
-          <Popover.Arrow className="wgi-week-card-arrow" />
-          {payload.kind === "appointment" ? (
-            <AppointmentCard cell={payload.cell} onDone={onDone} onOpenRecord={onOpenRecord} />
-          ) : (
-            <OpenTimeCard cell={payload.cell} referenceType={referenceType} onDone={onDone} />
-          )}
-        </Popover.Popup>
-      </Popover.Positioner>
-    </Popover.Portal>
+    /* Opened by Enter or Space, it appears and leaves at once. */
+    <PopoverContent
+      className="wgi-week-card"
+      paint="card"
+      motion={keyed ? "none" : "wgi"}
+      side="right"
+      align="center"
+      sideOffset={10}
+      collisionPadding={12}
+      arrowPadding={14}
+      collisionAvoidance={CARD_COLLISION}
+    >
+      <PopoverArrow className="wgi-week-card-arrow" />
+      {payload.kind === "appointment" ? (
+        <AppointmentCard cell={payload.cell} onDone={onDone} onOpenRecord={onOpenRecord} />
+      ) : (
+        <OpenTimeCard cell={payload.cell} referenceType={referenceType} onDone={onDone} />
+      )}
+    </PopoverContent>
   );
 }

@@ -1,6 +1,7 @@
-import type { PopoverPositionerProps } from "@base-ui/react/popover";
 import { useEffect, useRef, useState } from "react";
 import type { ComponentProps, PointerEvent as ReactPointerEvent, RefObject } from "react";
+
+import type { PopoverAnchor } from "@/components/ui/popover-behavior";
 
 import { companionGap, laneFor, panelBase, SIDEBAR_LAYOUT } from "./panel-lane";
 import type { Offset } from "./panel-lane";
@@ -87,7 +88,7 @@ function travelTo(
   popup.style.translate = `${next.x}px ${next.y}px`;
 }
 
-type CardAnchor = PopoverPositionerProps["anchor"];
+type CardAnchor = PopoverAnchor;
 
 interface CardDetach {
   /** The card is a panel right now. */

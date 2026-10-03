@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
 
+import { CalendarRange } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { POPOVER_SHIFT_ONLY } from "@/components/ui/popover-behavior";
 import {
   datePresets,
   dayLabel,
@@ -28,8 +31,6 @@ import type {
 import { AnyRow, ChevronRightGlyph, MultiSelectRows, TickGlyph } from "./filter-options";
 import { suggestionId } from "./home-line";
 import type { FilterSuggestion } from "./home-line";
-import { HomeRangeCalendar } from "./parts/calendar";
-import { HomePopover, HomePopoverContent, HomePopoverTrigger } from "./parts/popover";
 import { SuggestionPill } from "./suggestion-pill";
 
 /* The filter bar (brief §2.2): Add Filter, then active pills in URL order,
@@ -118,7 +119,7 @@ function AddFilterButton({
     viewKey === null ? null : (active.find((entry) => entry.key === viewKey)?.raw ?? null);
 
   return (
-    <HomePopover
+    <Popover
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
@@ -128,7 +129,7 @@ function AddFilterButton({
         }
       }}
     >
-      <HomePopoverTrigger render={<button type="button" className="wgi-add-filter" />}>
+      <PopoverTrigger render={<button type="button" className="wgi-add-filter" />}>
         <svg
           width="15"
           height="15"
@@ -145,8 +146,15 @@ function AddFilterButton({
           <path d="M11 18h4" />
         </svg>
         Add filter
-      </HomePopoverTrigger>
-      <HomePopoverContent className="wgi-editor" aria-label="Add filter">
+      </PopoverTrigger>
+      <PopoverContent
+        className="wgi-editor"
+        paint="card"
+        align="start"
+        collisionPadding={8}
+        collisionAvoidance={POPOVER_SHIFT_ONLY}
+        aria-label="Add filter"
+      >
         {viewDef === null ? (
           <>
             <input
@@ -192,8 +200,8 @@ function AddFilterButton({
             }}
           />
         )}
-      </HomePopoverContent>
-    </HomePopover>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -220,15 +228,22 @@ function ActivePill({
 
   return (
     <span className="wgi-pill" data-pill={pill.key}>
-      <HomePopover open={open} onOpenChange={setOpen}>
-        <HomePopoverTrigger render={<button type="button" className="wgi-pill-label" />}>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger render={<button type="button" className="wgi-pill-label" />}>
           <span className="wgi-pill-key">{def.label}</span>
           <span className="wgi-pill-value">{value}</span>
-        </HomePopoverTrigger>
-        <HomePopoverContent className="wgi-editor" aria-label={`Filter by ${def.label}`}>
+        </PopoverTrigger>
+        <PopoverContent
+          className="wgi-editor"
+          paint="card"
+          align="start"
+          collisionPadding={8}
+          collisionAvoidance={POPOVER_SHIFT_ONLY}
+          aria-label={`Filter by ${def.label}`}
+        >
           <FilterEditor def={def} raw={dimensionRaw} nowMs={nowMs} setParam={setParam} />
-        </HomePopoverContent>
-      </HomePopover>
+        </PopoverContent>
+      </Popover>
       <button
         type="button"
         className="wgi-pill-remove"
@@ -421,7 +436,8 @@ function DateEditor({
           </span>
         </div>
         <div className="wgi-editor-range">
-          <HomeRangeCalendar
+          <CalendarRange
+            className="wgi-editor-cal"
             from={fromDraft}
             to={toDraft}
             fallbackMonth={msToNyDay(nowMs)}

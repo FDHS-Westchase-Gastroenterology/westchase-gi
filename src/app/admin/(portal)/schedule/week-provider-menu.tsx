@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import type { ReactNode } from "react";
 
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Menu,
   MenuCheckboxItem,
@@ -32,14 +33,11 @@ const COMPARE_MAX = 3;
 
 type Mode = "list" | "compare";
 
-function Avatar({ initials }: Readonly<{ initials: string }>) {
+function Initials({ initials }: Readonly<{ initials: string }>) {
   return (
-    <span
-      aria-hidden="true"
-      className="flex size-6 shrink-0 items-center justify-center rounded-full bg-navy-100 text-[0.625rem] font-bold text-navy-900"
-    >
-      {initials}
-    </span>
+    <Avatar size="sm" aria-hidden="true">
+      <AvatarFallback>{initials}</AvatarFallback>
+    </Avatar>
   );
 }
 
@@ -106,7 +104,7 @@ export function WeekProviderMenu({
             >
               {catalog.map((provider) => (
                 <MenuRadioItem key={provider.id} value={provider.id} closeOnClick>
-                  <Avatar initials={provider.initials} />
+                  <Initials initials={provider.initials} />
                   <span className="truncate">{provider.name}</span>
                 </MenuRadioItem>
               ))}
@@ -146,7 +144,7 @@ export function WeekProviderMenu({
                       pick(provider.id, next);
                     }}
                   >
-                    <Avatar initials={provider.initials} />
+                    <Initials initials={provider.initials} />
                     <span className="truncate">{provider.name}</span>
                   </MenuCheckboxItem>
                 );

@@ -12,8 +12,7 @@ import {
   Home,
   Settings,
 } from "@/components/icons";
-
-import { RailTip } from "./portal-sidebar";
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 
 // Five destinations per layout, each its own list (issue #327, Figma section
 // 08 option 2; Schedule from issue #343). The desktop rail gives the five work
@@ -54,7 +53,7 @@ export function PortalNav({
 
   return (
     <nav aria-label="Portal sections" className="portal-primary-nav" data-layout={layout}>
-      <ul>
+      <SidebarMenu>
         {NAV_ITEMS[layout].map((item) => {
           const active = isActive(pathname, item.href);
           const showBadge =
@@ -62,31 +61,31 @@ export function PortalNav({
           const Icon = item.icon;
 
           return (
-            <li key={item.href}>
-              <RailTip label={item.label}>
-                <Link
-                  href={item.href}
-                  aria-current={active ? "page" : undefined}
-                  aria-label={showBadge ? `${item.label}, ${waitingCount} waiting` : item.label}
-                  className="portal-nav-link"
-                >
-                  <Icon className="portal-nav-icon" />
-                  <span className="portal-rail-label">{item.label}</span>
-                  {showBadge ? (
-                    <span
-                      data-testid="nav-waiting-badge"
-                      aria-hidden="true"
-                      className="portal-nav-count"
-                    >
-                      {waitingCount > 99 ? "99+" : waitingCount}
-                    </span>
-                  ) : null}
-                </Link>
-              </RailTip>
-            </li>
+            <SidebarMenuItem key={item.href}>
+              <SidebarMenuButton
+                isActive={active}
+                tooltip={item.label}
+                render={<Link href={item.href} />}
+                aria-current={active ? "page" : undefined}
+                aria-label={showBadge ? `${item.label}, ${waitingCount} waiting` : item.label}
+                className="portal-nav-link"
+              >
+                <Icon className="portal-nav-icon" />
+                <span className="portal-rail-label">{item.label}</span>
+                {showBadge ? (
+                  <span
+                    data-testid="nav-waiting-badge"
+                    aria-hidden="true"
+                    className="portal-nav-count"
+                  >
+                    {waitingCount > 99 ? "99+" : waitingCount}
+                  </span>
+                ) : null}
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           );
         })}
-      </ul>
+      </SidebarMenu>
     </nav>
   );
 }
@@ -99,13 +98,18 @@ export function PortalAccountLinks() {
 
   return [SETTINGS, HELP].map((item) => {
     const Icon = item.icon;
+    const active = isActive(pathname, item.href);
     return (
-      <RailTip key={item.href} label={item.label}>
-        <Link href={item.href} aria-current={isActive(pathname, item.href) ? "page" : undefined}>
-          <Icon className="h-4 w-4" />
-          <span className="portal-rail-label">{item.label}</span>
-        </Link>
-      </RailTip>
+      <SidebarMenuButton
+        key={item.href}
+        isActive={active}
+        tooltip={item.label}
+        render={<Link href={item.href} />}
+        aria-current={active ? "page" : undefined}
+      >
+        <Icon className="h-4 w-4" />
+        <span className="portal-rail-label">{item.label}</span>
+      </SidebarMenuButton>
     );
   });
 }

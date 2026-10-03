@@ -6,13 +6,13 @@ import type { ComponentProps, ReactNode } from "react";
 import { practiceLocalDay } from "@/app/admin/(portal)/requests/appointment-input";
 import { Phone, PhoneOff } from "@/components/icons";
 import { RadioGroup, RadioGroupItem } from "@/components/stock/radio-group";
-import { ToggleGroup, ToggleGroupItem } from "@/components/stock/toggle-group";
+import { CalendarDay } from "@/components/ui/calendar";
 import { Field, FieldLabel } from "@/components/ui/field";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 import { prefersText } from "./home-line";
 import type { HomeLine } from "./home-line";
 import { LineStatusBadge } from "./parts/badge";
-import { HomeDayCalendar } from "./parts/calendar";
 import { ChevronGlyph, CloseGlyph, PhoneGlyph } from "./parts/glyphs";
 import { BookButton, RecordBookingMain } from "./parts/record-booking";
 import { TimePicker } from "./parts/time-picker";
@@ -193,7 +193,8 @@ function DayMain({
   return (
     <div className="wgi-record-main">
       <div className="wgi-record-cal" data-idle={idle || undefined}>
-        <HomeDayCalendar
+        <CalendarDay
+          className="wgi-editor-cal"
           day={idle ? "" : draft.day}
           min={today}
           max={practiceLocalDay(dayHorizon(draft.answer))}

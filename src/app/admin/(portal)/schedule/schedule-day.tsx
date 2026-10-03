@@ -1,6 +1,5 @@
 "use client";
 
-import { Popover } from "@base-ui/react/popover";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useId, useRef, useState } from "react";
@@ -9,6 +8,8 @@ import { toast } from "sonner";
 import { FullRecordSheet } from "@/app/admin/(portal)/(home)/full-record-sheet";
 import type { HomeLine } from "@/app/admin/(portal)/(home)/home-line";
 import { ChevronLeft, ChevronRight } from "@/components/icons";
+import { Popover } from "@/components/ui/popover";
+import { createPopoverHandle } from "@/components/ui/popover-behavior";
 import { showUndoToast } from "@/components/ui/undo-toast";
 
 import { DayEmpty } from "./day-empty";
@@ -51,7 +52,7 @@ export function ScheduleDayView({ view, admin }: Readonly<{ view: ScheduleDay; a
   const router = useRouter();
   const baseId = useId();
   const titleId = `${baseId}-title`;
-  const [card] = useState(() => Popover.createHandle<WeekCardPayload>());
+  const [card] = useState(() => createPopoverHandle<WeekCardPayload>());
   /* Opened from the keyboard: the card appears and leaves at once. */
   const [keyed, setKeyed] = useState(false);
   const [record, setRecord] = useState<RecordOpen | null>(null);
@@ -59,6 +60,7 @@ export function ScheduleDayView({ view, admin }: Readonly<{ view: ScheduleDay; a
   const [checking, setChecking] = useState<string | null>(null);
   const [hints, setHints] = useState(false);
   const [shortcuts, setShortcuts] = useState(false);
+  const [shortcutsHandle] = useState(() => createPopoverHandle<undefined>());
   const shortcutsRef = useRef<HTMLButtonElement>(null);
 
   const targets: ShortcutTargets = {
@@ -153,22 +155,23 @@ export function ScheduleDayView({ view, admin }: Readonly<{ view: ScheduleDay; a
               hints={hints}
               offLine={view.offLine}
               shortcutsRef={shortcutsRef}
-              onShortcuts={() => {
-                setKeyed(false);
-                setShortcuts(true);
-              }}
+              shortcutsHandle={shortcutsHandle}
             />
           )
         }
       />
       <ShortcutsList
         open={shortcuts}
-        onOpenChange={setShortcuts}
+        onOpenChange={(open, details) => {
+          if (open && details.reason === "trigger-press") setKeyed(false);
+          setShortcuts(open);
+        }}
+        handle={shortcutsHandle}
         anchor={shortcutsRef}
         side="top"
         keyed={keyed}
       />
-      <Popover.Root handle={card}>
+      <Popover handle={card}>
         {({ payload }) =>
           payload === undefined ? null : (
             <WeekCardPopup
@@ -188,7 +191,7 @@ export function ScheduleDayView({ view, admin }: Readonly<{ view: ScheduleDay; a
             />
           )
         }
-      </Popover.Root>
+      </Popover>
       <FullRecordSheet
         line={record?.line ?? null}
         instant={record?.instant ?? false}
