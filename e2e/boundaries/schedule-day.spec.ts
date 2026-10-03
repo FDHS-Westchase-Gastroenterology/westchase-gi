@@ -1,12 +1,25 @@
 import { randomUUID } from "node:crypto";
 
 import { expect, test } from "@playwright/test";
+import { z } from "zod";
 
+import { schedulingInputSchema } from "../../src/lib/portal/scheduling/contracts";
 import { dayScheduleOutcomeSchema } from "../../src/lib/portal/scheduling/grid-contracts";
 import { monthSummaryOutcomeSchema } from "../../src/lib/portal/scheduling/read-contracts";
 import { resolveAppointmentStart } from "../../src/lib/portal/scheduling/time";
 import { serviceDb } from "../harness/env";
 import { createSchedulingFixture, schedulingFixtureDate } from "../harness/scheduling";
+
+/** The RPC's raw day, typed only as far as the contract checks below reach into it. */
+const rawDaySchema = z.looseObject({
+  providers: z.array(
+    z.looseObject({
+      id: z.string(),
+      working: z.array(z.looseObject({})),
+      appointments: z.array(z.looseObject({})),
+    }),
+  ),
+});
 
 function at(date: string, time: string) {
   const instant = resolveAppointmentStart({ date, time });
@@ -25,6 +38,33 @@ function weekdayOf(date: string) {
 function iso(instant: string) {
   return new Date(instant).toISOString();
 }
+
+test("the day command takes one practice date and an optional appointment type", () => {
+  // The service answers invalid_command for each of these, before any database call.
+  for (const input of [
+    { date: "2026-09-31" },
+    { date: "1999-12-31" },
+    { date: "2200-01-01" },
+    { date: "2026-09-16", providerIds: [randomUUID()] },
+    { date: "2026-09-16", appointmentTypeId: "x" },
+  ])
+    expect(schedulingInputSchema.safeParse({ action: "day_schedule", ...input }).success).toBe(
+      false,
+    );
+  const typeId = randomUUID();
+  expect(schedulingInputSchema.parse({ action: "day_schedule", date: "2026-09-16" })).toEqual({
+    action: "day_schedule",
+    date: "2026-09-16",
+    appointmentTypeId: null,
+  });
+  expect(
+    schedulingInputSchema.parse({
+      action: "day_schedule",
+      date: "2026-09-16",
+      appointmentTypeId: typeId,
+    }),
+  ).toMatchObject({ appointmentTypeId: typeId });
+});
 
 test("the day read gives every working provider a column and names who is off", async () => {
   const db = serviceDb();
@@ -100,14 +140,18 @@ test("the day read gives every working provider a column and names who is off", 
     });
     if (!booked.ok) throw new Error("Booking fixture failed");
 
-    async function day(on: string, actor?: string, typeId: string = fixture.typeId) {
+    async function raw(on: string, actor?: string, typeId: string = fixture.typeId) {
       const result = await db.rpc("portal_schedule_day", {
         p_actor_id: actor ?? fixture.staff.userId,
         p_date: on,
         p_appointment_type_id: typeId,
       });
       expect(result.error).toBeNull();
-      return dayScheduleOutcomeSchema.parse(result.data);
+      const data: unknown = result.data;
+      return data;
+    }
+    async function day(on: string, actor?: string, typeId: string = fixture.typeId) {
+      return dayScheduleOutcomeSchema.parse(await raw(on, actor, typeId));
     }
     // The Preview database is shared, so only this test's providers are compared.
     const ours = new Set([...Object.values(providers), ...fixture.providerIds]);
@@ -235,6 +279,25 @@ test("the day read gives every working provider a column and names who is off", 
       "no_show",
     ]);
     expect(pastSplit).toMatchObject({ seen: 2, openCount: null, open: [] });
+
+    /* The service answers unavailable when the read breaks its contract: a cancelled visit,
+       a visit without its version, or a working window without its office. */
+    const rawPast = rawDaySchema.parse(await raw(past));
+    const rawSplit = rawPast.providers.find((provider) => provider.id === providers.Split);
+    if (rawSplit === undefined) throw new Error("The raw past read has no Split column");
+    const [visit] = rawSplit.appointments;
+    const [window] = rawSplit.working;
+    const { version: _version, ...unversioned } = visit;
+    const { locationName: _locationName, ...unnamed } = window;
+    expect(dayScheduleOutcomeSchema.safeParse(rawPast).success).toBe(true);
+    for (const broken of [
+      { ...rawSplit, appointments: [{ ...visit, status: "cancelled" }] },
+      { ...rawSplit, appointments: [unversioned] },
+      { ...rawSplit, working: [unnamed] },
+    ])
+      expect(dayScheduleOutcomeSchema.safeParse({ ...rawPast, providers: [broken] }).success).toBe(
+        false,
+      );
 
     // A date before anyone's hours: no columns, and every active provider is off.
     const empty = await day("2000-01-03");
