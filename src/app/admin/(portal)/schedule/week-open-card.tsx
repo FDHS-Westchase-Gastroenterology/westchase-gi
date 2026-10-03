@@ -11,6 +11,7 @@ import {
   ComboboxList,
   ComboboxStatus,
 } from "@/components/ui/combobox";
+import { FieldLabel } from "@/components/ui/field";
 import { PopoverTitle } from "@/components/ui/popover";
 
 import type { WeekOpenCell } from "./schedule-week-model";
@@ -178,9 +179,9 @@ function PatientSearch({
 
   return (
     <div className="wgi-week-card-face">
-      <label htmlFor={searchId} className="wgi-week-card-label">
+      <FieldLabel htmlFor={searchId} className="wgi-week-card-label">
         Patient
-      </label>
+      </FieldLabel>
       <Combobox
         inline
         open

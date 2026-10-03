@@ -5,6 +5,7 @@ import { startTransition, useEffect, useId, useState } from "react";
 import { dayHorizon } from "@/app/admin/(portal)/(home)/record-card-model";
 import { Button } from "@/components/ui/button";
 import { CalendarDay } from "@/components/ui/calendar";
+import { FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -146,9 +147,9 @@ export function CancelFace({
         onCancel(trimmed, managed ? callAgain : null);
       }}
     >
-      <label htmlFor={reasonId} className="wgi-week-card-label">
+      <FieldLabel htmlFor={reasonId} className="wgi-week-card-label">
         Reason
-      </label>
+      </FieldLabel>
       <Textarea
         id={reasonId}
         value={reason}
@@ -161,9 +162,9 @@ export function CancelFace({
       />
       {managed ? (
         <>
-          <label htmlFor={callId} className="wgi-week-card-label">
+          <FieldLabel htmlFor={callId} className="wgi-week-card-label">
             Call again on
-          </label>
+          </FieldLabel>
           <Input
             id={callId}
             type="date"

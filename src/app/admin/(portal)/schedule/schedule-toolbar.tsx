@@ -6,6 +6,7 @@ import { useRef, useState } from "react";
 import type { ReactNode, Ref } from "react";
 
 import { Search } from "@/components/icons";
+import { Input } from "@/components/ui/input";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import type { SegmentedControlOption } from "@/components/ui/segmented-control";
 
@@ -53,7 +54,13 @@ export function ScheduleTools({
     <div ref={toolsRef} className="wgi-schedule-tools">
       <label className="wgi-schedule-search">
         <Search width={18} height={18} />
-        <input type="search" placeholder="Search patients" aria-label="Search patients" disabled />
+        <Input
+          type="search"
+          motion="none"
+          placeholder="Search patients"
+          aria-label="Search patients"
+          disabled
+        />
       </label>
       <SegmentedControl<ScheduleView>
         aria-label="View"

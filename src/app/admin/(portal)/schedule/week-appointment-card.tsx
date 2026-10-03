@@ -5,6 +5,7 @@ import { startTransition, useEffect, useId, useState } from "react";
 
 import { formatPhoneForDisplay, telHref } from "@/app/admin/(portal)/requests/format";
 import { Check, ChevronRight, Clock, Ellipsis, MapPin, Phone, User } from "@/components/icons";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Menu, MenuContent, MenuGroup, MenuItem, MenuTrigger } from "@/components/ui/menu";
 import { PopoverTitle } from "@/components/ui/popover";
@@ -26,8 +27,9 @@ import type { CardHandlers } from "./week-card-parts";
 
 /* ---- The appointment card ---- */
 
-/* The status wears Home's line badge paints (home.css .wgi-badge), so
-   Scheduled on the week reads as the request's Scheduled on Home. */
+/* The status is a ui/badge in its color-law variant, wearing Home's line
+   badge paints (home.css .wgi-badge) over the recipe's, so Scheduled on
+   the week reads as the request's Scheduled on Home. */
 const BADGE_PAINT = {
   settled: "wgi-badge-scheduled",
   current: "wgi-badge-contacted",
@@ -145,9 +147,9 @@ function AppointmentDetails({
         {detail.patientName}
       </PopoverTitle>
       <p className="wgi-week-card-kind">
-        <span data-slot="badge" className={cn("wgi-badge", BADGE_PAINT[badge.variant])}>
+        <Badge variant={badge.variant} className={cn("wgi-badge", BADGE_PAINT[badge.variant])}>
           {badge.label}
-        </span>
+        </Badge>
         <span>{detail.appointmentTypeName}</span>
       </p>
       {face === "details" ? (
@@ -361,10 +363,17 @@ function RecordFoot({
   return (
     <div className="wgi-week-card-foot">
       {failed ? <CardError>The full record couldn&apos;t be opened.</CardError> : null}
-      <button type="button" className="wgi-week-card-record" disabled={pending} onClick={open}>
+      <Button
+        variant="link"
+        size="sm"
+        motion="none"
+        className="wgi-week-card-record"
+        disabled={pending}
+        onClick={open}
+      >
         Open full record
-        <ChevronRight width={14} height={14} />
-      </button>
+        <ChevronRight data-icon="inline-end" />
+      </Button>
     </div>
   );
 }

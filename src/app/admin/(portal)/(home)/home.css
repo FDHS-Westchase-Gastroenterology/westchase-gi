@@ -2097,8 +2097,11 @@ a.appt-phone {
   color: var(--color-coral-700);
 }
 
+/* A ui/button ghost (size sm, motion none) at the strip's text-action
+   step; the press and hover here are the strip's own. */
 .wgi-booking-action {
   flex: none;
+  min-height: 0;
   border: 0;
   border-radius: 4px;
   padding: 0.25rem 0.375rem;
@@ -2107,6 +2110,7 @@ a.appt-phone {
   font-family: inherit;
   font-size: var(--wgi-card-row-size);
   font-weight: 700;
+  line-height: inherit;
   cursor: pointer;
   transition:
     background-color var(--motion-fast-duration) var(--motion-standard),
@@ -3637,6 +3641,11 @@ a.appt-phone {
 .wgi-booking-action:focus-visible {
   outline: 2px solid var(--color-teal-ink);
   outline-offset: 2px;
+}
+
+/* The strip's outline is the action's focus; the recipe's ring stands down. */
+.wgi-booking-action:focus-visible {
+  box-shadow: none;
 }
 
 /* A start somebody else took a moment ago: struck, and no longer a

@@ -12,9 +12,10 @@ import { cn } from "cn";
  * executable: each hue holds exactly one role, and a stamp always carries
  * words beside its color.
  *
- * Sole importer today: src/app/admin/(portal)/requests/status-badge.tsx
- * (rendered on the portal queue and request-detail pages); the staff home
- * has its own wrapper. Current consumers of every variant are in
+ * Importers: src/app/admin/(portal)/requests/status-badge.tsx (the portal
+ * queue and request-detail pages) and the week card's appointment status
+ * (schedule/week-appointment-card.tsx, over Home's .wgi-badge paints); the
+ * staff home has its own wrapper. Current consumers of every variant are in
  * design-system/surfaces.md "Badges".
  *
  * Two axes, decoupled per design-system/components.md
