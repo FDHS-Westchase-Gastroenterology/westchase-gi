@@ -154,6 +154,17 @@
   .wgi-schedule-tools > [data-slot="segmented-control"] {
     flex: none;
   }
+
+  /* A phone's day is narrower than "348 open": the word drops under a
+     smaller number instead of running past the page edge. */
+  .wgi-day-count {
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .wgi-day .wgi-day-count b {
+    font-size: 1rem;
+  }
 }
 
 /* A ui/input (motion none) set into the pill: the pill draws the field,
