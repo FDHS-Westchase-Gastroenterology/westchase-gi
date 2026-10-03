@@ -252,12 +252,17 @@ function dateToDay(date: Date): string {
    picked start or today is the focused day. DayPicker's `autoFocus` marks
    that day and the recipe's day button takes focus (the editor parks focus
    on the popup before the swap so the popover's focus manager has nothing
-   to re-home in between). */
+   to re-home in between).
+
+   The Activity log's date range (issue #357) passes `max`, today: later days
+   are disabled and the month cannot page past it, because nothing is logged
+   after today. */
 function CalendarRange({
   className,
   from,
   to,
   fallbackMonth,
+  max,
   onChange,
 }: Readonly<{
   /** The surface's class on the root (Home's `wgi-editor-cal`). */
@@ -266,10 +271,13 @@ function CalendarRange({
   to: string;
   /** The day whose month opens when nothing is picked yet. */
   fallbackMonth: string;
+  /** The last day that can be picked, YYYY-MM-DD; none when omitted. */
+  max?: string;
   onChange: (from: string, to: string) => void;
 }>) {
   const selected: DateRange | undefined =
     from === "" ? undefined : { from: dayToDate(from), to: dayToDate(to) };
+  const last = max === undefined ? undefined : parseDay(max);
 
   return (
     <div>
@@ -280,6 +288,8 @@ function CalendarRange({
         mode="range"
         numberOfMonths={1}
         defaultMonth={dayToDate(from) ?? dayToDate(fallbackMonth)}
+        endMonth={last}
+        disabled={last === undefined ? undefined : { after: last }}
         selected={selected}
         onSelect={(range) => {
           onChange(

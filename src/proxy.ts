@@ -126,8 +126,9 @@ async function protectAdminRequest(request: NextRequest): Promise<NextResponse> 
     "/admin/auth/confirm",
     "/admin/auth/callback",
   ].includes(request.nextUrl.pathname);
-  const isReviewFlyerAssetPath = request.nextUrl.pathname.startsWith(
-    "/admin/review-flyers/assets/",
+  // The flyer files and their .zip answer for themselves (401, not a redirect).
+  const isReviewFlyerAssetPath = ["/admin/review-flyers/assets/", "/admin/review-flyers/zip/"].some(
+    (prefix) => request.nextUrl.pathname.startsWith(prefix),
   );
   const config = portalSupabaseConfig();
 

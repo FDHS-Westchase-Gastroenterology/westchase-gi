@@ -359,7 +359,7 @@ async function redactPortalData(page) {
       [data-testid="audit-table"] tbody,
       [data-testid="release-engagement-table"] tbody,
       [data-testid="release-engagement-cards"],
-      [data-testid="recent-work-list"],
+      [data-testid="activity-feed"],
       [data-testid="maintainer-list"] {
         filter: blur(8px);
         user-select: none;

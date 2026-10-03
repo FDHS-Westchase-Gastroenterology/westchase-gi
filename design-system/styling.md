@@ -27,8 +27,8 @@ Point 3 governs `className` on a `ui/` instance. A plain element a route owns ha
 contradict, so its `className` takes type from the scale: a size step such as
 `text-[length:var(--pt-sm)]` ([typography.md](typography.md#sizes)), a weight from
 [typography.md](typography.md#weights); literal rem sizes are [drift](typography.md#recorded-drift).
-The `tabular-nums` spans in `audit/recent-work.tsx` and `ProfileCardViewer.tsx`'s zoom readout
-follow [typography.md](typography.md#numerals-and-tracking); numerals are the one type decision a
+The `tabular-nums` span in `ProfileCardViewer.tsx`'s zoom readout
+follows [typography.md](typography.md#numerals-and-tracking); numerals are the one type decision a
 recipe takes for a call site: `ui/time-picker-variants.ts` sets `tabular-nums` in its base string.
 
 ## What a recipe or scoped rule may name
@@ -104,8 +104,8 @@ repeats it and fails on a restyle this table lacks or a row the code no longer m
 | `Card` | `rounded-[var(--radius-lg)]` `bg-white` `text-base` `leading-[1.55]` `shadow-[var(--shadow-card)]` `ring-0` | `auth-card.tsx` | [Item 1](roadmap.md#1-card-surfaces) |
 | `CardDescription` | `text-[0.9rem]` `text-[var(--color-muted-ink)]` | `auth-card.tsx` | [Item 1](roadmap.md#1-card-surfaces) |
 | `Button` | `disabled:opacity-60` | `call-again-fieldset.tsx`, `request-notes.tsx`, `workflow-panel.tsx`, `staff-request-form-footer.tsx`, `recipients-manager.tsx`, `maintainer-access.tsx`, `staff-manager.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
-| `Button` | `aria-disabled:opacity-60` | `request-current-feedback.tsx`, `print-controls.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
-| `buttonVariants` | `aria-disabled:opacity-60` | `print-chooser.tsx`, `review-flyer-printer.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
+| `Button` | `aria-disabled:opacity-60` | `request-current-feedback.tsx`, `print-controls.tsx`, `flyer-output.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
+| `buttonVariants` | `aria-disabled:opacity-60` | `print-chooser.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
 | `Button` | `disabled:opacity-65` | `confirm-form.tsx`, `reset-request-form.tsx`, `password-form.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
 | `Button` | `disabled:opacity-70` | `AppointmentForm.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
 | `Button` | `disabled:opacity-100` | `login-form.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |

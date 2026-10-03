@@ -12,40 +12,82 @@ import {
   Home,
   Settings,
 } from "@/components/icons";
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+import {
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar";
 
 import { SettingsNav } from "./settings-nav";
 import { inSettings } from "./settings-panes";
 
-// Five destinations per layout, each its own list (issue #327, Figma section
-// 08 option 2; Schedule from issue #343). The desktop rail gives the five work
-// Pages the same row and moves Settings and Help to the account footer; the
-// Phone bar keeps Home, Schedule, Requests, Settings and Help, with Activity
-// Log in the account menu. The
-// Shell renders one PortalNav per layout and hides the inactive one whole,
-// So a link that is not on screen never holds a tab stop. Home, Requests,
-// The current-location signal and the waiting count never move.
+/* One list per layout (issue #327, Figma section 08 option 2; Schedule from
+   issue #343; the regroup from issue #357, Figma 516:9469). The desktop rail
+   holds the day's work, Home, Schedule, Requests and Activity log, then the
+   "Patient materials" group with Review flyers, and moves Settings and Help
+   to the account footer; the phone bar keeps Home, Schedule, Requests,
+   Settings and Help, with Activity log in the account menu. The shell
+   renders one PortalNav per layout and hides the inactive one whole, so a
+   link that is not on screen never holds a tab stop. On the compact rail
+   the group heading folds away. The current-location signal and the
+   waiting count never move. */
+
+type NavItem = Readonly<{ href: string; label: string; icon: typeof Home }>;
 
 const HOME = { href: "/admin", label: "Home", icon: Home };
 const SCHEDULE = { href: "/admin/schedule", label: "Schedule", icon: Calendar };
 const REQUESTS = { href: "/admin/requests", label: "Requests", icon: ClipboardCheck };
+const ACTIVITY = { href: "/admin/audit", label: "Activity log", icon: Activity };
+const FLYERS = { href: "/admin/review-flyers", label: "Review flyers", icon: FileText };
 const SETTINGS = { href: "/admin/settings", label: "Settings", icon: Settings };
 const HELP = { href: "/admin/help", label: "Help", icon: CircleHelp };
 
 const NAV_ITEMS = {
-  sidebar: [
-    HOME,
-    SCHEDULE,
-    REQUESTS,
-    { href: "/admin/review-flyers", label: "Review flyers", icon: FileText },
-    { href: "/admin/audit", label: "Activity log", icon: Activity },
-  ],
+  sidebar: [HOME, SCHEDULE, REQUESTS, ACTIVITY],
   bar: [HOME, SCHEDULE, REQUESTS, SETTINGS, HELP],
-} as const;
+} as const satisfies Record<string, readonly NavItem[]>;
+
+/** The rail's groups below the day's work, each under its heading. */
+const SIDEBAR_GROUPS = [
+  { id: "portal-nav-materials", label: "Patient materials", items: [FLYERS] },
+] as const;
 
 function isActive(pathname: string, href: string): boolean {
   if (href === "/admin") return pathname === "/admin";
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function PortalNavItem({
+  item,
+  pathname,
+  waitingCount,
+}: Readonly<{ item: NavItem; pathname: string; waitingCount: number | null }>) {
+  const active = isActive(pathname, item.href);
+  const showBadge = item.href === "/admin/requests" && waitingCount !== null && waitingCount > 0;
+  const Icon = item.icon;
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        isActive={active}
+        tooltip={item.label}
+        render={<Link href={item.href} />}
+        aria-current={active ? "page" : undefined}
+        aria-label={showBadge ? `${item.label}, ${waitingCount} waiting` : item.label}
+        className="portal-nav-link"
+      >
+        <Icon className="portal-nav-icon" />
+        <span className="portal-rail-label">{item.label}</span>
+        {showBadge ? (
+          <span data-testid="nav-waiting-badge" aria-hidden="true" className="portal-nav-count">
+            {waitingCount > 99 ? "99+" : waitingCount}
+          </span>
+        ) : null}
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
 }
 
 export function PortalNav({
@@ -59,38 +101,34 @@ export function PortalNav({
   return (
     <nav aria-label="Portal sections" className="portal-primary-nav" data-layout={layout}>
       <SidebarMenu>
-        {NAV_ITEMS[layout].map((item) => {
-          const active = isActive(pathname, item.href);
-          const showBadge =
-            item.href === "/admin/requests" && waitingCount !== null && waitingCount > 0;
-          const Icon = item.icon;
-
-          return (
-            <SidebarMenuItem key={item.href}>
-              <SidebarMenuButton
-                isActive={active}
-                tooltip={item.label}
-                render={<Link href={item.href} />}
-                aria-current={active ? "page" : undefined}
-                aria-label={showBadge ? `${item.label}, ${waitingCount} waiting` : item.label}
-                className="portal-nav-link"
-              >
-                <Icon className="portal-nav-icon" />
-                <span className="portal-rail-label">{item.label}</span>
-                {showBadge ? (
-                  <span
-                    data-testid="nav-waiting-badge"
-                    aria-hidden="true"
-                    className="portal-nav-count"
-                  >
-                    {waitingCount > 99 ? "99+" : waitingCount}
-                  </span>
-                ) : null}
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          );
-        })}
+        {NAV_ITEMS[layout].map((item) => (
+          <PortalNavItem
+            key={item.href}
+            item={item}
+            pathname={pathname}
+            waitingCount={waitingCount}
+          />
+        ))}
       </SidebarMenu>
+      {layout === "sidebar"
+        ? SIDEBAR_GROUPS.map((group) => (
+            <SidebarGroup key={group.id} className="portal-nav-group">
+              <SidebarGroupLabel id={group.id} className="portal-nav-group-label">
+                {group.label}
+              </SidebarGroupLabel>
+              <SidebarMenu aria-labelledby={group.id}>
+                {group.items.map((item) => (
+                  <PortalNavItem
+                    key={item.href}
+                    item={item}
+                    pathname={pathname}
+                    waitingCount={waitingCount}
+                  />
+                ))}
+              </SidebarMenu>
+            </SidebarGroup>
+          ))
+        : null}
     </nav>
   );
 }

@@ -73,10 +73,11 @@ one is a conversation with Jason, not a judgment call inside a feature.
   Base UI does not publish. The history's bar shows only while it scrolls, is held, or is hovered
   itself (Base UI's `data-hovering` covers the whole region, so the bar's own `:hover` stands in),
   and an edge fade marks rows below the fold ([surfaces.md](surfaces.md#rules-and-scrolling)).
-- **Collapsible is a staff home part.** `(home)/parts/collapsible.tsx` is a fresh conversion of
-  `stock/collapsible.tsx` for the full record's request details, painted and timed in `home.css`
-  under `.wgi-disclosure`; its panel height animates through Base UI's
-  `--collapsible-panel-height`.
+- **Collapsible has two conversions.** `ui/collapsible.tsx` adopts `stock/collapsible.tsx` on the
+  same Base UI parts for the Activity log's rows (`activity-log-row.tsx`); its panel height follows
+  Base UI's `--collapsible-panel-height` on the `motion` axis. `(home)/parts/collapsible.tsx` is the
+  staff home's earlier conversion for the full record's request details, painted and timed in
+  `home.css` under `.wgi-disclosure`; it stays until the full record moves onto the recipe.
 - **Sonner is the portal's save feedback**, on the owner's explicit decision of 2026-09-15,
   wherever a save has a pending beat and then a confirmation: the home record card, the staff
   request form in both its homes, the note composer and the request work panel. `Toaster` is

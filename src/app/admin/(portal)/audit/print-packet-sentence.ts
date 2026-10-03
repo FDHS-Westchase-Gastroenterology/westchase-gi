@@ -1,4 +1,4 @@
-/* The Recent work sentence for one print packet's audit row
+/* The Activity log sentence for one print packet's audit row
    (`requests.print_new`). Every packet writes `row_count`; a status packet
    writes its `status_filter`, and a packet of chosen requests writes a null
    filter and its `request_ids`. Rows written before packets named their

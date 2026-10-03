@@ -526,8 +526,9 @@ timestamp, or visitor identity. Counts are directional aggregates, not a forensi
 
 Approved review-flyer binaries stay under `private/review-flyers/`.
 `src/lib/review-targets.json` is the destination, filename, and hash manifest. Authenticated asset
-routes serve the bytes after their own authorization. Do not move the files to `public/` or
-regenerate an approved PDF as a routine edit.
+routes serve the bytes after their own authorization: one file at a time, or one flyer's PDF, SVG
+and PNG as a stored .zip built on request from the same files, so no archive is kept. Do not move
+the files to `public/` or regenerate an approved PDF as a routine edit.
 
 ## Patient-request data lifecycle
 
@@ -641,8 +642,15 @@ the adapter or database. The matching change-type check matrix is
   `src/lib/portal/telemetry.ts` → the route and analytics RPC.
 - **Website and GitHub:** `src/app/admin/(portal)/settings/software/`, `integrations.ts`,
   `maintainer-operation.ts`, and `maintainers.ts`.
+- **Activity log:** `src/lib/portal/activity-contracts.ts` (filters, rows, address) and
+  `activity.ts` (the read, scoped by role) → `audit/activity-actions.ts` → `audit/page.tsx`, with
+  `activity-log.tsx`, `activity-log-parts.tsx`, `activity-log-row.tsx` and `activity-model.ts`
+  for the screen and `audit-sentences.ts` for each row's sentence. The administrator's Technical
+  record is the table and pager at the foot of `audit/page.tsx`.
 - **Review flyers:** `private/review-flyers/`, `review-targets.json`, `review-flyers.ts`, the
-  protected asset route, and `scripts/verify-review-flyers.mjs`.
+  protected asset route `review-flyers/assets/[filename]`, the one-flyer archive route
+  `review-flyers/zip/[key]` with `src/lib/portal/store-zip.ts`, the page's cards and menus beside
+  `review-flyers/page.tsx`, and `scripts/verify-review-flyers.mjs`.
 - **SEO, canonical URLs, locale routing, and legacy scrubbing:** `metadata.ts`, `site.ts`,
   `sitemap.ts`, `robots.ts`, `next.config.ts`, and `src/proxy.ts`.
 - **Design and shared UI:** `src/app/globals.css`, `fonts.ts`, route and component modules,

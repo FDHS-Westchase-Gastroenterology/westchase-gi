@@ -25,6 +25,7 @@ contracts are not yet on `main`.
 | See month availability | One summary per practice date: open count, booked share, seen visits, closed days, and per-provider openings | Connected: `/admin/schedule` month view with the day preview, the week view (`week_schedule`), and the Day view (`day_schedule`): one column per working provider, open time that books, and the no-providers empty state | [Scheduling](#scheduling) |
 | Book and manage appointments | Availability, conflict checks, booking, rescheduling, cancellation, arrival/outcomes, and Undo | Connected on the week and Day views: the appointment card checks in, reschedules, cancels and marks no-show or complete, and the open-time card books a found patient. The Day view's booking and Check in offer Undo for 15 minutes (`undoAppointmentChange`). Remaining: appointment history, and Undo on the week view | [Scheduling](#scheduling) |
 | Schedule from an intake request | One operation updates both the reservation and its reviewed request | Connected: the Home record card and the Schedule's request record book from the card's month (`month_availability`, then one `book` with `sourceRequestId`). An unlinked requester is registered and linked as the booking lands. Remaining: paired rescheduling/cancellation/Undo | [Requests and appointments](#requests-and-appointments) |
+| See what staff did | One newest-first Activity log over appointment, schedule, request, patient, sign-in and settings history, with chip, provider, date and search filters and role scoping (#357) | Connected: `/admin/audit` reads `readActivityPage` with the category and appointment chips, provider, date range and search, scrolls into the next page, phrases every row, and expands a row into its detail; front desk gets no Settings chip and no Technical record | [Activity log](#activity-log) |
 | Read the request queue | Complete filtered results, counts, attention order, and Previous/Next | Existing screens already use the complete reads; preserve them when changing filters or paging | [Worklists](#worklists) |
 | Record billing, when used | Patient-owned charges, payments recorded elsewhere, refunds, adjustments, and corrections | Optional ledger screens, role-aware actions, and reconciliation | [Billing](#billing) |
 | Keep clinical records, when used | Notes, external document references, drafts, signing, amendments, and corrections | Optional clinical screens, signer administration, and protected record history | [Clinical records](#clinical-records) |
@@ -387,6 +388,59 @@ Acceptance when these controls change: filter counts, empty and deep pages, Prev
 the same filters, changed ordering after saves, and a read failure. Existing
 [worklist evidence](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/pull/224#issuecomment-5563545212)
 covers the complete-read integration in the current screens.
+
+## Activity log
+
+The read is the Server Function `readActivityPage(filters, cursor)` in
+`src/app/admin/(portal)/audit/activity-actions.ts`; its contract is
+[activity-contracts.ts](src/lib/portal/activity-contracts.ts) and the database function is
+`portal_read_activity`. It requires a staff session (a signed-out call throws the usual 401) and
+takes the viewer's role from their staff profile in the database, never from the caller.
+
+| Input | Meaning |
+| --- | --- |
+| `filters.categories` | Chips: `appointments`, `requests`, `schedule`, `sign_ins`, `settings`. Absent or empty means all the viewer may see. |
+| `filters.appointmentActions` | `booked`, `moved`, `cancelled`, `checked_in`, `no_show`, `completed`. Narrows only Appointments rows; an undo counts as the action it undid. |
+| `filters.providerId` | Rows whose provider, or prior provider for a move, is this one. |
+| `filters.from`, `filters.to` | Inclusive practice-local dates (`YYYY-MM-DD`, America/New_York); `to` before `from` is invalid. |
+| `filters.query` | Up to 200 characters and eight words; every word must start a word of the actor, patient or request name, provider, location, appointment type, staff member or recipient a Settings row is about, or the action's words. Sent in the POST body only. |
+| `cursor` | `null` for the first page, then the page's `nextCursor` (`{ occurredAt, id }`). |
+
+A page is `{ ok: true, rows, nextCursor, counts }`: up to 50 rows newest first, ordered by
+`(occurredAt, id)`, `nextCursor` null on the last page, and `counts.hidden` (how many rows the
+viewer could see that the filters leave out) on the first page only. Front desk sees
+appointments, requests, the schedule and their own sign-ins; an admin also sees every sign-in and
+the Settings category (staff, recipients, maintainers and exports). Print packets are request
+work and read under Requests. A Settings
+chip sent by front desk returns no rows rather than an error.
+
+Failures are `invalid_command` (filters or cursor the contract refuses: keep the controls and say
+the filter could not be applied), `unauthorized` (session handling), and `unavailable` (a failed
+read; offer Try again and never show it as an empty log).
+
+Phrase a row with `activityActor(row)` followed by `phraseActivityRow(row, now).sentence` from
+`activity-model.ts` ("Maria Lopez moved Dana Walsh to Thu, Sep 17 at 2:00 PM with Dr. Awad");
+audit rows reuse Recent work's `describeAction`. `technical: true` marks a row the log has no
+words for. `via` is `"undo"` for an undo and `"system"` for the retention job; whether a change
+came from the Schedule or the appointment card is not recorded, so the log never says. `before`,
+`after` and `detail` carry the source record for an expanded Technical record.
+
+The page address holds the filters, never the search: `parseActivitySearchParams` and
+`activityHref` read and write `/admin/audit?category=&action=&provider=&from=&to=` with
+comma-separated lists, dropping unknown values. A successful sign-in writes the `auth.sign_in`
+row; a refused one writes nothing.
+
+Acceptance (`e2e/boundaries/activity.spec.ts`): merge order across the three histories, cursor
+paging across days, every category and appointment chip, provider, date and search filters,
+front-desk versus admin scoping, the sign-in row, and anonymous and signed-in Data API calls
+refused.
+
+The page is connected and verified in `e2e/portal/activity-log.spec.ts`: provider, chip and date
+filters written to the address and kept across a reload, Clear all, a row opening its appointment
+on the Schedule, front desk without the Settings chip or the Technical record, and an
+`unavailable` read shown as "The log could not be loaded" with Try again. The same spec downloads
+a review flyer's PDF and its .zip from `/admin/review-flyers/zip/[key]` and checks every entry's
+name, size and CRC against `private/review-flyers`.
 
 ## Billing
 

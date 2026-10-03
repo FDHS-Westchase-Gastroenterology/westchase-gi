@@ -343,13 +343,13 @@ test.describe("portal requests operation", () => {
       await expect(notesSection.getByTestId("request-note-feedback")).toHaveCount(0);
       await expect(page.getByTestId("staff-request-created")).toHaveCount(0);
 
-      // The human audit view names the work in plain language — never the
+      // The Activity log names the work in plain language — never the
       // Raw request.create action identifier.
       await page.goto("/admin/audit");
-      const recentWork = page.getByTestId("recent-work-list").first();
-      await expect(recentWork).toBeVisible();
-      await expect(recentWork).toContainText("added an appointment request");
-      await expect(recentWork).not.toContainText("request.create");
+      const activity = page.getByTestId("activity-feed");
+      await expect(activity).toBeVisible();
+      await expect(activity).toContainText("added an appointment request");
+      await expect(activity).not.toContainText("request.create");
 
       await page.goto(`/admin/requests?q=${encodeURIComponent(patientEmail)}`);
       const rowLink = page.getByTestId("request-row").filter({ hasText: patientName });
@@ -498,7 +498,7 @@ test.describe("portal requests operation", () => {
     );
     await panel.getByText("Pick a day…", { exact: true }).click();
     const customDay = page.getByTestId("call-again-day");
-    const dayLabel = page.getByText("Call again on", { exact: false });
+    const dayLabel = page.locator("label", { hasText: "Call again on" });
     await expect(dayLabel).toBeVisible();
     await expect(dayLabel).toHaveAttribute("for", "call-again-day");
     await expect(customDay).toHaveAccessibleName(/Call again on/);
@@ -681,12 +681,12 @@ test.describe("portal requests operation", () => {
     expect(statusAuditError).toBeNull();
     expect(statusAudits).toHaveLength(0);
 
-    // The human Recent work view never shows the raw workflow-command
-    // Identifier; the Technical record beneath keeps it for administrators.
+    // The Activity log never shows the raw workflow-command identifier;
+    // The Technical record beneath keeps it for administrators.
     await page.goto("/admin/audit");
-    const recentWork = page.getByTestId("recent-work-list").first();
-    await expect(recentWork).toBeVisible();
-    await expect(recentWork).not.toContainText("request.workflow_command");
+    const activity = page.getByTestId("activity-feed");
+    await expect(activity).toBeVisible();
+    await expect(activity).not.toContainText("request.workflow_command");
     await expect(page.getByTestId("audit-table")).toContainText("request.workflow_command");
   });
 

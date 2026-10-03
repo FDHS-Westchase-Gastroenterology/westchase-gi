@@ -127,7 +127,7 @@ test.describe("portal home", () => {
     // Help sit in the account footer. Home carries the current-page marker.
     const nav = page.locator('nav[aria-label="Portal sections"]:visible');
     await expect(nav.locator("a")).toHaveText(
-      [/^Home$/, /^Schedule$/, /^Requests/, /^Review flyers$/, /^Activity log$/],
+      [/^Home$/, /^Schedule$/, /^Requests/, /^Activity log$/, /^Review flyers$/],
       { useInnerText: true },
     );
     await expect(nav.locator('a[aria-current="page"]')).toHaveText("Home");
@@ -217,7 +217,7 @@ test.describe("portal home", () => {
     for (const row of rows) {
       await expect(list.locator("tr", { hasText: row.name })).toHaveCount(1);
     }
-    await expect(page.getByTestId("home-add-patient-request")).toHaveText("Add request");
+    await expect(page.getByTestId("home-add-patient-request")).toHaveText("Add request…");
   });
 
   test("a Contacted request with no call-again day is on the day sheet under Call again", async ({

@@ -555,7 +555,8 @@
       color: var(--color-on-dark-muted);
     }
 
-    .portal-settings-group-label {
+    .portal-settings-group-label,
+    .portal-nav-group-label {
       padding: 0.25rem 0.8rem 0.5rem;
       color: var(--color-on-dark-muted);
       font-size: var(--pt-2xs);
@@ -564,7 +565,8 @@
       text-transform: uppercase;
     }
 
-    .portal-settings-group > ul {
+    .portal-settings-group > ul,
+    .portal-nav-group > ul {
       display: flex;
       flex-direction: column;
       gap: 0.25rem;
@@ -572,6 +574,12 @@
 
     .portal-settings-separator {
       margin-block: 0.75rem;
+    }
+
+    /* The main rail's later groups (issue #357): a step of air above each
+       heading, the Settings window's heading type. */
+    .portal-nav-group {
+      margin-top: 1.25rem;
     }
 
     .portal-nav-count {
@@ -760,7 +768,8 @@
       }
 
       /* The group labels fold away; the hairlines keep the groups apart. */
-      & .portal-settings-group-label {
+      & .portal-settings-group-label,
+      & .portal-nav-group-label {
         display: none;
       }
 

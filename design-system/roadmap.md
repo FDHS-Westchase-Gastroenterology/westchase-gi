@@ -41,7 +41,7 @@ stays `nav` with `aria-current` ([standing finding](adoption.md#standing-finding
 ## 5. Empty states, callouts and pagers
 
 **Ready.** Three hand-built families have registry components. `Empty` (`stock/empty.tsx`) takes
-`.portal-empty-state`, `.portal-empty`, `.portal-queue-empty` and the request history and notes
+`.portal-empty-state`, `.portal-queue-empty` and the request history and notes
 empties; `Alert` (`stock/alert.tsx`) takes `.portal-sheet-notice`, `.portal-sheet-alert` and
 `.portal-request-form-alert`; `Pagination` (`stock/pagination.tsx`) takes
 `.portal-queue-pagination`. Adopt each into `ui/` with its current paint and every `role="alert"`.

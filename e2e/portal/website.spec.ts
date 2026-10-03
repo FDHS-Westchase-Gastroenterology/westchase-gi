@@ -90,7 +90,7 @@ test.describe("website custody", () => {
     await signIn(page);
     await page.goto("/admin/settings/software");
 
-    await expect(page.getByRole("link", { name: "Website", exact: true })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "Software", exact: true })).toHaveAttribute(
       "aria-current",
       "page",
     );
@@ -266,7 +266,7 @@ test.describe("website custody", () => {
     const flyerTask = page.getByRole("link", { name: "Print review flyers" });
     await expect(flyerTask).toHaveAttribute("href", "/admin/review-flyers");
     await flyerTask.click();
-    await expect(page.getByRole("heading", { name: "Print review flyers" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Review flyers", level: 1 })).toBeVisible();
 
     await page.goto("/admin/settings/software");
     await page.getByTestId("request-website-change").click();
@@ -275,7 +275,7 @@ test.describe("website custody", () => {
 
     await page.goto("/admin/registry");
     await expect(page).toHaveURL(/\/admin\/settings\/software\/?$/);
-    await expect(page.getByRole("link", { name: "Website", exact: true })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "Software", exact: true })).toHaveAttribute(
       "aria-current",
       "page",
     );

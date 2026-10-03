@@ -137,7 +137,6 @@ hand-built classes today; `Empty` (`stock/empty.tsx`) replaces them under
 | --- | --- | --- |
 | `.portal-empty-state` | The whole route has nothing: 19rem tall, start-aligned between hairlines, an optional teal icon, an `h2`, a 58ch line and a row of actions | `error.tsx`, `not-found.tsx`, four states in `requests/print/page.tsx` |
 | `.portal-queue-empty` | A list panel came back empty: 18rem, centered, an `h2`, a 52ch line and one `.portal-inline-link` | `request-queue-empty.tsx` |
-| `.portal-empty` | Hairlines on a `mint` ground and nothing else; the call site brings its own padding and centering | `audit/page.tsx`, `recent-work.tsx` |
 | `.portal-request-notes-empty` `.portal-request-history-empty` | One muted 0.9rem line inside a section that is already open, with no box around it | `[id]/page.tsx`, `request-notes.tsx` |
 
 A settings list with no rows keeps its `<ul>` and says so in one muted `<li>` at `py-4`

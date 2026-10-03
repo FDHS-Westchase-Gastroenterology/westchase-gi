@@ -1,0 +1,565 @@
+/* The Activity log (issue #357; Figma Ypf9ohpRcGWF5C9T9bSvWW, section 14,
+   U1 and U2). The --wgi-* paints come from wgi-paints.css; the sizes are
+   the frames'. Unlayered, like schedule.css, so it outranks the recipes'
+   layered utilities where a part restates its paint. Motion reads the
+   registry: the staff home's --motion-standard at its fast beat for hover,
+   press and the chevron, and ui/collapsible's own height on the base beat.
+   Reduced motion: the blanket reset in globals.css. */
+
+.wgi-activity {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 76rem;
+  margin: 0 auto;
+  color: var(--color-body);
+}
+
+/* The Schedule's canvas: 32px above the heading and 48px either side. */
+@media (min-width: 60rem) {
+  .portal-content:has(> .wgi-activity) {
+    padding: 2rem 3rem 1.5rem;
+  }
+}
+
+.wgi-activity :where(a, button, input, [tabindex]):focus-visible,
+.wgi-activity-popover :where(a, button, input, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--portal-surface, #fff),
+    0 0 0 4px var(--color-teal);
+}
+
+/* ---------- Header: the Schedule's title, with search on the right ---------- */
+
+.wgi-activity-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.wgi-activity-title {
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-family: var(--font-body), Arial, sans-serif;
+  font-size: 2.25rem;
+  font-weight: 700;
+  letter-spacing: -0.54px;
+  line-height: 1.1;
+}
+
+.wgi-activity-search {
+  display: flex;
+  width: 20rem;
+  max-width: 100%;
+  height: 2.625rem;
+  box-sizing: border-box;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.875rem;
+  border: 1px solid var(--wgi-chip-stroke);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--wgi-label-ink);
+}
+
+.wgi-activity-search svg {
+  flex: none;
+}
+
+.wgi-activity-search:focus-within {
+  border-color: var(--color-navy-800);
+  box-shadow: inset 0 0 0 1px var(--color-navy-800);
+}
+
+/* A ui/input (motion none) set into the pill: the pill draws the field. */
+.wgi-activity-search input {
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--wgi-name-ink);
+  font: inherit;
+  font-size: 0.9375rem;
+}
+
+.wgi-activity .wgi-activity-search input:focus-visible {
+  box-shadow: none;
+}
+
+.wgi-activity-search input::placeholder {
+  color: var(--wgi-label-ink);
+  opacity: 1;
+}
+
+/* ---------- The bar: chips on the left, provider and dates on the right ---------- */
+
+.wgi-activity-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+.wgi-activity-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.wgi-activity-picks {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* A chip is a ui/toggle-group item; the frame's pill restates its paint. */
+.wgi-activity-chip,
+.wgi-activity-pick {
+  display: inline-flex;
+  height: 2.125rem;
+  min-width: 0;
+  box-sizing: border-box;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0 0.875rem;
+  border: 1px solid var(--wgi-chip-stroke);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--wgi-name-ink);
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    border-color var(--motion-fast-duration) var(--motion-standard),
+    color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-activity-chip:active,
+.wgi-activity-pick:active {
+  transform: scale(0.98);
+}
+
+.wgi-activity-chip[data-pressed] {
+  border-color: var(--color-navy-900);
+  background: var(--color-navy-900);
+  color: #fff;
+}
+
+.wgi-activity-actions .wgi-activity-chip {
+  height: 1.875rem;
+  padding: 0 0.75rem;
+  font-size: 0.875rem;
+}
+
+.wgi-activity-pick[data-popup-open] {
+  border-color: var(--color-navy-800);
+  background: var(--color-navy-50);
+}
+
+.wgi-activity-pick svg {
+  color: var(--wgi-muted-ink);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wgi-activity-chip:not([data-pressed]):hover,
+  .wgi-activity-pick:hover {
+    background: var(--color-navy-50);
+  }
+}
+
+.wgi-activity-hidden {
+  margin: 0;
+  color: var(--wgi-muted-ink);
+  font-size: 0.875rem;
+}
+
+.wgi-activity-clear {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-navy-800);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+/* ---------- The feed ---------- */
+
+.wgi-activity-feed {
+  overflow: hidden;
+  border: 1px solid var(--wgi-rule);
+  border-radius: 16px;
+  background: #fff;
+  transition: opacity var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-activity-feed[data-loading] {
+  opacity: 0.6;
+}
+
+.wgi-activity-day + .wgi-activity-day {
+  border-top: 1px solid var(--wgi-rule);
+}
+
+.wgi-activity-band {
+  margin: 0;
+  padding: 0.6875rem 1.25rem;
+  border-bottom: 1px solid var(--wgi-rule);
+  background: var(--wgi-band);
+  color: var(--wgi-label-ink);
+  font-family: var(--font-body), Arial, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.66px;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.wgi-activity-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wgi-activity-row + .wgi-activity-row {
+  border-top: 1px solid var(--wgi-rule);
+}
+
+.wgi-activity-row:has([data-panel-open]) {
+  background: var(--color-navy-50);
+}
+
+.wgi-activity-summary {
+  display: grid;
+  width: 100%;
+  min-height: 3.75rem;
+  box-sizing: border-box;
+  align-items: center;
+  grid-template-columns: 2rem minmax(0, 1fr) auto 0.875rem;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  border: 0;
+  background: none;
+  color: var(--wgi-name-ink);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: background-color var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wgi-activity-summary:hover {
+    background: var(--color-navy-50);
+  }
+}
+
+.wgi-activity-icon {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--color-slate-100);
+  color: var(--color-navy-800);
+}
+
+.wgi-activity-icon[data-tone="coral"] {
+  background: var(--color-coral-50);
+  color: var(--color-coral-700);
+}
+
+.wgi-activity-sentence {
+  min-width: 0;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}
+
+.wgi-activity-sentence strong {
+  font-weight: 700;
+}
+
+.wgi-activity-time {
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.wgi-activity-chevron {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--color-navy-500);
+  transition: transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+[data-panel-open] > .wgi-activity-chevron {
+  transform: rotate(90deg);
+}
+
+/* ---------- The open row (U2) ---------- */
+
+.wgi-activity-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0 1.25rem 1.125rem 4.25rem;
+}
+
+.wgi-activity-change {
+  width: min(35rem, 100%);
+  margin: 0;
+  border: 1px solid var(--wgi-rule);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.wgi-activity-change > div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.6875rem 0.875rem;
+}
+
+.wgi-activity-change > div + div {
+  border-top: 1px solid var(--wgi-rule);
+}
+
+.wgi-activity-change dt {
+  width: 3.25rem;
+  flex: none;
+  color: var(--wgi-label-ink);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.66px;
+  text-transform: uppercase;
+}
+
+.wgi-activity-change dd {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.wgi-activity-change dd[data-side="before"] {
+  color: var(--wgi-muted-ink);
+  text-decoration: line-through;
+}
+
+.wgi-activity-change dd[data-side="after"] {
+  color: var(--wgi-name-ink);
+  font-weight: 600;
+}
+
+.wgi-activity-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+}
+
+.wgi-activity-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* The row's and the states' buttons are ui/button pills: the knobs, not
+   the recipe, change. */
+.wgi-activity-links,
+.wgi-activity-pill {
+  --btn-radius: 999px;
+  --btn-lift: 0px;
+  --btn-hover-shadow: none;
+}
+
+/* ---------- The end of the list, and its empty and failed states ---------- */
+
+.wgi-activity-more,
+.wgi-activity-end {
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  padding: 1rem 1.25rem 1.25rem;
+  border-top: 1px solid var(--wgi-rule);
+  color: var(--wgi-muted-ink);
+  font-size: 0.875rem;
+}
+
+.wgi-activity-more-error {
+  margin: 0;
+}
+
+.wgi-activity-empty {
+  padding: 3.5rem 1.5rem;
+}
+
+/* Under the first day's sign-in, the sentence holds the rest of the card. */
+.wgi-activity-first {
+  min-height: 36rem;
+  border-top: 1px solid var(--wgi-rule);
+  border-radius: 0;
+}
+
+.wgi-activity-empty-disc {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--color-slate-100);
+  color: var(--color-navy-800);
+}
+
+.wgi-activity-empty-title {
+  color: var(--wgi-name-ink);
+  font-family: var(--font-body), Arial, sans-serif;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: normal;
+}
+
+.wgi-activity-empty-text {
+  max-width: 44ch;
+  color: var(--wgi-muted-ink);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+/* ---------- The date popover (Figma 511:8877) and provider menu ---------- */
+
+.wgi-activity-dates {
+  width: min(30.6875rem, calc(100vw - 1.5rem));
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--wgi-rule);
+  border-radius: 16px;
+  box-shadow: var(--wgi-card-shadow);
+}
+
+.wgi-activity-dates-body {
+  display: flex;
+}
+
+.wgi-activity-presets {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0.75rem 0.5rem;
+  border-right: 1px solid var(--wgi-rule);
+}
+
+.wgi-activity-preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wgi-activity-preset {
+  display: flex;
+  width: 10rem;
+  height: 2.125rem;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0;
+  padding: 0 0.625rem 0 0.75rem;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--wgi-name-ink);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 400;
+  text-align: start;
+  transition: background-color var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-activity-preset[data-pressed] {
+  background: var(--color-navy-50);
+  font-weight: 600;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wgi-activity-preset:not([data-pressed]):hover {
+    background: var(--wgi-band);
+  }
+}
+
+.wgi-activity-cal {
+  --cell-size: 2.25rem;
+
+  padding: 0.875rem 1rem 0.75rem;
+}
+
+.wgi-activity-dates-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--wgi-rule);
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+}
+
+.wgi-activity-dates-foot > :first-child {
+  color: var(--wgi-name-ink);
+  font-weight: 600;
+}
+
+.wgi-activity-menu {
+  min-width: 15rem;
+  max-height: min(24rem, var(--available-height, 24rem));
+  overflow-y: auto;
+}
+
+/* ---------- A phone (a regression check; the log is authored at 1440×900) ---------- */
+
+@media (max-width: 47.99rem) {
+  .wgi-activity-search {
+    width: 100%;
+  }
+
+  .wgi-activity-summary {
+    grid-template-columns: 2rem minmax(0, 1fr) 0.875rem;
+  }
+
+  .wgi-activity-time {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .wgi-activity-chevron {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .wgi-activity-detail {
+    padding-left: 1.25rem;
+  }
+
+  .wgi-activity-dates-body {
+    flex-direction: column;
+  }
+
+  .wgi-activity-presets {
+    border-right: 0;
+    border-bottom: 1px solid var(--wgi-rule);
+  }
+}
