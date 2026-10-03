@@ -10,7 +10,9 @@ import {
 } from "@/app/admin/(portal)/requests/format";
 import { asJsonBoolean, asJsonNumber, asJsonString } from "@/lib/json";
 import type { JsonObject } from "@/lib/json";
+import { parseStaffTour } from "@/lib/portal/contracts";
 import type { AuditLogRow } from "@/lib/portal/rows";
+import { TOUR_LABELS } from "@/lib/portal/tours";
 import { normalizeRequestState, parseRequestStatus } from "@/lib/portal/workflow/contracts";
 
 import { printPacketSentence } from "./print-packet-sentence";
@@ -42,6 +44,12 @@ function recipientLabel(recipientsById: ReadonlyMap<string, string>, id: string 
 function profileLabel(namesByProfileId: ReadonlyMap<string, string>, id: string | null): string {
   if (id === null || id === "") return "a colleague";
   return namesByProfileId.get(id) ?? "a colleague";
+}
+
+/** "front desk tour" or "admin tour" from a role tour's audit detail; null for the old tour. */
+function tourName(detail: JsonObject): string | null {
+  const tour = parseStaffTour(asJsonString(detail.tour) ?? "");
+  return tour === null ? null : TOUR_LABELS[tour].toLowerCase();
 }
 
 function staffStateWord(raw: string): string | null {
@@ -193,14 +201,23 @@ export function describeAction(
         sentence: `sent ${profileLabel(ctx.namesByProfileId, entry.entity_id)} a password reset link`,
         technical: false,
       };
-    case "staff.tour_dismiss":
-      // It pairs with tour_complete on finish, so it reads as technical and stays in the
-      // Technical record.
-      return { sentence: "dismissed the portal tour nudge", technical: true };
-    case "staff.tour_restart":
-      return { sentence: "restarted the portal tour", technical: false };
+    case "staff.tour_dismiss": {
+      // A role tour's skip names the tour. The old single tour's dismissal paired with a
+      // Completion row on finish, so it stays in the Technical record.
+      const tour = tourName(detail);
+      return tour === null
+        ? { sentence: "dismissed the portal tour nudge", technical: true }
+        : { sentence: `skipped the ${tour}`, technical: false };
+    }
+    case "staff.tour_restart": {
+      const tour = tourName(detail);
+      return {
+        sentence: tour === null ? "restarted the portal tour" : `started the ${tour}`,
+        technical: false,
+      };
+    }
     case "staff.tour_complete":
-      return { sentence: "finished the portal tour", technical: false };
+      return { sentence: `finished the ${tourName(detail) ?? "portal tour"}`, technical: false };
     case "maintainers.invite":
       return {
         sentence: `invited ${asJsonString(detail.target_login) ?? "a maintainer"} to edit the website`,

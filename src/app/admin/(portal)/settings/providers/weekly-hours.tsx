@@ -272,7 +272,11 @@ export function WeeklyHours({
   const grid = { gridTemplateColumns: `3.5rem 8.5rem minmax(${String(hours * 2.25)}rem, 1fr)` };
 
   return (
-    <section aria-labelledby="weekly-hours" className="flex flex-col gap-1">
+    <section
+      aria-labelledby="weekly-hours"
+      className="flex flex-col gap-1"
+      data-tour="weekly-hours"
+    >
       <h3 id="weekly-hours" className="settings-section-title">
         Weekly hours
       </h3>

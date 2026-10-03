@@ -40,9 +40,8 @@ portal surface, `paper`, the Home canvas, white and `mint`:
 | `amber` | 1.8 to 2.0 | A fill behind `navy-2` text; never text or a line on a light surface |
 
 **The warm call to action is rare.** On the patient site `Button` `amber` is the one warm action in
-a section. In the portal the primary action is navy `default`. Four occasional portal panels use
-`amber` for their one onward action: the help page, the release briefing, the tour's last step and
-the flyer printer. They are recorded, not a pattern; new portal work uses `default`.
+a section. In the portal the primary action is navy `default`. The release briefing uses
+`amber` for its one onward action. It is recorded, not a pattern; new portal work uses `default`.
 
 ## Ramps
 

@@ -144,6 +144,6 @@ A new `globals.css` rule answers "which block, and why not a recipe?". A compone
 
 The legacy feature blocks in `@layer components` each serve one surface: the release briefing
 (`.release-signal*`, `.release-summary*`), the language chooser (`.language-dialog*`), the
-first-login tour (`.tour-dialog`), request notes (`.request-note-*`), procedure prep (`.prep-*` and
+request notes (`.request-note-*`), procedure prep (`.prep-*` and
 the `.list-plain`, `.list-steps` and `.list-avoid` lists `PrepBody` picks) and the provider-card
-viewer (`.pc-*`); its three dialogs share `overlay-rise`. New rules stay out.
+viewer (`.pc-*`); its two dialogs share `overlay-rise`. New rules stay out.

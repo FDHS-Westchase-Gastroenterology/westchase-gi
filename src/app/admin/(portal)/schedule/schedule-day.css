@@ -1362,10 +1362,6 @@
   padding: 0.875rem 1.75rem;
 }
 
-.wgi-hours-help-slot:empty {
-  display: none;
-}
-
 .wgi-hours-settings-link {
   border-radius: 4px;
   color: var(--wgi-link-ink);

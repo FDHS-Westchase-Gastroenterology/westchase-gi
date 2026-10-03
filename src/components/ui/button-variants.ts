@@ -112,8 +112,7 @@ export const buttonVariants = cva(
         ],
         /* Warm CTA — patient home + appointment heroes (src/app/[locale]/page.tsx,
            appointment/page.tsx), Header, Footer, TextBand, AppointmentForm,
-           ReviewHub, portal help/page.tsx, portal-release-briefing,
-           review-flyer-printer, and PortalTour on its last step. */
+           ReviewHub and portal-release-briefing. */
         amber: [
           // Resting paint
           "bg-amber text-navy-2",

@@ -191,7 +191,7 @@ function DayMain({
 }>) {
   const idle = !needsDay(draft.answer, draft.followUp);
   return (
-    <div className="wgi-record-main">
+    <div className="wgi-record-main" data-tour="home-card-booking">
       <div className="wgi-record-cal" data-idle={idle || undefined}>
         <CalendarDay
           className="wgi-editor-cal"
@@ -259,7 +259,13 @@ function SaveButton({
   onSave,
 }: Readonly<{ pending: boolean; disabled: boolean; onSave: () => void }>) {
   return (
-    <button type="button" className="wgi-record-save" disabled={disabled} onClick={onSave}>
+    <button
+      type="button"
+      className="wgi-record-save"
+      data-tour="home-card-booking"
+      disabled={disabled}
+      onClick={onSave}
+    >
       {pending ? "Saving…" : "Save"}
     </button>
   );

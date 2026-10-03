@@ -5,12 +5,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { recordHref } from "@/app/admin/(portal)/record-address";
+import { useTourStep } from "@/app/admin/(portal)/tour-runner";
 import { useActiveFilters } from "@/lib/portal/filters/use-filter-param";
 
 import { FilterBar } from "./filter-bar";
 import { ClosedTailNote, FilterEmptyState } from "./filter-empty-state";
 import { FullRecordSheet } from "./full-record-sheet";
-import { applyFilters, closedTailCut } from "./home-line";
+import { applyFilters, closedTailCut, tourRowId } from "./home-line";
 import type { HomeLine } from "./home-line";
 import { LineList } from "./line-list";
 import { useFilterEditing } from "./use-filter-editing";
@@ -27,6 +28,9 @@ interface HomeDashboardProps {
   /** True when the closed tail hit its fetch window — older rows live in Appointments. */
   readonly closedCapped: boolean;
 }
+
+/** The tour steps that explain the record card (tours.ts). */
+const CARD_TOUR_STEPS: ReadonlySet<string> = new Set(["log-the-call", "book-from-card"]);
 
 export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps) {
   const filters = useActiveFilters();
@@ -78,6 +82,25 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
   );
 
   const filtered = useMemo(() => applyFilters(lines, active), [lines, active]);
+
+  /* The front desk tour (tour-runner.tsx) explains the card on its second
+     and third steps, so arriving at either opens the card on the row the
+     first step pointed at, unless a card is already open. */
+  const tourStep = useTourStep();
+  const [tourStepSeen, setTourStepSeen] = useState(tourStep);
+  if (tourStep !== tourStepSeen) {
+    setTourStepSeen(tourStep);
+    const tourRow = tourRowId(filtered);
+    if (
+      tourStep !== null &&
+      CARD_TOUR_STEPS.has(tourStep) &&
+      openRowId === null &&
+      tourRow !== null
+    ) {
+      setOpenRowId(tourRow);
+      setSelectedId(tourRow);
+    }
+  }
 
   const sheetLine = sheetId === null ? null : (lines.find((line) => line.id === sheetId) ?? null);
   const missing = sheetId !== null && sheetLine === null;

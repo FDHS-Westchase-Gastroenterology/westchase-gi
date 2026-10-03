@@ -24,6 +24,7 @@ import {
 } from "@/app/admin/(portal)/settings/settings-model";
 import { Calendar, ChevronDown, Clock, MapPin, Repeat } from "@/components/icons";
 import { Button } from "@/components/ui/button";
+import { HelpButton } from "@/components/ui/help-button";
 import {
   Menu,
   MenuContent,
@@ -31,6 +32,7 @@ import {
   MenuRadioItem,
   MenuTrigger,
 } from "@/components/ui/menu";
+import { PopoverContainer } from "@/components/ui/popover-behavior";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import type { SegmentedControlOption } from "@/components/ui/segmented-control";
 import { Slider } from "@/components/ui/slider";
@@ -588,60 +590,64 @@ function HoursSheet({
       }}
       onCancel={(event) => {
         event.preventDefault();
+        /* Escape inside the open help popover closes the popover, not the sheet under it. */
+        if (event.currentTarget.querySelector('[data-slot="popover-content"][data-open]')) return;
         editor.close(null, true);
       }}
     >
-      <header className="wgi-hours-head">
-        <h2 id={titleId} className="portal-confirm-dialog-title">
-          Hours for {shortDate(hours.date).split(",").at(0)},{" "}
-          {LONG_DATE.format(new Date(`${hours.date}T12:00:00Z`))}
-        </h2>
-        <p className="wgi-hours-subtitle" aria-live="polite">
-          {subtitleOf(editor, hours, added)}
-        </p>
-      </header>
-      <ScopeBand hours={hours} scope={scope} onChange={editor.chooseScope} />
-      <div className="wgi-hours-rows">
-        <HoursRuler span={span} now={now} />
-        {groups.map(({ place, providers }) => (
-          <section key={place.id} className="wgi-hours-group" aria-label={placeName(place)}>
-            <h3 className="wgi-hours-group-head">
-              <span className="wgi-hours-group-name">{placeName(place)}</span>
-              {`${String(providers.filter((provider) => editor.draftOf(provider).length > 0).length)} of ${String(providers.length)} working`}
-            </h3>
-            {providers.map((provider) => (
-              <HoursRow
-                key={provider.id}
-                provider={provider}
-                hours={hours}
-                scope={scope}
-                span={span}
-                lock={lock}
-                now={now}
-                draft={editor.draftOf(provider)}
-                settledWindows={editor.settledOf(provider)}
-                live={live?.providerId === provider.id ? live : null}
-                rowCheck={editor.checkOf(provider.id)}
-                isAdded={addedIds.has(provider.id)}
-                onDrag={(index, windows) => {
-                  editor.drag(provider.id, index, windows);
-                }}
-                onCommit={(windows) => {
-                  editor.commit(provider, windows);
-                }}
-                onReschedule={(id) => {
-                  editor.close(id, false);
-                }}
-              />
-            ))}
-          </section>
-        ))}
-      </div>
-      <HoursFoot
-        hours={hours}
-        editor={editor}
-        settingsFor={editor.changed.at(0) ?? hours.providers.at(0)}
-      />
+      <PopoverContainer value={editor.dialog}>
+        <header className="wgi-hours-head">
+          <h2 id={titleId} className="portal-confirm-dialog-title">
+            Hours for {shortDate(hours.date).split(",").at(0)},{" "}
+            {LONG_DATE.format(new Date(`${hours.date}T12:00:00Z`))}
+          </h2>
+          <p className="wgi-hours-subtitle" aria-live="polite">
+            {subtitleOf(editor, hours, added)}
+          </p>
+        </header>
+        <ScopeBand hours={hours} scope={scope} onChange={editor.chooseScope} />
+        <div className="wgi-hours-rows">
+          <HoursRuler span={span} now={now} />
+          {groups.map(({ place, providers }) => (
+            <section key={place.id} className="wgi-hours-group" aria-label={placeName(place)}>
+              <h3 className="wgi-hours-group-head">
+                <span className="wgi-hours-group-name">{placeName(place)}</span>
+                {`${String(providers.filter((provider) => editor.draftOf(provider).length > 0).length)} of ${String(providers.length)} working`}
+              </h3>
+              {providers.map((provider) => (
+                <HoursRow
+                  key={provider.id}
+                  provider={provider}
+                  hours={hours}
+                  scope={scope}
+                  span={span}
+                  lock={lock}
+                  now={now}
+                  draft={editor.draftOf(provider)}
+                  settledWindows={editor.settledOf(provider)}
+                  live={live?.providerId === provider.id ? live : null}
+                  rowCheck={editor.checkOf(provider.id)}
+                  isAdded={addedIds.has(provider.id)}
+                  onDrag={(index, windows) => {
+                    editor.drag(provider.id, index, windows);
+                  }}
+                  onCommit={(windows) => {
+                    editor.commit(provider, windows);
+                  }}
+                  onReschedule={(id) => {
+                    editor.close(id, false);
+                  }}
+                />
+              ))}
+            </section>
+          ))}
+        </div>
+        <HoursFoot
+          hours={hours}
+          editor={editor}
+          settingsFor={editor.changed.at(0) ?? hours.providers.at(0)}
+        />
+      </PopoverContainer>
     </dialog>
   );
 }
@@ -697,8 +703,10 @@ function HoursFoot({
 }>) {
   return (
     <footer className="wgi-hours-foot">
-      {/* #358's help button takes this corner. */}
-      <span className="wgi-hours-help-slot" />
+      <HelpButton
+        topic="changing-hours-one-day"
+        values={{ date: shortDate(hours.date), weekday: longDay(hours.weekday) }}
+      />
       {settingsFor === undefined ? null : (
         <Link
           href={`/admin/settings/providers?provider=${settingsFor.id}`}

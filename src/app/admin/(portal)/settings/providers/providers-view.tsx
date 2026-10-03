@@ -77,7 +77,9 @@ export function ProvidersView({
           </Link>
         ))}
         {providers.length === 0 ? (
-          <p className="p-2.5 text-[0.8125rem] text-(--wgi-muted-ink)">No providers yet.</p>
+          <p className="p-2.5 text-[0.8125rem] text-(--wgi-muted-ink)" data-tour="providers-empty">
+            No providers yet.
+          </p>
         ) : null}
       </nav>
       {chosen === undefined ? null : (

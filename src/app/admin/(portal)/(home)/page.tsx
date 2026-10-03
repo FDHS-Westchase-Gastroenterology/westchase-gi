@@ -1,9 +1,6 @@
 import { randomUUID } from "node:crypto";
 
 import { PortalReleaseHomeAnnouncement } from "@/app/admin/(portal)/portal-release-briefing";
-import { PortalTour } from "@/app/admin/(portal)/portal-tour";
-import { PortalTourReturnFocus } from "@/app/admin/(portal)/portal-tour-return-focus";
-import type { PortalTourReturnState } from "@/app/admin/(portal)/portal-tour-return-focus";
 import { fetchAttentiveOpenRows, fetchClosedRows } from "@/app/admin/(portal)/requests/queue";
 import type { QueueRow, WorkedQueueRow } from "@/app/admin/(portal)/requests/queue";
 import { requireRole } from "@/lib/portal/auth";
@@ -52,12 +49,6 @@ function greetingFor(minutes: number): string {
   return "Good evening";
 }
 
-function parseTourReturnState(
-  value: string | readonly string[] | undefined,
-): PortalTourReturnState | null {
-  return value === "finished" || value === "not-now" || value === "restarted" ? value : null;
-}
-
 /* A settled count read, or null when it failed. A rejected promise and a
    PostgREST error both mean unavailable — never zero. */
 function countOf(
@@ -71,13 +62,8 @@ function closedAsWorked(row: Readonly<QueueRow>): WorkedQueueRow {
   return { ...row, bucket: "closed", lastActivityAt: null, lastActivityBy: null };
 }
 
-export default async function AdminHomePage({
-  searchParams,
-}: Readonly<{
-  searchParams: Promise<{ tour?: string | string[] }>;
-}>) {
+export default async function AdminHomePage() {
   const session = await requireRole("staff");
-  const tourReturnState = parseTourReturnState((await searchParams).tour);
   const now = new Date();
   const [hour, minute] = NY_CLOCK.format(now).split(":").map(Number);
   const minutes = hour * 60 + minute;
@@ -132,13 +118,7 @@ export default async function AdminHomePage({
       printedBy={session.displayName === "" ? session.email : session.displayName}
       noActiveRecipients={recipientCount === 0}
       deliveryFailureCount={outboxTrouble !== null && outboxTrouble > 0 ? outboxTrouble : null}
-      announcements={
-        <>
-          {session.portalTourDismissedAt === null ? <PortalTour /> : null}
-          {tourReturnState === null ? null : <PortalTourReturnFocus state={tourReturnState} />}
-          <PortalReleaseHomeAnnouncement />
-        </>
-      }
+      announcements={<PortalReleaseHomeAnnouncement />}
     />
   );
 }

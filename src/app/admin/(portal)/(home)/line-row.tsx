@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 
+import { useTourStep } from "@/app/admin/(portal)/tour-runner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { POPOVER_SHIFT_ONLY } from "@/components/ui/popover-behavior";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -62,6 +63,7 @@ export function LineRow({
   onOpenFull,
   onSettled,
   onDetachChange,
+  tour,
 }: Readonly<{
   line: Readonly<HomeLine>;
   /** Render the phone as a dial link (touch) or as copyable text (desktop). */
@@ -78,8 +80,11 @@ export function LineRow({
   onSettled: (id: string) => void;
   /** The card's panel state, up to the list's press block. */
   onDetachChange: (detached: boolean) => void;
+  /** The row the first-sign-in tour points at (tours.ts), if it is this one. */
+  tour?: "home-new-row" | "home-top-row";
 }>) {
   const rowRef = useRef<HTMLTableRowElement>(null);
+  const tourStep = useTourStep();
   const [side, setSide] = useState<"top" | "bottom">("bottom");
   const detach = useCardDetach({
     open,
@@ -114,6 +119,7 @@ export function LineRow({
     <TableRow
       ref={rowRef}
       data-row={line.id}
+      data-tour={tour}
       data-selected={selected || undefined}
       data-open={open || undefined}
       data-settled={settled || undefined}
@@ -194,6 +200,7 @@ export function LineRow({
           </PopoverTrigger>
           <PopoverContent
             className="wgi-record-card"
+            data-tour="home-card"
             paint="card"
             anchor={detach.anchor ?? rowRef}
             side={side}
@@ -208,6 +215,12 @@ export function LineRow({
                stays off, so the card never lands beside the row where the
                sidebar is. */
             collisionAvoidance={POPOVER_SHIFT_ONLY}
+            /* While the tour explains this card, its tip keeps focus. */
+            initialFocus={
+              tour !== undefined && (tourStep === "log-the-call" || tourStep === "book-from-card")
+                ? false
+                : undefined
+            }
             {...detach.popupProps}
           >
             <RecordCard

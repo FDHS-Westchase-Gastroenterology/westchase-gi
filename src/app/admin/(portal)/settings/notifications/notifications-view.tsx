@@ -192,7 +192,7 @@ function RecipientList({
 }>) {
   if (recipients.length === 0) {
     return (
-      <Empty className="settings-empty">
+      <Empty className="settings-empty" data-tour="recipients">
         <EmptyHeader>
           <EmptyMedia variant="icon" aria-hidden="true">
             <Mail />
@@ -215,7 +215,7 @@ function RecipientList({
           wait on Home.
         </p>
       )}
-      <div className="settings-table settings-recipients">
+      <div className="settings-table settings-recipients" data-tour="recipients">
         <div aria-hidden="true" className="settings-table-head">
           <span>Sends to</span>
           <span>On</span>

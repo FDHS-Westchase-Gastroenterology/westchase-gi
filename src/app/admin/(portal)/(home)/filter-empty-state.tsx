@@ -29,7 +29,11 @@ export function FilterEmptyState({
 }>) {
   if (lines.length === 0) {
     return (
-      <div className="wgi-empty" data-testid={`${testIdPrefix}-empty`}>
+      <div
+        className="wgi-empty"
+        data-testid={`${testIdPrefix}-empty`}
+        data-tour={`${testIdPrefix}-empty`}
+      >
         <h2>No requests yet.</h2>
         <p>
           A website request lands here the moment a patient submits the form, and a contacted
@@ -42,7 +46,11 @@ export function FilterEmptyState({
     /* The list as it opens holds the work due now; an empty one is a
        caught-up desk, not a filter to debug. */
     return (
-      <div className="wgi-empty" data-testid={`${testIdPrefix}-caught-up`}>
+      <div
+        className="wgi-empty"
+        data-testid={`${testIdPrefix}-caught-up`}
+        data-tour={`${testIdPrefix}-empty`}
+      >
         <h2>Nothing to call right now.</h2>
         <p>
           No new requests and no calls due. {requestCount(lines.length)} wait on a later date or are
@@ -55,7 +63,11 @@ export function FilterEmptyState({
     );
   }
   return (
-    <div className="wgi-empty" data-testid={`${testIdPrefix}-no-results`}>
+    <div
+      className="wgi-empty"
+      data-testid={`${testIdPrefix}-no-results`}
+      data-tour={`${testIdPrefix}-empty`}
+    >
       <h2>No results</h2>
       <p>{emptyStateMessage(lines, active, nowMs)}</p>
       <button type="button" className="wgi-empty-clear" onClick={onClear}>

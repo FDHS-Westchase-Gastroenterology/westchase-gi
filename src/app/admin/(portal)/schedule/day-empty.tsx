@@ -18,7 +18,7 @@ import {
 
 export function DayEmpty({ admin }: Readonly<{ admin: boolean }>) {
   return (
-    <Empty className="wgi-dayview-empty">
+    <Empty className="wgi-dayview-empty" data-tour="day-empty">
       <EmptyHeader className="wgi-dayview-empty-header">
         <EmptyMedia variant="icon" className="wgi-dayview-empty-disc" aria-hidden="true">
           <Users className="size-[22px]" />

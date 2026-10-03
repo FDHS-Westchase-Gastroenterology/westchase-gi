@@ -4,6 +4,9 @@ import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
 import { cva } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
 import { cn } from "cn";
+import { use } from "react";
+
+import { PopoverContainer } from "./popover-behavior";
 
 /*
  * A tooltip: a short label for a control that cannot say it itself, such
@@ -15,7 +18,9 @@ import { cn } from "cn";
  * Paper: the navy-900 surface with white Lato at 13px, 6px corners and an
  * arrow of the same paint pointing at the trigger. The portal wraps its
  * pages in one TooltipProvider (the (portal) layout), so moving from one
- * trigger to the next opens at once after the first has waited.
+ * trigger to the next opens at once after the first has waited. Inside a
+ * modal dialog that provides PopoverContainer, the label portals there so
+ * it stands in the dialog's top layer.
  *
  * Motion is its own axis (design-system/components.md "Component API
  * rules"). `wgi` (default): the popover temperament — grows from the
@@ -85,8 +90,10 @@ function TooltipContent({
 }: TooltipPrimitive.Popup.Props &
   VariantProps<typeof tooltipVariants> &
   Pick<TooltipPrimitive.Positioner.Props, "align" | "side" | "sideOffset">) {
+  // Inside a modal dialog the label portals into the dialog's top layer, as a popover does.
+  const container = use(PopoverContainer) ?? undefined;
   return (
-    <TooltipPrimitive.Portal>
+    <TooltipPrimitive.Portal container={container}>
       <TooltipPrimitive.Positioner
         align={align}
         side={side}

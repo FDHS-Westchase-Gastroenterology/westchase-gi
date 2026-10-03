@@ -31,8 +31,8 @@ const staffProfileRowSchema = z.object({
   role: z.string(),
   active: z.boolean(),
   onboarded_at: z.string(),
-  portal_tour_dismissed_at: z.string(),
 });
+const staffTourRowSchema = z.object({ tour: z.string(), status: z.string() });
 const uuidSchema = z.uuid();
 
 try {
@@ -77,6 +77,7 @@ const TABLES = [
   "staff_profiles",
   "staff_request_receipts",
   "staff_schedule_preferences",
+  "staff_tours",
 ];
 
 const RETIRED_TABLES = [["registry", "assets"].join("_"), ["registry", "grants"].join("_")];
@@ -181,7 +182,7 @@ const RPC_SIGNATURES = {
   portal_run_data_lifecycle: "p_actor_email text, p_now timestamp with time zone",
   portal_set_request_legal_hold:
     "p_actor_email text, p_request_id uuid, p_held boolean, p_reason text",
-  portal_set_staff_tour_dismissed: "p_user_id uuid, p_dismissed boolean",
+  portal_set_staff_tour: "p_user_id uuid, p_tour text, p_status text",
   portal_toggle_notification_recipient: "p_actor_email text, p_recipient_id uuid, p_active boolean",
   portal_update_recipient_label: "p_actor_email text, p_recipient_id uuid, p_label text",
   portal_update_request_status: "p_actor_email text, p_request_id uuid, p_next_status text",
@@ -211,6 +212,8 @@ const RETIRED_RPC_SIGNATURES = [
     name: ["portal", "deactivate", "registry", "grant"].join("_"),
     signature: "p_actor_email text, p_grant_id uuid",
   },
+  // The single portal tour's dismissal, replaced by staff_tours and portal_set_staff_tour.
+  { name: "portal_set_staff_tour_dismissed", signature: "p_user_id uuid, p_dismissed boolean" },
 ];
 
 const RPCS = Object.keys(RPC_SIGNATURES).sort();
@@ -286,7 +289,7 @@ const RPC_RESULTS = {
   portal_remove_notification_recipient: "boolean",
   portal_run_data_lifecycle: "jsonb",
   portal_set_request_legal_hold: "boolean",
-  portal_set_staff_tour_dismissed: "boolean",
+  portal_set_staff_tour: "boolean",
   portal_toggle_notification_recipient: "boolean",
   portal_update_recipient_label: "boolean",
   portal_update_request_status: "boolean",
@@ -317,7 +320,7 @@ const AUDIT_RPC_SOURCES = {
   portal_remove_notification_recipient: "staff",
   portal_run_data_lifecycle: "system",
   portal_set_request_legal_hold: "staff",
-  portal_set_staff_tour_dismissed: "staff",
+  portal_set_staff_tour: "staff",
   portal_toggle_notification_recipient: "staff",
   portal_update_recipient_label: "staff",
   portal_update_request_status: "staff",
@@ -1153,11 +1156,11 @@ async function main() {
     "staff_profiles.onboarded_at must be nullable timestamptz with no default",
   );
 
-  const tourColumnRows = await queryDatabase({
+  const retiredTourColumnRows = await queryDatabase({
     accessToken,
     ref: config.ref,
     query: `
-      select data_type, is_nullable, column_default
+      select column_name
       from information_schema.columns
       where table_schema = 'public'
         and table_name = 'staff_profiles'
@@ -1165,11 +1168,70 @@ async function main() {
     `,
   });
   assert(
-    tourColumnRows.length === 1 &&
-      tourColumnRows[0].data_type === "timestamp with time zone" &&
-      tourColumnRows[0].is_nullable === "YES" &&
-      tourColumnRows[0].column_default === null,
-    "staff_profiles.portal_tour_dismissed_at must be nullable timestamptz with no default",
+    retiredTourColumnRows.length === 0,
+    "staff_profiles.portal_tour_dismissed_at is retired; staff_tours holds tour state",
+  );
+
+  const staffTourColumnRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select column_name, data_type, is_nullable
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'staff_tours'
+      order by ordinal_position;
+    `,
+  });
+  const staffTourConstraintRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select conname, pg_catalog.pg_get_constraintdef(oid) as definition
+      from pg_catalog.pg_constraint
+      where conrelid = 'public.staff_tours'::pg_catalog.regclass
+      order by conname;
+    `,
+  });
+  const staffTourAclRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select
+        c.relrowsecurity,
+        pg_catalog.has_table_privilege('anon', c.oid, 'SELECT') as anon_select,
+        pg_catalog.has_table_privilege('authenticated', c.oid, 'SELECT') as authenticated_select,
+        pg_catalog.has_table_privilege('authenticated', c.oid, 'INSERT') as authenticated_insert,
+        pg_catalog.has_table_privilege('service_role', c.oid, 'SELECT') as service_select,
+        pg_catalog.has_table_privilege('service_role', c.oid, 'INSERT') as service_insert
+      from pg_catalog.pg_class as c
+      join pg_catalog.pg_namespace as n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relname = 'staff_tours' and c.relkind = 'r';
+    `,
+  });
+  const staffTourConstraint = (name) =>
+    staffTourConstraintRows.find((row) => row.conname === name)?.definition?.toLowerCase() ?? "";
+  assert(
+    sameValues(
+      staffTourColumnRows.map((row) => row.column_name),
+      ["staff_user_id", "tour", "status", "recorded_at"],
+    ) &&
+      staffTourColumnRows.every((row) => row.is_nullable === "NO") &&
+      staffTourConstraint("staff_tours_pkey").includes("staff_user_id, tour") &&
+      staffTourConstraint("staff_tours_staff_user_id_fkey").includes("on delete cascade") &&
+      staffTourConstraint("staff_tours_tour_valid").includes("'front_desk'") &&
+      staffTourConstraint("staff_tours_tour_valid").includes("'admin'") &&
+      staffTourConstraint("staff_tours_status_valid").includes("'pending'") &&
+      staffTourConstraint("staff_tours_status_valid").includes("'finished'") &&
+      staffTourConstraint("staff_tours_status_valid").includes("'skipped'") &&
+      staffTourAclRows.length === 1 &&
+      staffTourAclRows[0].relrowsecurity === true &&
+      staffTourAclRows[0].anon_select === false &&
+      staffTourAclRows[0].authenticated_select === false &&
+      staffTourAclRows[0].authenticated_insert === false &&
+      staffTourAclRows[0].service_select === true &&
+      staffTourAclRows[0].service_insert === true,
+    "staff_tours must key one front desk or admin tour record per staff account, cascade with the profile, and stay service-role-only",
   );
 
   const requestLocationColumnRows = await queryDatabase({
@@ -2213,7 +2275,7 @@ async function main() {
       url: config.url,
       serviceKey: config.serviceKey,
       table: "staff_profiles",
-      query: `select=id,user_id,email,role,active,onboarded_at,portal_tour_dismissed_at&email=eq.${encodedEmail}`,
+      query: `select=id,user_id,email,role,active,onboarded_at,staff_tours(tour,status)&email=eq.${encodedEmail}`,
     }),
     selectRows({
       url: config.url,
@@ -2231,6 +2293,12 @@ async function main() {
       staffRow.data.role === "admin" &&
       staffRow.data.active === true,
     "Seed admin staff profile is missing or incorrect",
+  );
+  const seedTours = z.array(staffTourRowSchema).safeParse(staffRows[0]?.staff_tours);
+  assert(
+    seedTours.success &&
+      seedTours.data.some((row) => row.tour === "admin" && row.status === "finished"),
+    "Seed admin must have finished the admin tour so the suite's pages open without a tip",
   );
   assert(
     recipientRows.length === 1 && recipientRows[0].active === true,
@@ -2317,7 +2385,7 @@ async function main() {
   );
   console.log(`Verified ${target} staff_profiles.onboarded_at: nullable timestamptz, no default`);
   console.log(
-    `Verified ${target} staff_profiles.portal_tour_dismissed_at: nullable timestamptz, no default`,
+    `Verified ${target} staff_tours: per-account tour key, tour and status vocabulary, RLS, service-only ACL; portal_tour_dismissed_at retired`,
   );
   console.log(
     `Verified ${target} audit provenance: nullable historical columns, constrained source vocabulary, correlated classified writes`,

@@ -626,17 +626,29 @@ test.describe("portal management UI", () => {
     await page.goto("/admin/help");
     await expect(page.getByRole("heading", { name: "Help", exact: true })).toBeVisible();
 
+    // Every topic opened in place: the answers, not the titles, carry the words.
+    const triggers = page.locator("[data-help-trigger]");
+    const count = await triggers.count();
+    expect(count).toBeGreaterThanOrEqual(10);
+    for (let index = 0; index < count; index += 1) {
+      await triggers.nth(index).click();
+    }
+    await expect(page.getByTestId("help-topic-detail")).toHaveCount(count);
+
     const text = (await page.locator("main").innerText()).trim();
     const words = text.split(/\s+/).filter(Boolean);
     expect(words.length).toBeGreaterThanOrEqual(400);
 
     for (const heading of [
-      "Work an appointment request",
-      "Notification emails",
-      "Staff access",
-      "Getting website changes made",
+      "Schedule",
+      "Patients and requests",
+      "Practice settings",
+      "Working a request from the website",
+      "Who gets request emails",
+      "Inviting staff and choosing roles",
+      "If something looks wrong",
     ]) {
-      await expect(page.getByRole("heading", { name: heading })).toBeVisible();
+      await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
     }
   });
 });

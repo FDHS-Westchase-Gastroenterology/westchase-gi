@@ -948,12 +948,14 @@ test.describe("portal authentication and direct REST boundaries", () => {
         await page.goto(path);
         await expect(page).toHaveURL(new RegExp(`${path}/?$`));
         await expect(page.getByTestId("session-user")).toContainText("TEST Stale Token");
+        // Scoped to the page: a streamed chunk can sit hidden under <body> until React swaps it in.
+        const main = page.locator("#portal-main");
         if (path === "/admin") {
-          await expect(page.getByTestId("home-greeting")).toBeVisible();
+          await expect(main.getByTestId("home-greeting")).toBeVisible();
         } else if (path === "/admin/settings/notifications") {
-          await expect(page.getByTestId("recipients-manager")).toBeVisible();
+          await expect(main.getByTestId("recipients-manager")).toBeVisible();
         } else {
-          await expect(page.getByTestId("managed-product")).toBeVisible();
+          await expect(main.getByTestId("managed-product")).toBeVisible();
         }
       }
 

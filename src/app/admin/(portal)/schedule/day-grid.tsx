@@ -125,7 +125,7 @@ export function DayGrid(props: DayGridProps) {
     <div className="wgi-schedule-surface wgi-dayview-surface">
       <div className="wgi-dayview-scroll">
         <div className="wgi-dayview-grid" style={style}>
-          <div className="wgi-dayview-heads">
+          <div className="wgi-dayview-heads" data-tour="day-providers">
             <span className="wgi-dayview-gutter-head" aria-hidden="true" />
             {view.columns.map((column) => (
               <ColumnHead key={column.providerId} column={column} />
@@ -292,6 +292,7 @@ function DayCellView({
   return (
     <div
       className="wgi-dayview-block"
+      data-tour={offer ? "day-check-in" : "day-block"}
       data-tone={cell.tone}
       data-record-open={recordOpen.has(cell.id) || undefined}
       data-lifted={ghost}

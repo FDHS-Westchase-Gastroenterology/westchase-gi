@@ -18,6 +18,7 @@ import { serviceClient } from "@/lib/portal/server";
 import { PortalAccountLinks, PortalNav } from "./portal-nav";
 import { PortalReleaseProvider, PortalReleaseUtility } from "./portal-release-briefing";
 import { PortalSidebar, SidebarToggle } from "./portal-sidebar";
+import { TourProvider } from "./tour-runner";
 
 import "./wgi-paints.css";
 
@@ -47,8 +48,9 @@ export default async function PortalLayout({
 
   // The waiting signal travels with the worker: a failed read suppresses the
   // Badge instead of inventing a reassuring zero.
+  // The release briefing waits until no tour is running, so the two never stack.
   const releaseEligible =
-    session.portalTourDismissedAt !== null && isPortalReleaseEligible(session.onboardedAt);
+    session.pendingTour === null && isPortalReleaseEligible(session.onboardedAt);
   const [queueResult, releaseState] = await Promise.all([
     serviceClient()
       .from("requests")
@@ -59,96 +61,103 @@ export default async function PortalLayout({
       : Promise.resolve({ status: "hidden" } as const),
   ]);
   const waitingCount = availableQueueCount(queueResult.count, queueResult.error !== null);
+  // A tour Help started carries its start time, so the runner begins it at the first step.
+  const tourStartedAt =
+    session.tours.find((record) => record.tour === session.pendingTour)?.recordedAt ?? null;
 
   return (
     <PortalReleaseProvider eligible={releaseEligible} initialState={releaseState}>
       {/* One provider for every tooltip in the portal, so moving between
           triggers skips the second wait. */}
       <TooltipProvider>
-        <div className="portal-workspace min-h-dvh">
-          <a href="#portal-main" className="skip-link">
-            Skip to staff portal content
-          </a>
+        {/* The first-sign-in tour (tour-runner.tsx) wraps the workspace, so
+            the screens it walks through can read which step is showing. */}
+        <TourProvider tour={session.pendingTour} startedAt={tourStartedAt}>
+          <div className="portal-workspace min-h-dvh">
+            <a href="#portal-main" className="skip-link">
+              Skip to staff portal content
+            </a>
 
-          <PortalSidebar>
-            <Link
-              href="/admin"
-              className="portal-sidebar-brand"
-              aria-label="Westchase Gastroenterology staff portal home"
-            >
-              <span className="portal-sidebar-mark" aria-hidden="true">
-                W
-              </span>
-              <span className="portal-rail-hidden">
-                <strong>Westchase Gastroenterology</strong>
-                <small>Staff portal</small>
-              </span>
-            </Link>
-
-            <PortalNav layout="sidebar" waitingCount={waitingCount} />
-            <PortalNav layout="bar" waitingCount={waitingCount} />
-
-            <SidebarToggle />
-            <div className="portal-sidebar-account">
-              <p className="portal-sidebar-person">
-                <span className="portal-sidebar-initials" aria-hidden="true">
-                  {initialsOf(session.displayName)}
+            <PortalSidebar>
+              <Link
+                href="/admin"
+                className="portal-sidebar-brand"
+                aria-label="Westchase Gastroenterology staff portal home"
+              >
+                <span className="portal-sidebar-mark" aria-hidden="true">
+                  W
                 </span>
-                <span data-testid="session-user">{session.displayName}</span>
-                <small className="portal-sidebar-person-meta">
-                  <span className="capitalize">{session.role}</span>
-                  <span aria-hidden="true">·</span>
-                  <span data-testid="session-email" title={session.email}>
-                    {session.email}
-                  </span>
-                </small>
-              </p>
-              <div className="portal-sidebar-account-actions">
-                <PortalAccountLinks />
-                <SidebarMenuButton tooltip="View website" render={<Link href="/" />}>
-                  <ExternalLink className="h-4 w-4" />
-                  <span className="portal-rail-label">View website</span>
-                </SidebarMenuButton>
-                <form action={logoutAction}>
-                  <SidebarMenuButton tooltip="Sign out" type="submit">
-                    <LogOut className="h-4 w-4" />
-                    <span className="portal-rail-label">Sign out</span>
-                  </SidebarMenuButton>
-                </form>
-              </div>
-            </div>
-          </PortalSidebar>
-
-          <div className="portal-stage">
-            <header className="portal-mobile-header print-hide">
-              <Link href="/admin" className="portal-mobile-brand">
-                <span aria-hidden="true">W</span>
-                <strong>Staff portal</strong>
+                <span className="portal-rail-hidden">
+                  <strong>Westchase Gastroenterology</strong>
+                  <small>Staff portal</small>
+                </span>
               </Link>
-              <details className="portal-account-menu">
-                <summary role="button" aria-label="Open account menu">
-                  <Users className="h-5 w-5" />
-                </summary>
-                <div>
-                  <p>
-                    <strong>{session.displayName}</strong>
+
+              <PortalNav layout="sidebar" waitingCount={waitingCount} />
+              <PortalNav layout="bar" waitingCount={waitingCount} />
+
+              <SidebarToggle />
+              <div className="portal-sidebar-account">
+                <p className="portal-sidebar-person">
+                  <span className="portal-sidebar-initials" aria-hidden="true">
+                    {initialsOf(session.displayName)}
+                  </span>
+                  <span data-testid="session-user">{session.displayName}</span>
+                  <small className="portal-sidebar-person-meta">
                     <span className="capitalize">{session.role}</span>
-                  </p>
-                  <Link href="/admin/audit">Activity log</Link>
-                  <Link href="/">View website</Link>
+                    <span aria-hidden="true">·</span>
+                    <span data-testid="session-email" title={session.email}>
+                      {session.email}
+                    </span>
+                  </small>
+                </p>
+                <div className="portal-sidebar-account-actions">
+                  <PortalAccountLinks />
+                  <SidebarMenuButton tooltip="View website" render={<Link href="/" />}>
+                    <ExternalLink className="h-4 w-4" />
+                    <span className="portal-rail-label">View website</span>
+                  </SidebarMenuButton>
                   <form action={logoutAction}>
-                    <button type="submit">Sign out</button>
+                    <SidebarMenuButton tooltip="Sign out" type="submit">
+                      <LogOut className="h-4 w-4" />
+                      <span className="portal-rail-label">Sign out</span>
+                    </SidebarMenuButton>
                   </form>
                 </div>
-              </details>
-            </header>
+              </div>
+            </PortalSidebar>
 
-            <PortalReleaseUtility />
-            <main id="portal-main" tabIndex={-1}>
-              <div className="portal-content">{children}</div>
-            </main>
+            <div className="portal-stage">
+              <header className="portal-mobile-header print-hide">
+                <Link href="/admin" className="portal-mobile-brand">
+                  <span aria-hidden="true">W</span>
+                  <strong>Staff portal</strong>
+                </Link>
+                <details className="portal-account-menu">
+                  <summary role="button" aria-label="Open account menu">
+                    <Users className="h-5 w-5" />
+                  </summary>
+                  <div>
+                    <p>
+                      <strong>{session.displayName}</strong>
+                      <span className="capitalize">{session.role}</span>
+                    </p>
+                    <Link href="/admin/audit">Activity log</Link>
+                    <Link href="/">View website</Link>
+                    <form action={logoutAction}>
+                      <button type="submit">Sign out</button>
+                    </form>
+                  </div>
+                </details>
+              </header>
+
+              <PortalReleaseUtility />
+              <main id="portal-main" tabIndex={-1}>
+                <div className="portal-content">{children}</div>
+              </main>
+            </div>
           </div>
-        </div>
+        </TourProvider>
         {/* Save feedback lives with the shell, so a toast outlives the surface
           that earned it (the home record card closes on a confirmed save). */}
         <Toaster />

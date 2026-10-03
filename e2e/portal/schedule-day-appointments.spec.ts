@@ -140,7 +140,9 @@ test("Schedule day cancels a request's visit to Call again, opens its time, and 
     await card.getByRole("button", { name: "More actions" }).click();
     await page.getByRole("menuitem", { name: "Cancel appointment…" }).click();
 
-    await expect(card.getByText("10:00 AM opens for booking again.")).toBeVisible();
+    await expect(
+      card.getByText(`10:00 – 10:30 AM with ${patient} opens for booking again.`),
+    ).toBeVisible();
     const reasons = card.getByRole("radiogroup", { name: "Reason" });
     await expect(reasons.getByRole("radio", { checked: true })).toBeFocused();
     const afterwards = card.getByRole("radiogroup", { name: "Afterwards" });

@@ -54,7 +54,8 @@ Escape or Cancel turns the Add sheet's footer into the discard question; Escape 
 
 `PrintChooser` follows every rule above; copy it, except that a dialog built for one chosen target
 opens from an effect keyed on it (`recipients-manager.tsx`). `RemoveRecipientDialog` lacks
-`data-instant` and `AddAppointmentDialog` Tab wrapping (item 9); `PortalTour` is on `overlay-rise` (item 7).
+`data-instant` and `AddAppointmentDialog` Tab wrapping (item 9). The first-sign-in tour is not a
+dialog: its tip is a `ui/popover` anchored to the control it explains (`tour-runner.tsx`).
 
 ```tsx
 // Correct (print-chooser.tsx, shortened): instant from the keyboard, Escape through Close

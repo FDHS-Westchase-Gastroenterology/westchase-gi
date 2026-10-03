@@ -35,7 +35,6 @@ test.describe("portal release briefing", () => {
       role: "admin",
       active: true,
       onboarded_at: "2026-07-01T13:00:00.000Z",
-      portal_tour_dismissed_at: "2026-07-01T13:05:00.000Z",
     });
     expect(error).toBeNull();
   });
@@ -146,8 +145,11 @@ test.describe("portal release briefing", () => {
     await utility.getByRole("button", { name: /What’s new/ }).click();
     await quickSummary.getByRole("button", { name: "See the 2-minute guide" }).click();
     await expect(page).toHaveURL(/\/admin\/help#appointment-workflow-guide$/);
-    await expect(page.getByRole("heading", { name: "Work an appointment request" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "What do the statuses mean?" })).toBeVisible();
+    // The guide's old address opens the topic that replaced it, in place.
+    await expect(
+      page.getByRole("button", { name: "Working a request from the website" }),
+    ).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByTestId("help-topic-detail")).toBeVisible();
 
     await utility.getByRole("button", { name: /What’s new/ }).click();
     await page

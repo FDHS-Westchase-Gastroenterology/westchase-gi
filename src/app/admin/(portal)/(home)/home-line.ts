@@ -48,6 +48,12 @@ export interface HomeLine {
   readonly detailHref: string;
 }
 
+/* The row the front desk tour starts on (issue #358, FD1): the first new
+   request, else the top of the list. Its card is the one FD2 and FD3 open. */
+export function tourRowId(lines: readonly Readonly<HomeLine>[]): string | null {
+  return (lines.find((line) => line.status === "new") ?? lines.at(0))?.id ?? null;
+}
+
 /* "Tampa · Morning" as the card and the full record say it: "Prefers Tampa
    · morning". An office keeps its name; "Either office" and the times are
    plain words. */

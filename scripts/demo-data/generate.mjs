@@ -91,7 +91,13 @@ export function generateDemoData({ seed, now, staff: identities }) {
       created_at: iso(SETUP_AT),
       updated_at: iso(SETUP_AT),
       onboarded_at: iso(SETUP_AT + DAY),
-      portal_tour_dismissed_at: iso(SETUP_AT + DAY),
+    })),
+    // Each clinician finished the front desk tour on their first sign-in.
+    staff_tours: roster.map((c) => ({
+      staff_user_id: staff[c.key].id,
+      tour: "front_desk",
+      status: "finished",
+      recorded_at: iso(SETUP_AT + DAY),
     })),
     clinical_signers: roster.map((c) => ({
       user_id: staff[c.key].id,

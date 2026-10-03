@@ -71,7 +71,12 @@ export default async function SettingsStaffPage({
         title="Staff access"
         actions={
           canEdit ? (
-            <Link href="?invite=1" scroll={false} className="wgi-settings-command">
+            <Link
+              href="?invite=1"
+              scroll={false}
+              className="wgi-settings-command"
+              data-tour="staff-invite"
+            >
               <Plus aria-hidden="true" className="size-4" />
               Invite
             </Link>

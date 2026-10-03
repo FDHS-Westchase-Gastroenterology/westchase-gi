@@ -204,7 +204,22 @@ async function main() {
         role: "admin",
         active: true,
         onboarded_at: new Date().toISOString(),
-        portal_tour_dismissed_at: new Date().toISOString(),
+      },
+    ],
+  });
+
+  // The fixture admin has finished its tour, so the suite's pages open without a tip.
+  const tourCount = await upsertRows({
+    url,
+    serviceKey,
+    table: "staff_tours",
+    onConflict: "staff_user_id,tour",
+    rows: [
+      {
+        staff_user_id: user.id,
+        tour: "admin",
+        status: "finished",
+        recorded_at: new Date().toISOString(),
       },
     ],
   });
@@ -225,7 +240,7 @@ async function main() {
 
   console.log(`Seeded ${target} Auth fixture`);
   console.log(
-    `Seeded ${target} rows: staff_profiles=${staffCount}, notification_recipients=${recipientCount}`,
+    `Seeded ${target} rows: staff_profiles=${staffCount}, staff_tours=${tourCount}, notification_recipients=${recipientCount}`,
   );
 }
 
