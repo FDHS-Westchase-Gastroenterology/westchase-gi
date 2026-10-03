@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import type { HomeLine } from "@/app/admin/(portal)/(home)/home-line";
 import { AddRequestDialog } from "@/app/admin/(portal)/add-appointment-dialog";
 import type { AddRequestDialogHandle } from "@/app/admin/(portal)/add-appointment-dialog";
+import { recordHref } from "@/app/admin/(portal)/record-address";
 import type { FoundPerson } from "@/lib/portal/patients/contracts";
 
 import { PatientRecordSheet } from "./patient-record-sheet";
@@ -63,17 +64,6 @@ export function useSchedulePeople(): SchedulePeopleValue {
   const value = use(SchedulePeopleContext);
   if (value === null) throw new Error("useSchedulePeople must be used inside SchedulePeople");
   return value;
-}
-
-const RECORD_PARAMS = ["request", "patient"] as const;
-
-/** The address with the open record set to `id`, or with none when `id` is null. */
-function recordHref(param: (typeof RECORD_PARAMS)[number], id: string | null): string {
-  const params = new URLSearchParams(window.location.search);
-  for (const name of RECORD_PARAMS) params.delete(name);
-  if (id !== null) params.set(param, id);
-  const query = params.toString();
-  return `${window.location.pathname}${query === "" ? "" : `?${query}`}`;
 }
 
 function searchField(): HTMLElement | null {
