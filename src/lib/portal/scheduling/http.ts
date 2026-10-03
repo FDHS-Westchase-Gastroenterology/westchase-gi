@@ -36,6 +36,7 @@ const failureStatuses = {
   outside_office_hours: 400,
   type_in_use: 409,
   already_closed: 409,
+  hours_in_past: 409,
 } satisfies Record<SchedulingFailureCode, number>;
 
 export function schedulingFailureStatus(code: SchedulingFailureCode): number {
