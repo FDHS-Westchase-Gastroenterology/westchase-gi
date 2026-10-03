@@ -64,14 +64,44 @@ function isKeyed(event: Event): boolean {
   return event instanceof KeyboardEvent || (event instanceof MouseEvent && event.detail === 0);
 }
 
-export function ScheduleSearch() {
-  const { openPerson, startRequest } = useSchedulePeople();
-  const input = useRef<HTMLInputElement>(null);
-  const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(false);
+interface SearchView {
+  /** The answer on screen is for what is typed now. */
+  readonly current: boolean;
+  readonly people: readonly FoundPerson[];
+  readonly total: number;
+  readonly nobody: boolean;
+  readonly failed: boolean;
+  /** Nobody is in the portal yet and nothing is typed. */
+  readonly firstDay: boolean;
+}
+
+/** What the popup shows for the typed term; the last answer stays up while the next one is on its way. */
+function searchView(term: string, found: Found | null, anyone: boolean | null): SearchView {
+  const searching = term.length >= SEARCH_MIN;
+  const current = found?.query === term;
+  const outcome = found?.outcome ?? null;
+  const answer = searching && outcome?.ok === true ? outcome : null;
+  return {
+    current,
+    people: answer?.people ?? [],
+    total: answer?.total ?? 0,
+    nobody: current && outcome?.ok === true && outcome.total === 0,
+    failed: current && outcome === null,
+    firstDay: anyone === false && !searching,
+  };
+}
+
+interface PeopleSearch {
+  readonly found: Found | null;
+  readonly anyone: boolean | null;
+  /** Asks once whether anyone is in the portal at all. */
+  readonly probe: () => void;
+}
+
+/** The server's answer for `term`, read once the typing rests. */
+function usePeopleSearch(term: string): PeopleSearch {
   const [anyone, setAnyone] = useState<boolean | null>(null);
   const [found, setFound] = useState<Found | null>(null);
-  const term = query.trim();
 
   useEffect(() => {
     if (term.length < SEARCH_MIN) return undefined;
@@ -109,15 +139,18 @@ export function ScheduleSearch() {
     });
   }
 
-  const current = found?.query === term;
-  const outcome = found?.outcome ?? null;
-  // The last answer stays up while the next one is on its way.
-  const people = term.length >= SEARCH_MIN && outcome?.ok === true ? outcome.people : [];
-  const total = term.length >= SEARCH_MIN && outcome?.ok === true ? outcome.total : 0;
-  const nobody = current && outcome?.ok === true && outcome.total === 0;
-  const failed = current && outcome === null;
-  const firstDay = anyone === false && term.length < SEARCH_MIN;
-  const shown = open && (term.length >= SEARCH_MIN || firstDay);
+  return { found, anyone, probe };
+}
+
+export function ScheduleSearch() {
+  const { openPerson, startRequest } = useSchedulePeople();
+  const input = useRef<HTMLInputElement>(null);
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const term = query.trim();
+  const { found, anyone, probe } = usePeopleSearch(term);
+  const view = searchView(term, found, anyone);
+  const shown = open && (term.length >= SEARCH_MIN || view.firstDay);
 
   function start(typed: string, keyed: boolean) {
     setOpen(false);
@@ -127,7 +160,7 @@ export function ScheduleSearch() {
 
   return (
     <Combobox<FoundPerson>
-      items={people}
+      items={view.people}
       filter={null}
       autoHighlight="always"
       open={shown}
@@ -175,7 +208,7 @@ export function ScheduleSearch() {
               }
               return;
             }
-            if (event.key === "Enter" && nobody) {
+            if (event.key === "Enter" && view.nobody) {
               event.preventDefault();
               start(term, true);
             }
@@ -183,57 +216,65 @@ export function ScheduleSearch() {
         />
       </ComboboxInputGroup>
       <ComboboxStatus className="sr-only" data-ui-redact="patient-name">
-        {open ? announce(term, found, current) : ""}
+        {open ? announce(term, found, view.current) : ""}
       </ComboboxStatus>
       <ComboboxContent className="wgi-people-popup">
-        {firstDay ? (
+        {view.firstDay ? (
           <FirstDay
             onAdd={(keyed) => {
               start("", keyed);
             }}
           />
         ) : (
-          <>
-            <p className="wgi-people-head" aria-hidden="true">
-              Patients · {current || people.length > 0 ? total : "…"}
-            </p>
-            <ComboboxList className="wgi-people-list" aria-label="Patients">
-              {(person: FoundPerson) => (
-                <PersonRow key={`${person.kind}:${person.id}`} person={person} query={term} />
-              )}
-            </ComboboxList>
-            {!current && people.length === 0 ? (
-              <p className="wgi-people-quiet">{SEARCHING}</p>
-            ) : null}
-            {failed ? (
-              <p className="wgi-people-quiet" role="alert">
-                Patients couldn&apos;t be searched. Try again.
-              </p>
-            ) : null}
-            {nobody ? (
-              <NoMatch
-                query={term}
-                onStart={(keyed) => {
-                  start(term, keyed);
-                }}
-              />
-            ) : null}
-            {people.length > 0 || nobody ? (
-              <p className="wgi-people-foot" aria-hidden="true">
-                {nobody ? (
-                  <span>Return to start the request</span>
-                ) : (
-                  <>
-                    <span>↑↓ to choose</span>
-                    <span>Return to open the record</span>
-                  </>
-                )}
-              </p>
-            ) : null}
-          </>
+          <Results
+            view={view}
+            term={term}
+            onStart={(keyed) => {
+              start(term, keyed);
+            }}
+          />
         )}
       </ComboboxContent>
     </Combobox>
+  );
+}
+
+function Results({
+  view,
+  term,
+  onStart,
+}: Readonly<{ view: SearchView; term: string; onStart: (keyed: boolean) => void }>) {
+  const { current, people, total, nobody, failed } = view;
+  return (
+    <>
+      <p className="wgi-people-head" aria-hidden="true">
+        Patients · {current || people.length > 0 ? total : "…"}
+      </p>
+      <ComboboxList className="wgi-people-list" aria-label="Patients">
+        {(person: FoundPerson) => (
+          <PersonRow key={`${person.kind}:${person.id}`} person={person} query={term} />
+        )}
+      </ComboboxList>
+      {!current && people.length === 0 ? <p className="wgi-people-quiet">{SEARCHING}</p> : null}
+      {failed ? (
+        <p className="wgi-people-quiet" role="alert">
+          Patients couldn&apos;t be searched. Try again.
+        </p>
+      ) : null}
+      {nobody ? <NoMatch query={term} onStart={onStart} /> : null}
+      {people.length > 0 || nobody ? (
+        <p className="wgi-people-foot" aria-hidden="true">
+          {nobody ? (
+            <span>Return to start the request</span>
+          ) : (
+            <>
+              <span>↑↓ to choose</span>
+              <span>Return to open the record</span>
+            </>
+          )}
+        </p>
+      ) : null}
+    </>
   );
 }
 

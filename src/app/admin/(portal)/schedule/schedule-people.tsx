@@ -1,8 +1,17 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { createContext, startTransition, use, useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import {
+  createContext,
+  startTransition,
+  Suspense,
+  use,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type { ReactNode, RefObject } from "react";
 import { toast } from "sonner";
 
 import { FullRecordSheet } from "@/app/admin/(portal)/(home)/full-record-sheet";
@@ -58,19 +67,21 @@ function searchField(): HTMLElement | null {
   return document.querySelector<HTMLElement>("[data-schedule-search] input");
 }
 
-export function SchedulePeople({
-  addRequestKey,
-  children,
-}: Readonly<{ addRequestKey: string; children: ReactNode }>) {
+interface RecordState {
+  readonly shown: HomeLine | null;
+  readonly setShown: (line: HomeLine) => void;
+  readonly instant: boolean;
+  /** Where focus goes when the record closes: an appointment on the grid, or the search field (null). */
+  readonly origin: Readonly<RefObject<string | null>>;
+}
+
+/* The sheet of the record the address names. It reads the address, so it
+   sits under its own Suspense boundary and the views around it never wait
+   on it. */
+function AddressedRecord({ shown, setShown, instant, origin }: RecordState) {
   const router = useRouter();
   const params = useSearchParams();
   const requestId = params.get("request");
-  const [shown, setShown] = useState<HomeLine | null>(null);
-  const [instant, setInstant] = useState(false);
-  /* Where focus goes when the record closes: an appointment on the grid,
-     or the search field (null). */
-  const origin = useRef<string | null>(null);
-  const addDialog = useRef<AddRequestDialogHandle>(null);
   const line = shown?.id === requestId ? shown : null;
 
   /* A record the address names that this page has not read yet: a reload,
@@ -92,7 +103,36 @@ export function SchedulePeople({
     return () => {
       live = false;
     };
-  }, [requestId, shown]);
+  }, [requestId, shown, setShown]);
+
+  return (
+    <FullRecordSheet
+      line={line}
+      instant={instant}
+      onOpenChange={(open) => {
+        if (!open) window.history.replaceState(null, "", recordHref("request", null));
+      }}
+      onClosed={() => {
+        router.refresh();
+      }}
+      returnFocus={() =>
+        origin.current === null
+          ? searchField()
+          : document.querySelector<HTMLElement>(`[data-appointment="${origin.current}"]`)
+      }
+    />
+  );
+}
+
+export function SchedulePeople({
+  addRequestKey,
+  children,
+}: Readonly<{ addRequestKey: string; children: ReactNode }>) {
+  const router = useRouter();
+  const [shown, setShown] = useState<HomeLine | null>(null);
+  const [instant, setInstant] = useState(false);
+  const origin = useRef<string | null>(null);
+  const addDialog = useRef<AddRequestDialogHandle>(null);
 
   const value = useMemo<SchedulePeopleValue>(
     () => ({
@@ -125,21 +165,9 @@ export function SchedulePeople({
   return (
     <SchedulePeopleContext value={value}>
       {children}
-      <FullRecordSheet
-        line={line}
-        instant={instant}
-        onOpenChange={(open) => {
-          if (!open) window.history.replaceState(null, "", recordHref("request", null));
-        }}
-        onClosed={() => {
-          router.refresh();
-        }}
-        returnFocus={() =>
-          origin.current === null
-            ? searchField()
-            : document.querySelector<HTMLElement>(`[data-appointment="${origin.current}"]`)
-        }
-      />
+      <Suspense fallback={null}>
+        <AddressedRecord shown={shown} setShown={setShown} instant={instant} origin={origin} />
+      </Suspense>
       <AddRequestDialog
         idempotencyKey={addRequestKey}
         permalink="/admin/schedule"
