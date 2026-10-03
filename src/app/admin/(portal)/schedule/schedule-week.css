@@ -810,10 +810,26 @@
   stroke-width: 3;
 }
 
-.wgi-week-card-phone {
+/* The patient's phone is Ap1's filled row under the facts: the whole row
+   dials, the number in link ink on a slate well. */
+.wgi-week-card-call {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: var(--color-slate-100);
   color: var(--wgi-link-ink);
+  font-size: 0.875rem;
   font-weight: 600;
+  line-height: normal;
   text-decoration: none;
+}
+
+.wgi-week-card-call svg {
+  flex: none;
+  stroke-width: 3.2;
 }
 
 .wgi-week-card-actions {
@@ -826,7 +842,8 @@
 /* The details face's commands sit 20 below the facts: the body's 6 plus
    the frame's 14. The error, when there is one, takes that space instead. */
 .wgi-week-card-body > .wgi-week-card-actions,
-.wgi-week-card-facts + .wgi-week-card-error {
+.wgi-week-card-facts + .wgi-week-card-error,
+.wgi-week-card-call + .wgi-week-card-error {
   margin-top: 14px;
 }
 
@@ -885,7 +902,8 @@
   margin-left: auto;
   border: 0;
   border-radius: 8px;
-  background: none;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--wgi-cmd-stroke);
   color: var(--wgi-name-ink);
   cursor: pointer;
   transition:
@@ -1115,7 +1133,7 @@
     text-overflow: ellipsis;
   }
 
-  .wgi-week-card-phone:hover,
+  .wgi-week-card-call:hover,
   .wgi-week-card-record:hover {
     text-decoration: underline;
   }

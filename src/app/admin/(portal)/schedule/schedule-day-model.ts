@@ -47,6 +47,9 @@ const CHECK_IN_LEAD_MS = 3_600_000;
 
 export interface DayAppointmentCell extends WeekAppointmentCell {
   readonly version: number;
+  readonly providerName: string;
+  /** A scheduled visit that has not started can be dragged to another time. */
+  readonly movable: boolean;
   readonly tone: DayTone;
   /** The status word on the block: "Checked in", "Done", "No-show", or none. */
   readonly tag: string | null;
@@ -76,6 +79,8 @@ export interface DayColumn {
   readonly place: string;
   readonly count: WeekCount | null;
   readonly shades: readonly WeekSpan[];
+  /** Where the provider works when: a drop takes the office of the window it lands in. */
+  readonly working: DayProvider["working"];
   readonly label: string;
 }
 
@@ -166,6 +171,7 @@ export function scheduleDayFor(schedule: Readonly<DaySchedule>): ScheduleDay {
       place,
       count,
       shades: shadesFor(provider, start, end),
+      working: provider.working,
       label: `${provider.name}${place === "" ? "" : `, ${place}`}${countSentence(count)}`,
     };
   });
@@ -184,6 +190,10 @@ export function scheduleDayFor(schedule: Readonly<DaySchedule>): ScheduleDay {
         ...place(appointment.startsAt, appointment.endsAt, start, end),
         lane,
         providerId: provider.id,
+        providerName: provider.name,
+        movable:
+          appointment.status === "scheduled" &&
+          Date.parse(appointment.startsAt) > Date.parse(observedAt),
         state: appointment.status === "checked_in" ? "here" : "upcoming",
         tone: TONE[appointment.status],
         tag: TAG[appointment.status],

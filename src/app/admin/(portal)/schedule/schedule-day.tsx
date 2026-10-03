@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import { ChevronLeft, ChevronRight } from "@/components/icons";
 import { Popover } from "@/components/ui/popover";
 import { createPopoverHandle } from "@/components/ui/popover-behavior";
-import { showUndoToast } from "@/components/ui/undo-toast";
 
 import { DayEmpty } from "./day-empty";
 import { DayFoot } from "./day-foot";
@@ -18,9 +17,9 @@ import { useSchedulePeople } from "./schedule-people";
 import { ShortcutsList, useScheduleShortcuts } from "./schedule-shortcuts";
 import type { ShortcutTargets } from "./schedule-shortcuts";
 import { ScheduleArrow, ScheduleTools } from "./schedule-toolbar";
-import { undoAppointmentChange, weekAppointmentCommand } from "./week-actions";
-import { failureMessage } from "./week-card-model";
-import type { Landed } from "./week-card-parts";
+import { weekAppointmentCommand } from "./week-actions";
+import { checkedInDetail, failureMessage } from "./week-card-model";
+import { useUndoLanded } from "./week-card-parts";
 import { WeekCardPopup } from "./week-cards";
 import type { WeekCardPayload } from "./week-cards";
 
@@ -69,28 +68,7 @@ export function ScheduleDayView({ view, admin }: Readonly<{ view: ScheduleDay; a
     setShortcuts(true);
   });
 
-  /** A change landed: say it with Undo, and re-read the day. */
-  function landed(change: Readonly<Pick<Landed, "id" | "version" | "headline" | "detail">>) {
-    const idempotencyKey = crypto.randomUUID();
-    showUndoToast({
-      headline: change.headline,
-      detail: change.detail,
-      undo: async () => {
-        const outcome = await undoAppointmentChange({
-          idempotencyKey,
-          id: change.id,
-          expectedVersion: change.version,
-        });
-        return outcome.ok
-          ? { ok: true, message: "Undone." }
-          : { ok: false, message: failureMessage(outcome.code) };
-      },
-      onSettled: () => {
-        router.refresh();
-      },
-    });
-    router.refresh();
-  }
+  const landed = useUndoLanded();
 
   function checkIn(cell: Readonly<DayAppointmentCell>) {
     if (checking !== null) return;
@@ -106,7 +84,8 @@ export function ScheduleDayView({ view, admin }: Readonly<{ view: ScheduleDay; a
             id: outcome.id,
             version: outcome.version,
             headline: `${cell.name} is checked in`,
-            detail: cell.detail,
+            detail: checkedInDetail(new Date(), cell.startsAt, cell.providerName),
+            request: outcome.request,
           });
         else {
           toast.error(failureMessage(outcome.code));

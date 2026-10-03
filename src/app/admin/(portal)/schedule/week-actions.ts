@@ -384,12 +384,18 @@ export async function readSchedulePatient(patientId: string): Promise<SchedulePa
 
 export type CanPlaceAnswer =
   | { readonly ok: true; readonly placeable: true }
-  | { readonly ok: true; readonly placeable: false; readonly refusal: PlacementRefusal }
+  | {
+      readonly ok: true;
+      readonly placeable: false;
+      readonly refusal: PlacementRefusal;
+      /** The appointment already holding the time, when the refusal is slot_booked. */
+      readonly conflictId: string | null;
+    }
   | Failure;
 
-/** Whether a dragged appointment can land on one open time. The Day view
-   asks once per destination while the card is over it; Reschedule still
-   checks every rule when the card drops. */
+/** Whether a dragged appointment can land on one provider, location and
+   start. The Day view asks once per destination while the card is over it;
+   Reschedule still checks every rule when the card drops. */
 export async function canPlaceAppointment(
   input: Readonly<{ appointmentId: string; providerId: string; locationId: string; startsAt: string }>,
 ): Promise<CanPlaceAnswer> {
@@ -402,5 +408,5 @@ export async function canPlaceAppointment(
   if (!("placeable" in read)) return { ok: false, code: "unavailable" };
   return read.placeable
     ? { ok: true, placeable: true }
-    : { ok: true, placeable: false, refusal: read.refusal };
+    : { ok: true, placeable: false, refusal: read.refusal, conflictId: read.conflictId ?? null };
 }
