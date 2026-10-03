@@ -375,6 +375,27 @@ end if;\n`;
   join public.appointments a on a.id = x.appointment_id
   cross join lateral (select to_jsonb(a) || x.patch as rec) r;\n`;
 
+  // An undo compensates the change just before it, as portal_save_scheduling_config records it.
+  sql += `update public.scheduling_changes u set compensates_change_id = p.id
+  from public.scheduling_changes p
+  where u.command = 'undo' and p.entity = 'appointment' and p.appointment_id = u.appointment_id and p.version = u.version - 1;\n`;
+
+  /* Settings changes, as portal_save_scheduling_settings records them: the entity's record after
+     the change is its record now, and before it lacks the added item and carries the earlier
+     version stamp. */
+  sql += `insert into public.scheduling_changes (id,entity,entity_id,provider_id,location_id,version,command,before_record,after_record,actor_id,actor_email,occurred_at)
+  select gen_random_uuid(),x.entity,x.entity_id,case when x.entity='provider' then x.entity_id end,case when x.entity='location' then x.entity_id end,
+    (x.before_patch->>'version')::bigint+1,x.command,
+    case x.entity
+      when 'provider' then jsonb_set(r.rec,'{provider}',(r.rec->'provider')||x.before_patch)||jsonb_build_object('exceptions',
+        (select coalesce(jsonb_agg(e order by n),'[]'::jsonb) from jsonb_array_elements(r.rec->'exceptions') with ordinality as t(e,n) where e->>'id'<>x.item_id::text))
+      else r.rec||x.before_patch||jsonb_build_object('closures',
+        (select coalesce(jsonb_agg(e order by n),'[]'::jsonb) from jsonb_array_elements(r.rec->'closures') with ordinality as t(e,n) where e->>'id'<>x.item_id::text))
+    end,
+    r.rec,x.actor_id,x.actor_email,x.occurred_at
+  from jsonb_to_recordset(${json(history.settingsChanges)}) as x(entity text,entity_id uuid,command text,item_id uuid,before_patch jsonb,actor_id uuid,actor_email text,occurred_at timestamptz)
+  cross join lateral (select public.portal_scheduling_settings_record(x.entity,x.entity_id) as rec) r;\n`;
+
   sql += `insert into public.patient_clinical_revisions (id,record_id,version,command,before_record,after_record,actor_id,actor_email,occurred_at)
   select gen_random_uuid(), c.id, v.version, v.command, v.before_record, v.after_record, c.author_id, c.author_email, v.occurred_at
   from public.patient_clinical_records c
@@ -401,7 +422,21 @@ end if;\n`;
     `select meta->>'author_email','request.note','requests',request_id,jsonb_build_object('length',char_length(meta->>'text')),created_at from public.request_events where type='note'`,
   );
   sql += audit(
-    `select actor_email,'appointment.'||command,'appointments',appointment_id,jsonb_build_object('version',version,'status',after_record->>'status','compensates_change_id',null),occurred_at from public.scheduling_changes where entity='appointment'`,
+    `select actor_email,'appointment.'||command,'appointments',appointment_id,jsonb_build_object('version',version,'status',after_record->>'status','compensates_change_id',compensates_change_id),occurred_at from public.scheduling_changes where entity='appointment'`,
+  );
+  sql += audit(
+    `select actor_email,'scheduling.'||command,'scheduling',entity_id,jsonb_build_object('entity',entity,'version',version),occurred_at from public.scheduling_changes where entity<>'appointment'`,
+  );
+  // A New-request packet holds the requests still new when it was printed, oldest first.
+  sql += audit(
+    `select x.actor_email,'requests.print_new','requests',null::uuid,jsonb_build_object('row_count',n.row_count,'status_filter','new','request_ids',n.ids),x.at
+    from jsonb_to_recordset(${json(history.printPackets)}) as x(actor_email text, at timestamptz)
+    cross join lateral (select count(*)::int as row_count, jsonb_agg(r.id order by r.created_at, r.id) as ids from public.requests r
+      where r.created_at < x.at and not exists (select 1 from public.request_transitions t where t.request_id = r.id and t.from_state = 'new' and t.occurred_at <= x.at)) n
+    where n.row_count > 0`,
+  );
+  sql += audit(
+    `select email,'auth.sign_in','staff',user_id,'{}'::jsonb,at from jsonb_to_recordset(${json(history.signIns)}) as x(user_id uuid, email text, at timestamptz)`,
   );
   sql += audit(
     `select actor_email,'clinical.'||command,'patient_clinical_records',record_id,jsonb_build_object('version',version,'status',after_record->>'status','amends_id',null),occurred_at from public.patient_clinical_revisions`,

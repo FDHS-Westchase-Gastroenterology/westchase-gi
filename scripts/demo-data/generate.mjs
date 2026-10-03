@@ -1,6 +1,7 @@
 /* Builds the whole demo dataset as table rows: `generateDemoData({ seed, now, staff })`.
    Pure apart from its inputs. `staff.operator` is the front-desk actor (an existing admin
    profile); `staff.clinicians` maps roster keys to their auth user ids. */
+import { addAppointmentActivity, printPackets, settingsChanges, signIns } from "./activity.mjs";
 import { createCharts } from "./charts.mjs";
 import { DAY, HOUR, MIN, addDays, createRandom, iso, ny, nyDate } from "./context.mjs";
 import { createPeople } from "./people.mjs";
@@ -37,6 +38,7 @@ export function generateDemoData({ seed, now, staff: identities }) {
   const START = historyStart(TODAY);
   const SETUP_AT = setupAt(START);
   const g = {
+    seed: String(seed),
     random,
     NOW,
     TODAY,
@@ -59,6 +61,7 @@ export function generateDemoData({ seed, now, staff: identities }) {
   const appts = createSchedule(g, people);
   const { requests, transitions, events, links } = createRequests(g, people, appts);
   const { records, entries, accounts } = createCharts(g, appts);
+  addAppointmentActivity(g, appts);
 
   const used = new Set([...appts.map((a) => a.patient.id), ...links.map((l) => l.patient_id)]);
   const patients = people.patients.filter((p) => used.has(p.id));
@@ -309,6 +312,7 @@ export function generateDemoData({ seed, now, staff: identities }) {
             version: i + 1,
             updated_at: iso(s.at),
             updated_by: s.by.id,
+            ...s.slot,
           },
           request_id: first ? a.request.r.id : null,
           request_before: first ? a.request.before : null,
@@ -317,6 +321,9 @@ export function generateDemoData({ seed, now, staff: identities }) {
         };
       }),
     ),
+    settingsChanges: settingsChanges(g, rows),
+    signIns: signIns(g),
+    printPackets: printPackets(g),
     staffRequests: requests
       .filter((r) => r.staffOrigin)
       .map((r) => ({ id: r.id, creator_email: r.creator.email, created_at: iso(r.created_at) })),
@@ -349,5 +356,11 @@ export function summarize(data) {
     }).length,
     requestsByStatus: countBy(rows.requests, "status"),
     signedNotes: rows.patient_clinical_records.filter((r) => r.status === "signed").length,
+    activity: {
+      appointmentCommands: countBy(data.history.appointmentSteps, "command"),
+      settingsChanges: countBy(data.history.settingsChanges, "command"),
+      signIns: data.history.signIns.length,
+      printPackets: data.history.printPackets.length,
+    },
   };
 }

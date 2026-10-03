@@ -277,6 +277,26 @@ function dayView({ rows, meta }, problem) {
   if (!hasOpen) problem(`day view ${date}: no open time after ${meta.now}`);
 }
 
+/** The Activity log (issue #357) has rows under every chip, and each undo is one Undo allowed. */
+function activity({ history, staff }, problem) {
+  const commands = new Set(history.appointmentSteps.map((s) => s.command));
+  for (const command of ["book", "reschedule", "cancel", "check_in", "complete", "no_show", "undo"])
+    if (!commands.has(command)) problem(`no appointment ${command} in the history`);
+  if (!history.settingsChanges.length) problem("no schedule change in the history");
+  const signedIn = new Set(history.signIns.map((s) => s.user_id));
+  for (const who of [staff.operator, ...staff.clinicians])
+    if (!signedIn.has(who.id)) problem(`${who.email} never signs in`);
+  const steps = new Map(
+    history.appointmentSteps.map((s) => [`${s.appointment_id}/${s.version}`, s]),
+  );
+  for (const undo of history.appointmentSteps.filter((s) => s.command === "undo")) {
+    const undone = steps.get(`${undo.appointment_id}/${undo.version - 1}`);
+    const gap = undone ? ms(undo.occurred_at) - ms(undone.occurred_at) : -1;
+    if (!undone || undone.command === "undo" || gap <= 0 || gap > 15 * 60_000)
+      problem(`appointment ${undo.appointment_id} has an undo Undo would refuse`);
+  }
+}
+
 /** The content bar alone; `audit` runs it over the live branch. */
 export function checkQuality(data) {
   const problems = [];
@@ -291,5 +311,6 @@ export function checkDemoData(data) {
   settings(data, problem);
   quality(data, problem);
   dayView(data, problem);
+  activity(data, problem);
   return problems;
 }
