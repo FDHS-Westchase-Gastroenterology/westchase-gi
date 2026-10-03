@@ -189,6 +189,7 @@ export function scheduleDayFor(schedule: Readonly<DaySchedule>): ScheduleDay {
         tag: TAG[appointment.status],
         name: appointment.patientName,
         type: appointment.appointmentType,
+        icon: appointment.appointmentTypeIcon,
         status: TAG[appointment.status],
         short: minutesOf(appointment.startsAt, appointment.endsAt) <= 30,
         line: `${range} · ${appointment.appointmentType}`,

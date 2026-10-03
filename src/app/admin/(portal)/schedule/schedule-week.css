@@ -469,10 +469,18 @@
 }
 
 .wgi-week-cell-type {
+  display: inline-flex;
   flex: none;
+  align-items: center;
+  gap: 0.25rem;
   font-size: 0.75rem;
   line-height: 14px;
   white-space: nowrap;
+}
+
+.wgi-week-cell-icon {
+  width: 0.6875rem;
+  height: 0.6875rem;
 }
 
 .wgi-week-cell-status {

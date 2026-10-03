@@ -1,3 +1,4 @@
+import type { AppointmentTypeIcon } from "@/lib/portal/scheduling/contracts";
 import type { WeekDay, WeekSchedule } from "@/lib/portal/scheduling/grid-contracts";
 
 import {
@@ -70,6 +71,8 @@ export interface WeekAppointmentCell extends Placed {
   readonly state: WeekCellState;
   readonly name: string;
   readonly type: string;
+  /** The type's icon, leading the type on the block. */
+  readonly icon: AppointmentTypeIcon;
   /** "Here" or "No-show": the statuses staff act on; null otherwise. */
   readonly status: string | null;
   readonly short: boolean;
@@ -286,6 +289,7 @@ export function scheduleWeekFor(schedule: Readonly<WeekSchedule>): ScheduleWeek 
           state,
           name: appointment.patientListName,
           type: appointment.appointmentType,
+          icon: appointment.appointmentTypeIcon,
           status: statusLine(appointment.status),
           short: minutes <= SHORT_MINUTES,
           label: `${appointment.patientName}, ${appointment.appointmentType.toLowerCase()}, ${from} to ${until}${statusSentence(appointment.status, state)}${who}`,
