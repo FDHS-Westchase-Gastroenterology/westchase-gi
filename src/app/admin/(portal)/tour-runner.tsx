@@ -411,7 +411,7 @@ function TourTip({ state }: Readonly<{ state: TourState }>) {
   const ring =
     open && measure.found ? (
       <div
-        key={step.id}
+        key={`ring-${step.id}`}
         className="wgi-tour-ring"
         aria-hidden="true"
         style={{
@@ -433,7 +433,7 @@ function TourTip({ state }: Readonly<{ state: TourState }>) {
           ? `${TOUR_LABELS[state.tour]}, step ${String(state.index + 1)} of ${String(steps.length)}: ${step.title}`
           : ""}
       </p>
-      <Popover key={step.id} open={open} onOpenChange={onOpenChange}>
+      <Popover key={`tip-${step.id}`} open={open} onOpenChange={onOpenChange}>
         <PopoverContent
           ref={popupRef}
           anchor={anchor}

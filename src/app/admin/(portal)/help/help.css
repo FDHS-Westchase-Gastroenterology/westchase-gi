@@ -50,10 +50,16 @@
   line-height: 1.1;
 }
 
+/* The search landmark is the flex item: it asks for 20rem and gives way on a
+   narrow screen, so the pill inside fills it rather than overflowing. */
+.wgi-help-head > search {
+  flex: 0 1 20rem;
+  min-width: 0;
+}
+
 .wgi-help-search {
   display: flex;
-  width: 20rem;
-  max-width: 100%;
+  width: 100%;
   height: 2.625rem;
   box-sizing: border-box;
   align-items: center;

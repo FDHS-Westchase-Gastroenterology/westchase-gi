@@ -135,7 +135,7 @@ test.describe("First-sign-in tours", () => {
       await expectStep(page, "invite-front-desk", "step 3 of 4: Invite the front desk");
       // The ring is on Invite; the invite sheet waits for the admin to choose it.
       await expect(page.locator(".wgi-tour-ring")).toBeVisible();
-      await expect(page.getByRole("dialog")).toHaveCount(0);
+      await expect(page.getByRole("dialog", { name: "Invite someone" })).toHaveCount(0);
 
       await page.keyboard.press("Escape");
       await expect(tip(page)).toHaveCount(0);

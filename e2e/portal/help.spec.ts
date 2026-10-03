@@ -100,7 +100,9 @@ test.describe("Help", () => {
     const button = sheet.getByTestId("help-button");
     await expect(button).toHaveAccessibleName("Open help on changing hours for one day");
     await button.hover();
-    await expect(page.getByRole("tooltip")).toHaveText("Open help on changing hours for one day");
+    await expect(page.locator('[data-slot="tooltip-content"]')).toHaveText(
+      "Open help on changing hours for one day",
+    );
 
     await button.click();
     const popover = page.getByTestId("help-popover");
