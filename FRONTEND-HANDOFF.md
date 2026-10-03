@@ -25,7 +25,7 @@ contracts are not yet on `main`.
 | See month availability | One summary per practice date: open count, booked share, seen visits, closed days, and per-provider openings | Connected: `/admin/schedule` month view with the day preview, the week view (`week_schedule`), and the Day view (`day_schedule`): one column per working provider, open time that books, and the no-providers empty state | [Scheduling](#scheduling) |
 | Book and manage appointments | Availability, conflict checks, booking, rescheduling, cancellation, arrival/outcomes, and Undo | Connected on the week and Day views: the appointment card checks in, reschedules, cancels and marks no-show or complete, and the open-time card books a found patient. The Day view's booking and Check in offer Undo for 15 minutes (`undoAppointmentChange`). Remaining: appointment history, and Undo on the week view | [Scheduling](#scheduling) |
 | Schedule from an intake request | One operation updates both the reservation and its reviewed request | Connected: the Home record card and the Schedule's request record book from the card's month (`month_availability`, then one `book` with `sourceRequestId`). An unlinked requester is registered and linked as the booking lands. Remaining: paired rescheduling/cancellation/Undo | [Requests and appointments](#requests-and-appointments) |
-| See what staff did | One newest-first Activity log over appointment, schedule, request, patient, sign-in and settings history, with chip, provider, date and search filters and role scoping (#357) | Not yet connected: the `/admin/audit` page, its chips and filters, infinite scroll, and the row sentences | [Activity log](#activity-log) |
+| See what staff did | One newest-first Activity log over appointment, schedule, request, patient, sign-in and settings history, with chip, provider, date and search filters and role scoping (#357) | Connected: `/admin/audit` reads `readActivityPage` with the category and appointment chips, provider, date range and search, scrolls into the next page, phrases every row, and expands a row into its detail; front desk gets no Settings chip and no Technical record | [Activity log](#activity-log) |
 | Read the request queue | Complete filtered results, counts, attention order, and Previous/Next | Existing screens already use the complete reads; preserve them when changing filters or paging | [Worklists](#worklists) |
 | Record billing, when used | Patient-owned charges, payments recorded elsewhere, refunds, adjustments, and corrections | Optional ledger screens, role-aware actions, and reconciliation | [Billing](#billing) |
 | Keep clinical records, when used | Notes, external document references, drafts, signing, amendments, and corrections | Optional clinical screens, signer administration, and protected record history | [Clinical records](#clinical-records) |
@@ -433,7 +433,14 @@ row; a refused one writes nothing.
 Acceptance (`e2e/boundaries/activity.spec.ts`): merge order across the three histories, cursor
 paging across days, every category and appointment chip, provider, date and search filters,
 front-desk versus admin scoping, the sign-in row, and anonymous and signed-in Data API calls
-refused. The page itself remains to be connected and verified.
+refused.
+
+The page is connected and verified in `e2e/portal/activity-log.spec.ts`: provider, chip and date
+filters written to the address and kept across a reload, Clear all, a row opening its appointment
+on the Schedule, front desk without the Settings chip or the Technical record, and an
+`unavailable` read shown as "The log could not be loaded" with Try again. The same spec downloads
+a review flyer's PDF and its .zip from `/admin/review-flyers/zip/[key]` and checks every entry's
+name, size and CRC against `private/review-flyers`.
 
 ## Billing
 

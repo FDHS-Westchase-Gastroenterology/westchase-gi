@@ -25,6 +25,9 @@ Bold marks the default; a required prop has none.
   - Also exports: `CardHeader`, `CardFooter`, `CardTitle`, `CardAction`, `CardDescription`, `CardContent`
 - [`checkbox.tsx`](../src/components/ui/checkbox.tsx) · `"use client"` · built on `@base-ui/react/checkbox`
   - `Checkbox`: `motion` **`wgi`** · `shadcn` · `none`
+- [`collapsible.tsx`](../src/components/ui/collapsible.tsx) · `"use client"` · built on `@base-ui/react/collapsible`
+  - `CollapsibleContent`: `motion` **`wgi`** · `none`
+  - Also exports: `Collapsible`, `CollapsibleTrigger`
 - [`combobox.tsx`](../src/components/ui/combobox.tsx) · `"use client"` · built on `@base-ui/react/combobox`
   - Components: `Combobox`, `ComboboxContent`, `ComboboxInput`, `ComboboxInputGroup`, `ComboboxItem`, `ComboboxList`, `ComboboxStatus`
   - Helpers and types: `ComboboxAutoHighlight`
@@ -51,7 +54,7 @@ Bold marks the default; a required prop has none.
 - [`menu.tsx`](../src/components/ui/menu.tsx) · `"use client"` · built on `@base-ui/react/menu`
   - `MenuContent`: `motion` **`wgi`** · `none`
   - `MenuItem`: `tone` **`default`** · `primary`
-  - Also exports: `Menu`, `MenuCheckboxItem`, `MenuGroup`, `MenuLabel`, `MenuRadioGroup`, `MenuRadioItem`, `MenuSeparator`, `MenuTrigger`
+  - Also exports: `Menu`, `MenuCheckboxItem`, `MenuGroup`, `MenuLabel`, `MenuLinkItem`, `MenuRadioGroup`, `MenuRadioItem`, `MenuSeparator`, `MenuTrigger`
 - [`native-select.tsx`](../src/components/ui/native-select.tsx)
   - `NativeSelect`: `motion` **`wgi`** · `shadcn` · `none`
 - [`popover-behavior.ts`](../src/components/ui/popover-behavior.ts) · `"use client"` · built on `@base-ui/react/popover`

@@ -1566,11 +1566,6 @@
     background: var(--portal-surface);
   }
 
-  .portal-empty {
-    border-block: 1px solid var(--color-line-2);
-    background: var(--color-mint);
-  }
-
   .portal-help {
     overflow: clip;
     max-width: 60rem;
