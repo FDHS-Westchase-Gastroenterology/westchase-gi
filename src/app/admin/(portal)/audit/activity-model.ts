@@ -1,14 +1,16 @@
-/* The Activity log's sentences (issue #357): one plain sentence per row, read after the actor's
+/* The Activity log's words (issue #357): one plain sentence per row, read after the actor's
    name ("Maria Lopez moved Dana Walsh to Thu, Sep 17 at 2:00 PM with Dr. Awad"). Audit rows are
-   phrased by recent-work-model's describeAction, so every sentence the log already wrote reads
+   phrased by describeAction in audit-sentences.ts, so every sentence the log already wrote reads
    the same. Browser-safe: the page and its rows both import it. */
 
+import { STATUS_LABELS } from "@/app/admin/(portal)/requests/format";
 import { asJsonArray, asJsonBoolean, asJsonObject, asJsonString } from "@/lib/json";
 import type { Json, JsonObject } from "@/lib/json";
 import type { ActivityRow, AppointmentAction } from "@/lib/portal/activity-contracts";
+import { parseRequestStatus } from "@/lib/portal/workflow/contracts";
 
-import { describeAction } from "./recent-work-model";
-import type { ActionDescription } from "./recent-work-model";
+import { describeAction } from "./audit-sentences";
+import type { ActionDescription } from "./audit-sentences";
 
 const PRACTICE_TZ = "America/New_York";
 
@@ -227,7 +229,6 @@ function auditSentence(row: Readonly<ActivityRow>, now: Date): ActionDescription
     },
     row.detail ?? {},
     {
-      namesByEmail: new Map(),
       namesByProfileId:
         row.subjectStaffName === null ? new Map() : new Map([[subject, row.subjectStaffName]]),
       recipientsById:
@@ -255,4 +256,160 @@ export function phraseActivityRow(row: Readonly<ActivityRow>, now: Date): Action
 /** Who did it: the staff member's display name, else the email the row recorded. */
 export function activityActor(row: Readonly<ActivityRow>): string {
   return row.actorName !== null && row.actorName !== "" ? row.actorName : row.actorEmail;
+}
+
+// ---- The row's frame: its day band, its time, and what opens beneath it ----
+
+const NY_DATE_KEY = new Intl.DateTimeFormat("en-CA", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  timeZone: PRACTICE_TZ,
+});
+
+const NY_LONG_DAY = new Intl.DateTimeFormat("en-US", {
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+  timeZone: PRACTICE_TZ,
+});
+
+/** The practice-local day an instant falls on, YYYY-MM-DD. */
+export function activityDay(iso: string): string {
+  return NY_DATE_KEY.format(new Date(iso));
+}
+
+/** A day band: "Today · Wednesday, September 16", "Yesterday · …", or the day alone. */
+export function activityDayBand(iso: string, now: Date): string {
+  const day = activityDay(iso);
+  const long = NY_LONG_DAY.format(new Date(iso));
+  const today = NY_DATE_KEY.format(now);
+  const yesterday = NY_DATE_KEY.format(new Date(now.getTime() - 86_400_000));
+  if (day === today) return `Today · ${long}`;
+  if (day === yesterday) return `Yesterday · ${long}`;
+  return long;
+}
+
+/** The row's time, "2:04 PM", practice-local. */
+export function activityTimeLabel(iso: string): string {
+  return NY_TIME.format(new Date(iso));
+}
+
+/** Two letters for the actor's avatar: the first and last word's initials. */
+export function activityInitials(name: string): string {
+  const words = name
+    .replace(/@.*$/, "")
+    .split(/[\s._-]+/)
+    .filter((word) => word !== "" && !/^dr\.?$/i.test(word));
+  const first = words.at(0)?.at(0) ?? "";
+  const last = words.length > 1 ? (words.at(-1)?.at(0) ?? "") : "";
+  return `${first}${last}`.toUpperCase() || "?";
+}
+
+/** The expanded row's line about the change itself: who, when, and how it was made. */
+export function activityMeta(row: Readonly<ActivityRow>): string {
+  const how =
+    row.via === "undo" ? " · Undid an earlier change" : row.via === "system" ? " · Automatic" : "";
+  return `${activityActor(row)} · ${activitySlotLabel(row.occurredAt)}${how}`;
+}
+
+const APPOINTMENT_STATUS_LABELS = [
+  ["scheduled", "Scheduled"],
+  ["checked_in", "Checked in"],
+  ["completed", "Completed"],
+  ["no_show", "No-show"],
+  ["cancelled", "Cancelled"],
+] as const;
+
+/** What a row changed, as two short lines: how it stood before and after. */
+export interface ActivityChange {
+  readonly before: string;
+  readonly after: string;
+}
+
+function appointmentState(record: JsonObject, provider: string | null): string {
+  const startsAt = asJsonString(record.starts_at);
+  if (startsAt === null) return "No appointment";
+  const status = asJsonString(record.status) ?? "scheduled";
+  const withWhom = provider === null ? "" : ` with ${provider}`;
+  const state =
+    status === "scheduled"
+      ? ""
+      : ` · ${APPOINTMENT_STATUS_LABELS.find(([key]) => key === status)?.[1] ?? status}`;
+  return `${activitySlotLabel(startsAt)}${withWhom}${state}`;
+}
+
+const PATIENT_FIELDS = [
+  ["name", "Name"],
+  ["date_of_birth", "Date of birth"],
+  ["phone", "Phone"],
+  ["email", "Email"],
+] as const;
+
+function patientFieldValue(record: JsonObject, field: string): string {
+  const value = asJsonString(record[field]);
+  if (value === null || value === "") return "none";
+  return field === "date_of_birth" ? calendarDayLabel(value) : value;
+}
+
+/**
+ * Before and after for the rows whose change reads as a state: an appointment's time, provider
+ * and status; a patient's changed details or archive; a request's status. Null for the rest,
+ * whose sentence already says everything the change holds.
+ */
+export function activityChange(row: Readonly<ActivityRow>): ActivityChange | null {
+  if (row.source === "scheduling" && row.appointmentAction !== null) {
+    const before = asJsonObject(row.before ?? null);
+    const after = asJsonObject(row.after ?? null);
+    return {
+      before:
+        before === null
+          ? "No appointment"
+          : appointmentState(before, row.priorProviderName ?? row.providerName),
+      after: after === null ? "No appointment" : appointmentState(after, row.providerName),
+    };
+  }
+  if (row.source === "patient") {
+    const before = objectOf(row.before);
+    const after = objectOf(row.after);
+    if (row.action === "set_archived") {
+      const state = (record: JsonObject) =>
+        asJsonString(record.archived_at) === null ? "Active" : "Archived";
+      return { before: state(before), after: state(after) };
+    }
+    if (row.action !== "update") return null;
+    const changed = PATIENT_FIELDS.filter(
+      ([field]) => patientFieldValue(before, field) !== patientFieldValue(after, field),
+    );
+    if (changed.length === 0) return null;
+    const read = (record: JsonObject) =>
+      changed.map(([field, label]) => `${label} ${patientFieldValue(record, field)}`).join(" · ");
+    return { before: read(before), after: read(after) };
+  }
+  if (row.action === "request.status_change" && row.detail !== null) {
+    const label = (raw: string | null): string | null => {
+      if (raw === null) return null;
+      const status = parseRequestStatus(raw);
+      return status === null ? raw : STATUS_LABELS[status];
+    };
+    const from = label(asJsonString(row.detail.from));
+    const to = label(asJsonString(row.detail.to));
+    return from === null || to === null ? null : { before: from, after: to };
+  }
+  return null;
+}
+
+// ---- The Technical record's address ----
+
+/** The Technical record's results summary, which paging moves focus to. */
+export const TECHNICAL_RECORD_SUMMARY_ID = "audit-page-summary";
+
+/** `/admin/audit?…&page=N#audit-page-summary`, keeping the log's filters. */
+export function technicalRecordHref(baseHref: string, page: number): string {
+  const [path = "/admin/audit", query = ""] = baseHref.split("?");
+  const params = new URLSearchParams(query);
+  params.delete("page");
+  if (page > 1) params.set("page", String(page));
+  const search = params.toString().replaceAll("%2C", ",");
+  return `${path}${search === "" ? "" : `?${search}`}#${TECHNICAL_RECORD_SUMMARY_ID}`;
 }

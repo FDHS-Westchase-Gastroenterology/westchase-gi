@@ -927,20 +927,20 @@ test.describe("portal management server boundaries", () => {
     expect(exportAuditTotal).toBe(2);
   });
 
-  test("VAL-ADMIN-019: Recent work renders the audit record in plain language", async () => {
+  test("VAL-ADMIN-019: the Activity log renders the audit record in plain language", async () => {
     if (!adminPage) throw new Error("Admin session is unavailable");
-    const token = `recentwork-${runId}`;
+    const token = `activitylog-${runId}`;
     const { data: staged, error: stageError } = await db
       .from("requests")
       .insert({
-        name: `TEST Recent Work ${runId}`,
+        name: `TEST Activity Log ${runId}`,
         phone: "8135550111",
         email: `${token}@example.test`,
         location: "tampa",
         preferred_time: "morning",
-        message: "TEST recent-work fixture.",
+        message: "TEST activity-log fixture.",
         locale: "en",
-        source_path: "/e2e/recent-work",
+        source_path: "/e2e/activity-log",
         // Durable workflow shape: the staff-facing Scheduled presentation
         // Rides on the `booked` state (DEC-04); the historic audit rows
         // Staged below keep their as-recorded legacy vocabulary.
@@ -952,9 +952,11 @@ test.describe("portal management server boundaries", () => {
     expect(stageError).toBeNull();
     const requestId = requireDecoded(
       idRowSchema.safeParse(staged),
-      "Recent-work fixture was not created",
+      "Activity-log fixture was not created",
     ).id;
 
+    // An hour ahead of the run clock, so the day's other work cannot push them off the first page.
+    const anchor = Date.now() + 60 * 60_000;
     const { error: auditError } = await db.from("audit_log").insert([
       {
         actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
@@ -962,6 +964,7 @@ test.describe("portal management server boundaries", () => {
         entity: "requests",
         entity_id: requestId,
         detail: { from: "new", to: "scheduled" },
+        at: new Date(anchor).toISOString(),
       },
       {
         actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
@@ -975,6 +978,7 @@ test.describe("portal management server boundaries", () => {
           follow_up_at: new Date(Date.now() + 3 * 86_400_000).toISOString(),
           note_attached: false,
         },
+        at: new Date(anchor - 1000).toISOString(),
       },
       {
         actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
@@ -982,6 +986,7 @@ test.describe("portal management server boundaries", () => {
         entity: "requests",
         entity_id: null,
         detail: { row_count: 42, status_filter: "all", has_search: false },
+        at: new Date(anchor - 2000).toISOString(),
       },
     ]);
     expect(auditError).toBeNull();
@@ -995,19 +1000,22 @@ test.describe("portal management server boundaries", () => {
 
     try {
       await adminPage.goto("/admin/audit");
-      const recent = adminPage.getByTestId("recent-work-list").first();
-      await expect(recent).toBeVisible();
-      await expect(recent).toContainText(actorName);
-      await expect(recent).toContainText("marked a request Scheduled");
-      await expect(recent).toContainText("left a voicemail on a request");
-      await expect(recent).toContainText("exported the request list (42 requests)");
+      const feed = adminPage.getByTestId("activity-feed");
+      await expect(feed).toBeVisible();
+      await expect(feed).toContainText(actorName);
+      await expect(feed).toContainText("marked a request Scheduled");
+      await expect(feed).toContainText("left a voicemail on a request");
+      await expect(feed).toContainText("exported the request list (42 requests)");
       // Storage vocabulary never reaches the human view.
-      await expect(recent).not.toContainText("request.status_change");
-      await expect(recent).not.toContainText("requests.export");
-      const statusEntry = recent.locator("li", { hasText: "marked a request Scheduled" }).first();
-      await expect(statusEntry.getByRole("link", { name: "open request" })).toHaveAttribute(
+      await expect(feed).not.toContainText("request.status_change");
+      await expect(feed).not.toContainText("requests.export");
+      const statusEntry = feed
+        .locator("li[data-activity-row]", { hasText: "marked a request Scheduled" })
+        .first();
+      await statusEntry.getByTestId("activity-row-summary").click();
+      await expect(statusEntry.getByRole("link", { name: "Open record" })).toHaveAttribute(
         "href",
-        `/admin/requests/${requestId}`,
+        `/admin/schedule?request=${requestId}`,
       );
 
       // The exact technical record stays beneath for administrators.
@@ -1026,13 +1034,10 @@ test.describe("portal management server boundaries", () => {
     }
   });
 
-  test("VAL-ADMIN-020: Recent work search, work-type filters, compaction, and URL state", async () => {
+  test("VAL-ADMIN-020: Activity log search stays in the page, chips narrow it, and Clear all recovers", async () => {
     if (!adminPage) throw new Error("Admin session is unavailable");
-    const token = `activity-${runId}`;
-    // Four adjacent print-packet events plus one request action, dated an hour
-    // Ahead of the run clock: newest-first, so a day's earlier runs cannot
-    // Push them off the first page, and no other row can land between them
-    // And break the adjacent run (noon did, once the day filled up).
+    // Four print-packet events plus one request action, dated an hour ahead
+    // Of the run clock so they lead the newest-first first page.
     const anchor = new Date(Date.now() + 60 * 60_000);
     const { data: stagedRows, error: stageError } = await db
       .from("audit_log")
@@ -1062,50 +1067,47 @@ test.describe("portal management server boundaries", () => {
     ).map((row) => row.id);
 
     try {
-      // Search by an action phrase through the URL.
-      await adminPage.goto(`/admin/audit?q=${encodeURIComponent("print packet")}`);
-      const summary = adminPage.getByTestId("recent-work-summary");
-      await expect(summary).toContainText("print packet");
-      // The staged future-dated group is first; earlier runs can add other groups.
-      const group = adminPage.getByTestId("recent-work-group").first();
-      await expect(group).toContainText(/4 times between/);
+      await adminPage.goto("/admin/audit?category=requests");
+      const feed = adminPage.getByTestId("activity-feed");
+      // The fixtures lead the list. The shared database may hold other packets of three,
+      // So the check reads the first rows rather than counting every match.
+      const rows = feed.locator("li[data-activity-row]");
+      const expectPacketsLead = async () => {
+        for (const index of [0, 1, 2, 3]) {
+          await expect(rows.nth(index)).toContainText(
+            "prepared the New-request print packet (3 requests)",
+          );
+        }
+      };
+      // One sentence per stored event: four packets are four rows, never a compacted group.
+      await expectPacketsLead();
+      await expect(rows.nth(4)).toContainText("added an appointment request");
 
-      // Expansion reaches the exact underlying entries.
-      await group.getByText("Show all 4").click();
-      await expect(
-        group.getByTestId("recent-work-group-details").getByRole("listitem"),
-      ).toHaveCount(4);
-      await expect(group).toContainText("prepared the New-request print packet (3 requests)");
+      // A search narrows the list in place and never reaches the address.
+      const search = adminPage.getByTestId("activity-search");
+      expect(await search.count()).toBe(1);
+      await search.fill("print");
+      await expect(feed).not.toContainText("added an appointment request");
+      await expectPacketsLead();
+      await expect(adminPage).toHaveURL(/\/admin\/audit\?category=requests$/);
 
       // The exact technical record keeps every underlying event.
       const technical = adminPage.getByTestId("audit-table");
       expect(await technical.getByText("requests.print_new").count()).toBeGreaterThanOrEqual(4);
 
-      // Work-type filters narrow the same result set.
-      await adminPage.goto("/admin/audit?type=people");
-      await expect(summary).not.toContainText("print packet");
-
-      // No-results copy and recovery follow the active Recent work constraints.
-      const miss = `zzz-${token}`;
-      await adminPage.goto(`/admin/audit?q=${encodeURIComponent(miss)}&type=requests`);
-      const empty = adminPage.getByTestId("recent-work-empty");
+      // A chip that leaves nothing says so and offers the way back.
+      await adminPage
+        .getByTestId("activity-categories")
+        .getByRole("button", { name: "Sign-ins", exact: true })
+        .click();
+      await expect(adminPage).toHaveURL(/\/admin\/audit\?category=sign_ins$/);
+      const empty = adminPage.getByTestId("activity-empty-filtered");
       await expect(empty).toBeVisible();
-      await expect(empty).toContainText(
-        `No recent work matches for “${miss}” in Appointment requests.`,
-      );
-      await expect(
-        empty.getByRole("link", { name: "Clear search and filters", exact: true }),
-      ).toHaveAttribute("href", "/admin/audit#recent-work-search");
-
-      await adminPage.goto(`/admin/audit?q=${encodeURIComponent(miss)}`);
-      await expect(empty).toContainText(`No recent work matches for “${miss}”.`);
-      await expect(empty).not.toContainText("Try different words");
-      const searchRecovery = empty.getByRole("link", { name: "Clear search", exact: true });
-      await expect(searchRecovery).toHaveAttribute("href", "/admin/audit#recent-work-search");
-      await searchRecovery.click();
-      await expect(adminPage).toHaveURL(/\/admin\/audit(?:#recent-work-search)?$/);
-      await expect(adminPage.getByLabel("Search recent work")).toBeFocused();
-      await expect(adminPage.getByTestId("recent-work-summary")).toBeVisible();
+      await expect(empty).toContainText("Nothing matches");
+      await empty.getByTestId("activity-clear-all").click();
+      await expect(adminPage).toHaveURL(/\/admin\/audit$/);
+      await expect(search).toHaveValue("");
+      await expectPacketsLead();
     } finally {
       for (const id of fixtureIds) {
         await db.from("audit_log").delete().eq("id", id);
@@ -1113,12 +1115,11 @@ test.describe("portal management server boundaries", () => {
     }
   });
 
-  test("VAL-ADMIN-021: workflow-command vocabulary, filters, adjacency, and unique search id", async () => {
+  test("VAL-ADMIN-021: workflow-command vocabulary, category chips, and settings rows", async () => {
     if (!adminPage) throw new Error("Admin session is unavailable");
     const token = `slice8-${runId}`;
     // Dated an hour ahead of the run clock, like VAL-ADMIN-020: at the top of
-    // The fifty-row first page whatever the day has written, with no other row
-    // Able to land between the fixtures.
+    // The fifty-row first page whatever the day has written.
     const anchor = new Date(Date.now() + 60 * 60_000);
     const { data: staged, error: stageError } = await db
       .from("requests")
@@ -1225,72 +1226,60 @@ test.describe("portal management server boundaries", () => {
 
     try {
       await adminPage.goto("/admin/audit");
-      expect(await adminPage.locator("#recent-work-search").count()).toBe(1);
-      await expect(adminPage.locator("#recent-work-search")).toHaveAttribute("name", "q");
-      await expect(adminPage.getByTestId("recent-work-filter-other")).toHaveCount(0);
-
-      const recent = adminPage.getByTestId("recent-work-list").first();
+      const feed = adminPage.getByTestId("activity-feed");
       for (const [, , , phrase] of commands) {
-        await expect(recent).toContainText(phrase);
+        await expect(feed).toContainText(phrase);
       }
-      await expect(recent).not.toContainText("request.workflow_command");
-      await expect(recent).not.toContainText("record_contact_attempt");
-      await expect(recent).not.toContainText("set_call_again");
-      await expect(recent).not.toContainText("undo_latest_transition");
-      await expect(recent).not.toContainText("resulting_version");
-      await expect(recent).toContainText("prepared a print packet of 3 requests");
-      for (const id of chosenPrintIds.slice(1)) await expect(recent).not.toContainText(id);
-      await expect(
-        recent
-          .locator("li", { hasText: "recorded a contact attempt on a request" })
-          .first()
-          .getByRole("link", { name: "open request" }),
-      ).toHaveAttribute("href", `/admin/requests/${requestId}`);
+      await expect(feed).not.toContainText("request.workflow_command");
+      await expect(feed).not.toContainText("record_contact_attempt");
+      await expect(feed).not.toContainText("set_call_again");
+      await expect(feed).not.toContainText("undo_latest_transition");
+      await expect(feed).not.toContainText("resulting_version");
+      await expect(feed).toContainText("prepared a print packet of 3 requests");
+      for (const id of chosenPrintIds.slice(1)) await expect(feed).not.toContainText(id);
+      const attempt = feed
+        .locator("li[data-activity-row]", { hasText: "recorded a contact attempt on a request" })
+        .first();
+      await attempt.getByTestId("activity-row-summary").click();
+      await expect(attempt.getByRole("link", { name: "Open record" })).toHaveAttribute(
+        "href",
+        `/admin/schedule?request=${requestId}`,
+      );
       await expect(adminPage.getByTestId("audit-table")).toContainText("request.workflow_command");
 
-      const filters = [
-        ["all", "All work"],
-        ["requests", "Appointment requests"],
-        ["people", "Notifications & staff"],
-        ["output", "Printing & exports"],
-        ["site", "Website & access"],
+      // Every chip is single-choice and writes its category into the address.
+      const chips = [
+        ["appointments", "Appointments"],
+        ["requests", "Requests"],
+        ["schedule", "Schedule and hours"],
+        ["sign_ins", "Sign-ins"],
+        ["settings", "Settings"],
+        [null, "Everything"],
       ] as const;
-      for (const [type, label] of filters) {
-        await adminPage.getByTestId(`recent-work-filter-${type}`).click();
-        await expect(adminPage.getByTestId(`recent-work-filter-${type}`)).toHaveAttribute(
-          "aria-pressed",
-          "true",
+      const categories = adminPage.getByTestId("activity-categories");
+      for (const [category, label] of chips) {
+        const chip = categories.getByRole("button", { name: label, exact: true });
+        await chip.click();
+        await expect(chip).toHaveAttribute("aria-pressed", "true");
+        await expect(categories.locator("[aria-pressed='true']")).toHaveCount(1);
+        await expect(adminPage).toHaveURL(
+          category === null ? /\/admin\/audit$/ : new RegExp(`\\?category=${category}$`),
         );
-        await expect(adminPage.getByTestId(`recent-work-filter-${type}`)).toHaveText(label);
-        if (type !== "all") {
-          await expect(adminPage.getByTestId("recent-work-summary")).toContainText(label);
-          await expect(adminPage).toHaveURL(new RegExp(`[?&]type=${type}\\b`));
-        }
       }
 
-      await adminPage.goto(`/admin/audit?q=${encodeURIComponent(requestId)}&type=requests`);
-      await expect(adminPage.getByTestId("recent-work-list").first()).toContainText(
-        "contact attempt",
-      );
-      await adminPage.goto("/admin/audit?q=notification%20emails&type=people");
-      await expect(adminPage.getByTestId("recent-work-list").first()).toContainText(
-        "notification emails",
-      );
-      await adminPage.goto(`/admin/audit?q=${encodeURIComponent(`${token}-maintainer`)}&type=site`);
-      await expect(adminPage.getByTestId("recent-work-list").first()).toContainText(
-        `${token}-maintainer`,
-      );
-      await adminPage.goto("/admin/audit?q=17%20requests&type=output");
-      await expect(adminPage.getByTestId("recent-work-group")).toHaveCount(0);
+      await adminPage.goto("/admin/audit?category=requests");
+      await expect(feed).toContainText("contact attempt");
       await expect(
-        adminPage
-          .getByTestId("recent-work-list")
-          .getByText("prepared the New-request print packet (17 requests)"),
+        feed.getByText("prepared the New-request print packet (17 requests)"),
       ).toHaveCount(2);
+      await expect(feed).not.toContainText(`${token}-maintainer`);
+      await adminPage.goto("/admin/audit?category=settings");
+      await expect(feed).toContainText("notification emails");
+      await expect(feed).toContainText(`${token}-maintainer`);
+      await expect(feed).not.toContainText("contact attempt");
 
-      await adminPage.getByTestId("recent-work-clear").click();
+      await adminPage.getByTestId("activity-clear-all").first().click();
       await expect(adminPage).toHaveURL(/\/admin\/audit$/);
-      await expect(adminPage.getByLabel("Search recent work")).toBeFocused();
     } finally {
       for (const id of fixtureIds) {
         await db.from("audit_log").delete().eq("id", id);
@@ -1299,7 +1288,7 @@ test.describe("portal management server boundaries", () => {
     }
   });
 
-  test("VAL-ADMIN-022: Recent work 1,260-row lens, mixed pagers, and focus", async () => {
+  test("VAL-ADMIN-022: the log reads on with Load more beside the Technical record's pager, and keeps focus", async () => {
     if (!adminPage) throw new Error("Admin session is unavailable");
     test.setTimeout(120_000);
     const actor = `lens-${runId}@example.test`;
@@ -1313,9 +1302,9 @@ test.describe("portal management server boundaries", () => {
         email: actor,
         location: "tampa",
         preferred_time: "morning",
-        message: "TEST recent-work 1260-row fixture.",
+        message: "TEST activity-log paging fixture.",
         locale: "en",
-        source_path: "/e2e/recent-work-lens",
+        source_path: "/e2e/activity-log-paging",
         status: "contacted",
       })
       .select("id")
@@ -1325,105 +1314,47 @@ test.describe("portal management server boundaries", () => {
       oldestId,
     );
 
+    // 120 notes dated in 2042, ahead of everything else the log holds: two and a half pages.
     const base = Date.UTC(2042, 5, 1, 12, 0, 0);
-    const rows = Array.from({ length: 1260 }, (_, index) => ({
+    const rows = Array.from({ length: 120 }, (_, index) => ({
       actor_email: actor,
       action: "request.note",
       entity: "requests",
-      entity_id: index === 1259 ? oldestId : null,
+      entity_id: index === 119 ? oldestId : null,
       detail: {},
       at: new Date(base - index * 1000).toISOString(),
     }));
     const fixtureIds: string[] = [];
     try {
-      for (let from = 0; from < rows.length; from += 250) {
-        const { data, error } = await db
-          .from("audit_log")
-          .insert(rows.slice(from, from + 250))
-          .select("id");
-        expect(error).toBeNull();
-        fixtureIds.push(
-          ...requireDecoded(
-            z.array(idRowSchema).safeParse(data ?? []),
-            "Lens audit chunk was not created",
-          ).map((row) => row.id),
-        );
-      }
-      expect(fixtureIds).toHaveLength(1260);
-
-      const { count: auditCount, error: auditCountError } = await db
-        .from("audit_log")
-        .select("id", { count: "exact", head: true });
-      expect(auditCountError).toBeNull();
-      if (auditCount === null) throw new Error("Audit count is unavailable");
-
-      await adminPage.goto(`/admin/audit?q=${encodeURIComponent(actor)}`);
-      const summary = adminPage.getByTestId("recent-work-summary");
-      await expect(summary).toHaveText(`Showing 1–50 of 1260 entries for “${actor}”.`);
-      // The notice describes the whole audit window, including unrelated Preview events.
-      await expect(adminPage.getByText(/Search and filters cover the/)).toHaveCount(
-        auditCount > 2000 ? 1 : 0,
+      const { data, error } = await db.from("audit_log").insert(rows).select("id");
+      expect(error).toBeNull();
+      fixtureIds.push(
+        ...requireDecoded(
+          z.array(idRowSchema).safeParse(data ?? []),
+          "Lens audit rows were not created",
+        ).map((row) => row.id),
       );
+      expect(fixtureIds).toHaveLength(120);
 
-      await adminPage.goto(`/admin/audit?q=${encodeURIComponent(oldestId)}`);
-      await expect(adminPage.getByTestId("recent-work-summary")).toContainText("1–1 of 1");
-      await expect(adminPage.getByRole("link", { name: "open request" })).toHaveAttribute(
+      await adminPage.goto("/admin/audit?category=requests");
+      const lensRows = adminPage
+        .getByTestId("activity-feed")
+        .locator("li[data-activity-row]", { hasText: actor });
+      await expect(lensRows).toHaveCount(50);
+      // Something follows the list for an administrator, so it grows on Load more, not on scroll.
+      const more = adminPage.getByTestId("activity-load-more");
+      await more.click();
+      await expect(lensRows).toHaveCount(100);
+      await more.click();
+      await expect(lensRows).toHaveCount(120);
+      const oldest = lensRows.last();
+      await oldest.getByTestId("activity-row-summary").click();
+      await expect(oldest.getByRole("link", { name: "Open record" })).toHaveAttribute(
         "href",
-        `/admin/requests/${oldestId}`,
+        `/admin/schedule?request=${oldestId}`,
       );
 
-      await adminPage.goto(`/admin/audit?q=${encodeURIComponent(actor)}&rw=26`);
-      await expect(summary).toHaveText(`Showing 1251–1260 of 1260 entries for “${actor}”.`);
-      await expect(adminPage.getByRole("link", { name: "open request" })).toHaveAttribute(
-        "href",
-        `/admin/requests/${oldestId}`,
-      );
-
-      await adminPage.goto(`/admin/audit?q=${encodeURIComponent(actor)}&rw=99&page=5`);
-      await expect(adminPage).toHaveURL(new RegExp(`rw=26`));
-      await expect(adminPage).toHaveURL(/page=5/);
-      await expect(summary).toContainText("1251–1260 of 1260");
-
-      await adminPage.goto(`/admin/audit?q=${encodeURIComponent(actor)}&rw=2&page=5`);
-      const recentNext = adminPage
-        .getByTestId("recent-work-pagination")
-        .getByRole("link", { name: "Next" });
-      const recentNextUrl = new URL((await recentNext.getAttribute("href")) ?? "", adminPage.url());
-      expect(recentNextUrl.searchParams.get("rw")).toBe("3");
-      expect(recentNextUrl.searchParams.get("page")).toBe("5");
-      expect(recentNextUrl.searchParams.get("q")).toBe(actor);
-      await recentNext.click();
-      await expect(adminPage).toHaveURL(/rw=3/);
-      await expect(adminPage).toHaveURL(/page=5/);
-      await expect(summary).toHaveText(`Showing 101–150 of 1260 entries for “${actor}”.`);
-      await expect(
-        adminPage.getByTestId("recent-work-pagination").getByText("Page 3 of 26", {
-          exact: true,
-        }),
-      ).toBeVisible();
-      await expect(summary).toBeFocused();
-
-      const recentPrevious = adminPage
-        .getByTestId("recent-work-pagination")
-        .getByRole("link", { name: "Previous" });
-      const recentPreviousUrl = new URL(
-        (await recentPrevious.getAttribute("href")) ?? "",
-        adminPage.url(),
-      );
-      expect(recentPreviousUrl.searchParams.get("rw")).toBe("2");
-      expect(recentPreviousUrl.searchParams.get("page")).toBe("5");
-      expect(recentPreviousUrl.searchParams.get("q")).toBe(actor);
-      await recentPrevious.click();
-      await expect(adminPage).toHaveURL(/rw=2/);
-      await expect(adminPage).toHaveURL(/page=5/);
-      await expect(summary).toHaveText(`Showing 51–100 of 1260 entries for “${actor}”.`);
-      await expect(
-        adminPage.getByTestId("recent-work-pagination").getByText("Page 2 of 26", {
-          exact: true,
-        }),
-      ).toBeVisible();
-      await expect(summary).toBeFocused();
-
+      // The Technical record's pager carries the log's filters and moves focus to its summary.
       const technicalNext = adminPage
         .getByTestId("audit-pagination")
         .getByRole("link", { name: "Next" });
@@ -1431,15 +1362,14 @@ test.describe("portal management server boundaries", () => {
         (await technicalNext.getAttribute("href")) ?? "",
         adminPage.url(),
       );
-      expect(technicalNextUrl.searchParams.get("rw")).toBe("2");
-      expect(technicalNextUrl.searchParams.get("page")).toBe("6");
-      expect(technicalNextUrl.searchParams.get("q")).toBe(actor);
+      expect(technicalNextUrl.searchParams.get("page")).toBe("2");
+      expect(technicalNextUrl.searchParams.get("category")).toBe("requests");
       await technicalNext.click();
-      await expect(adminPage).toHaveURL(/rw=2/);
-      await expect(adminPage).toHaveURL(/page=6/);
-      await expect(adminPage.getByTestId("audit-page-summary")).toContainText("501–600 of");
+      await expect(adminPage).toHaveURL(/page=2/);
+      await expect(adminPage).toHaveURL(/category=requests/);
+      await expect(adminPage.getByTestId("audit-page-summary")).toContainText("101–200 of");
       await expect(
-        adminPage.getByTestId("audit-pagination").getByText(/Page 6 of \d+/, {
+        adminPage.getByTestId("audit-pagination").getByText(/Page 2 of \d+/, {
           exact: true,
         }),
       ).toBeVisible();
@@ -1448,43 +1378,23 @@ test.describe("portal management server boundaries", () => {
       const technicalPrevious = adminPage
         .getByTestId("audit-pagination")
         .getByRole("link", { name: "Previous" });
-      const technicalPreviousUrl = new URL(
-        (await technicalPrevious.getAttribute("href")) ?? "",
-        adminPage.url(),
-      );
-      expect(technicalPreviousUrl.searchParams.get("rw")).toBe("2");
-      expect(technicalPreviousUrl.searchParams.get("page")).toBe("5");
-      expect(technicalPreviousUrl.searchParams.get("q")).toBe(actor);
       await technicalPrevious.click();
-      await expect(adminPage).toHaveURL(/rw=2/);
-      await expect(adminPage).toHaveURL(/page=5/);
-      await expect(adminPage.getByTestId("audit-page-summary")).toContainText("401–500 of");
-      await expect(
-        adminPage.getByTestId("audit-pagination").getByText(/Page 5 of \d+/, {
-          exact: true,
-        }),
-      ).toBeVisible();
+      await expect(adminPage).toHaveURL(/category=requests/);
+      await expect(adminPage).not.toHaveURL(/page=/);
+      await expect(adminPage.getByTestId("audit-page-summary")).toHaveText(/^Showing 1–100 of/);
       await expect(adminPage.getByTestId("audit-page-summary")).toBeFocused();
 
-      await adminPage.getByTestId("recent-work-filter-requests").click();
-      await expect(adminPage).toHaveURL(/page=5/);
-      await expect(adminPage).not.toHaveURL(/rw=/);
-      await expect(summary).toBeFocused();
-
-      await adminPage.getByLabel("Search recent work").fill(actor);
-      await adminPage.getByRole("button", { name: "Search", exact: true }).click();
-      await expect(summary).toBeFocused();
-      await expect(adminPage).toHaveURL(/page=5/);
-
-      await adminPage.getByTestId("recent-work-clear").click();
-      await expect(adminPage).toHaveURL(/\/admin\/audit\?page=5$/);
-      await expect(adminPage.getByLabel("Search recent work")).toBeFocused();
+      // A chip change rewrites the log's filters and leaves the Technical record's page alone.
+      await adminPage.goto("/admin/audit?category=requests&page=2");
+      await adminPage
+        .getByTestId("activity-categories")
+        .getByRole("button", { name: "Everything", exact: true })
+        .click();
+      await expect(adminPage).toHaveURL(/\/admin\/audit\?page=2$/);
+      await expect(adminPage.getByTestId("audit-page-summary")).toContainText("101–200 of");
     } finally {
-      for (let from = 0; from < fixtureIds.length; from += 250) {
-        const { error } = await db
-          .from("audit_log")
-          .delete()
-          .in("id", fixtureIds.slice(from, from + 250));
+      if (fixtureIds.length > 0) {
+        const { error } = await db.from("audit_log").delete().in("id", fixtureIds);
         expect(error).toBeNull();
       }
       await db.from("audit_log").delete().eq("actor_email", actor);

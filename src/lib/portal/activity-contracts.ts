@@ -156,7 +156,7 @@ export type ActivityFailureCode = (typeof ACTIVITY_FAILURE_CODES)[number];
 export const activityPageSchema = z.union([
   z.object({
     ok: z.literal(true),
-    rows: z.array(activityRowSchema),
+    rows: z.array(activityRowSchema).readonly(),
     nextCursor: activityCursorSchema,
     counts: z.object({ hidden: z.number().int().nonnegative() }).nullable(),
   }),

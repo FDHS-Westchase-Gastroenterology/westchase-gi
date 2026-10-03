@@ -149,25 +149,24 @@ test.describe("isolated portal scale boundaries", () => {
       })),
     );
     expect(appendedActivityError).toBeNull();
-    await page.getByLabel("Search recent work").fill(actorEmail);
-    await page.getByRole("button", { name: "Search", exact: true }).click();
-    await expect(page).toHaveURL(
-      (url) => url.searchParams.get("q") === actorEmail && url.searchParams.get("page") === "2",
-    );
-    await expect(page.getByTestId("recent-work-summary")).toBeFocused();
-
-    await page.getByTestId("recent-work-clear").focus();
-    await page.getByTestId("recent-work-clear").press("Enter");
+    // The log above changes its own filters in place: the Technical record keeps its page,
+    // And a search never reaches the address.
+    await page.getByTestId("activity-search").fill(actorEmail);
+    await page
+      .getByTestId("activity-categories")
+      .getByRole("button", { name: "Requests", exact: true })
+      .click();
     await expect(page).toHaveURL(
       (url) =>
         url.pathname === "/admin/audit" &&
         url.searchParams.get("page") === "2" &&
+        url.searchParams.get("category") === "requests" &&
         !url.searchParams.has("q") &&
-        !url.searchParams.has("type") &&
-        !url.searchParams.has("rw"),
+        url.hash === "#audit-page-summary",
     );
+    await page.reload();
     await expect(technicalSummary).toHaveText(/^Showing 101–\d+ of \d+$/);
     await expect(technicalRows).toHaveCount(3);
-    await expect(page.getByLabel("Search recent work")).toBeFocused();
+    await expect(page.getByTestId("activity-search")).toHaveValue("");
   });
 });

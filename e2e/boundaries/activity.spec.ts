@@ -63,7 +63,7 @@ async function rowsOf(
   db: SupabaseClient,
   actorId: string,
   filters: Readonly<ActivityFilters> = {},
-): Promise<ActivityRow[]> {
+): Promise<readonly ActivityRow[]> {
   const page = await readActivity(db, actorId, filters);
   if (!page.ok) throw new Error(`Activity read failed: ${page.code}`);
   expect(page.nextCursor).toBeNull();
@@ -230,7 +230,7 @@ test("the log merges audit, scheduling and patient history newest first, pages a
     }
 
     // Paging four at a time walks the same stream across four days and stops.
-    const pages: ActivityRow[][] = [];
+    const pages: (readonly ActivityRow[])[] = [];
     let cursor: ActivityCursor = null;
     for (;;) {
       const page = await readActivity(db, actor, { query: word }, cursor, 4);

@@ -310,7 +310,7 @@ test.describe("appointment-request print packet", () => {
     }
 
     await page.goto("/admin/audit");
-    await expect(page.getByTestId("recent-work-list").first()).toContainText(
+    await expect(page.getByTestId("activity-feed")).toContainText(
       `prepared the New-request print packet (${packetCount} ${
         packetCount === 1 ? "request" : "requests"
       })`,
@@ -378,7 +378,7 @@ test.describe("appointment-request print packet", () => {
     });
 
     await page.goto("/admin/audit");
-    await expect(page.getByTestId("recent-work-list").first()).toContainText(
+    await expect(page.getByTestId("activity-feed")).toContainText(
       "prepared a print packet of 2 requests",
     );
   });
