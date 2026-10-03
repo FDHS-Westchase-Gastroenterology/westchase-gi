@@ -124,8 +124,11 @@ test("the log merges audit, scheduling and patient history newest first, pages a
       ok: true,
     });
     /* Check-in needs a visit today and a no-show one already started; booking refuses the
-       past, so these two are moved to twenty minutes ago before their commands. */
-    const started = new Date(Math.floor((Date.now() - 20 * 60_000) / 60_000) * 60_000);
+       past, so these two are moved to twenty minutes ago, or to the first minute of today
+       just after midnight, before their commands. */
+    let startMs = Math.floor((Date.now() - 20 * 60_000) / 60_000) * 60_000;
+    while (dayOf(startMs) !== practiceDate(0)) startMs += 60_000;
+    const started = new Date(startMs);
     for (const id of [seen, missed]) {
       const update = await db
         .from("appointments")

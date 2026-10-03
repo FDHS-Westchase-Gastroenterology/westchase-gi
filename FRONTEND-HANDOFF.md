@@ -403,7 +403,7 @@ takes the viewer's role from their staff profile in the database, never from the
 | `filters.appointmentActions` | `booked`, `moved`, `cancelled`, `checked_in`, `no_show`, `completed`. Narrows only Appointments rows; an undo counts as the action it undid. |
 | `filters.providerId` | Rows whose provider, or prior provider for a move, is this one. |
 | `filters.from`, `filters.to` | Inclusive practice-local dates (`YYYY-MM-DD`, America/New_York); `to` before `from` is invalid. |
-| `filters.query` | Up to 200 characters and eight words; every word must start a word of the actor, patient or request name, provider, location, appointment type, or the action's words. Sent in the POST body only. |
+| `filters.query` | Up to 200 characters and eight words; every word must start a word of the actor, patient or request name, provider, location, appointment type, staff member or recipient a Settings row is about, or the action's words. Sent in the POST body only. |
 | `cursor` | `null` for the first page, then the page's `nextCursor` (`{ occurredAt, id }`). |
 
 A page is `{ ok: true, rows, nextCursor, counts }`: up to 50 rows newest first, ordered by
