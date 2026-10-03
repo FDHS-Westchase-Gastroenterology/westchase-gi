@@ -53,6 +53,14 @@ function calendarDayLabel(date: string): string {
   return Number.isNaN(at.getTime()) ? date : CALENDAR_DAY.format(at);
 }
 
+const WEEKDAY = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: "UTC" });
+
+/** "Wednesday" for 2026-10-07. */
+function weekdayOf(date: string): string {
+  const at = new Date(`${date}T00:00:00Z`);
+  return Number.isNaN(at.getTime()) ? "weekday" : WEEKDAY.format(at);
+}
+
 function isPracticeMidnight(at: Date): boolean {
   return NY_MIDNIGHT.format(at) === "00:00";
 }
@@ -191,6 +199,19 @@ function scheduleSentence(row: Readonly<ActivityRow>): ActionDescription {
           : `reopened ${location}${on}`,
       );
     }
+    case "set_provider_day_hours": {
+      // The Day view's Hours sheet (#353): one day, or that weekday from the day on.
+      const dayHours = objectOf(after.dayHours);
+      const date = asJsonString(dayHours.date);
+      if (date === null) return known(`changed ${possessive(provider)} hours`);
+      return known(
+        asJsonString(dayHours.scope) === "weekday_from"
+          ? `changed ${possessive(provider)} ${weekdayOf(date)} hours from ${calendarDayLabel(date)}`
+          : `changed ${possessive(provider)} hours for ${calendarDayLabel(date)}`,
+      );
+    }
+    case "undo":
+      return known(`undid a change to ${possessive(provider)} hours`);
     default:
       return { sentence: `${row.action} (${row.entity})`, technical: true };
   }

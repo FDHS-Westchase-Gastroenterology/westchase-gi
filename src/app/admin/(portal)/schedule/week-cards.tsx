@@ -37,9 +37,10 @@ const CARD_COLLISION = { side: "flip", align: "shift", fallbackAxisSide: "end" }
 export function WeekCardPopup({
   payload,
   keyed,
+  face,
   onDone,
   onOpenRecord,
-}: Readonly<CardHandlers & { payload: WeekCardPayload; keyed: boolean }>) {
+}: Readonly<CardHandlers & { payload: WeekCardPayload; keyed: boolean; face?: "reschedule" }>) {
   return (
     /* Opened by Enter or Space, it appears and leaves at once. */
     <PopoverContent
@@ -55,7 +56,12 @@ export function WeekCardPopup({
     >
       <PopoverArrow className="wgi-week-card-arrow" />
       {payload.kind === "appointment" ? (
-        <AppointmentCard cell={payload.cell} onDone={onDone} onOpenRecord={onOpenRecord} />
+        <AppointmentCard
+          cell={payload.cell}
+          face={face}
+          onDone={onDone}
+          onOpenRecord={onOpenRecord}
+        />
       ) : (
         <OpenTimeCard cell={payload.cell} onDone={onDone} />
       )}

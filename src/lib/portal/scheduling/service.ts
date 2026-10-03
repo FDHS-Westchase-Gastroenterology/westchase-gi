@@ -7,6 +7,20 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { schedulingCommandOutcomeSchema, schedulingInputSchema } from "./contracts";
 import type { SchedulingInput, SchedulingOutcome } from "./contracts";
 import {
+  dayHoursCommandInputSchema,
+  dayHoursCommandOutcomeSchema,
+  dayHoursOutcomeSchema,
+  dayHoursUndoInputSchema,
+  dayHoursUndoOutcomeSchema,
+} from "./day-hours-contracts";
+import type {
+  DayHoursCommandInput,
+  DayHoursCommandOutcome,
+  DayHoursOutcome,
+  DayHoursUndoInput,
+  DayHoursUndoOutcome,
+} from "./day-hours-contracts";
+import {
   canPlaceOutcomeSchema,
   dayScheduleOutcomeSchema,
   rememberWeekProviderOutcomeSchema,
@@ -309,5 +323,76 @@ export async function executeSchedulingSettingsCommand(
     .abortSignal(AbortSignal.timeout(10_000));
   if (result.error !== null) return { ok: false, code: "unavailable" };
   const outcome = settingsCommandOutcomeSchema.safeParse(result.data);
+  return outcome.success ? outcome.data : { ok: false, code: "unavailable" };
+}
+
+/* The Day view's Hours sheet (issue #353): every bookable provider's hours on one day. Admins
+   only; the database refuses anyone else. */
+export async function readDayHours(
+  db: SupabaseClient,
+  actorId: string,
+  date: string,
+): Promise<DayHoursOutcome> {
+  const result = await db
+    .rpc("portal_day_hours", { p_actor_id: actorId, p_date: date })
+    .abortSignal(AbortSignal.timeout(10_000));
+  if (result.error !== null) return { ok: false, code: "unavailable" };
+  const outcome = dayHoursOutcomeSchema.safeParse(result.data);
+  return outcome.success ? outcome.data : { ok: false, code: "unavailable" };
+}
+
+/* One provider's hours for a day, or for that weekday from the day on. A dry run answers what
+   the change would do and writes nothing; the database applies the admin gate, the version
+   check, the office-hours bound and the stranded-booking scan. */
+export async function executeDayHoursCommand(
+  db: SupabaseClient,
+  actorId: string,
+  input: Readonly<DayHoursCommandInput>,
+): Promise<DayHoursCommandOutcome> {
+  const parsed = dayHoursCommandInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: "invalid_command" };
+  const { idempotencyKey, command } = parsed.data;
+  const fingerprint = commandFingerprint(
+    JSON.stringify({ actorId, action: "day_hours_command", command }),
+  );
+  if (fingerprint === null) return { ok: false, code: "unavailable" };
+  const result = await db
+    .rpc("portal_set_provider_day_hours", {
+      p_actor_id: actorId,
+      p_idempotency_key: idempotencyKey,
+      p_fingerprint: fingerprint,
+      p_command: command,
+    })
+    .abortSignal(AbortSignal.timeout(10_000));
+  if (result.error !== null) return { ok: false, code: "unavailable" };
+  const outcome = dayHoursCommandOutcomeSchema.safeParse(result.data);
+  return outcome.success ? outcome.data : { ok: false, code: "unavailable" };
+}
+
+/* Puts a provider's hours back as they were before one day-hours change, when nothing has
+   changed them since. */
+export async function undoDayHoursChange(
+  db: SupabaseClient,
+  actorId: string,
+  input: Readonly<DayHoursUndoInput>,
+): Promise<DayHoursUndoOutcome> {
+  const parsed = dayHoursUndoInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: "invalid_command" };
+  const { idempotencyKey, changeId, expectedVersion } = parsed.data;
+  const command = { changeId, expectedVersion };
+  const fingerprint = commandFingerprint(
+    JSON.stringify({ actorId, action: "day_hours_undo", command }),
+  );
+  if (fingerprint === null) return { ok: false, code: "unavailable" };
+  const result = await db
+    .rpc("portal_undo_provider_day_hours", {
+      p_actor_id: actorId,
+      p_idempotency_key: idempotencyKey,
+      p_fingerprint: fingerprint,
+      p_command: command,
+    })
+    .abortSignal(AbortSignal.timeout(10_000));
+  if (result.error !== null) return { ok: false, code: "unavailable" };
+  const outcome = dayHoursUndoOutcomeSchema.safeParse(result.data);
   return outcome.success ? outcome.data : { ok: false, code: "unavailable" };
 }

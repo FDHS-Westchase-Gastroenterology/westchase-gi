@@ -957,3 +957,492 @@
   outline: 2px solid var(--color-navy-800);
   outline-offset: -2px;
 }
+
+/* ---- The Hours sheet (issue #353, day-hours-sheet.tsx; Figma H1–H4) ----
+
+   The portal's modal paper, widened to hold a ruler of the day, and hung
+   from the top of the window rather than centered: it drops over the day it
+   changes, the way a sheet comes down from a toolbar. It keeps the modal's
+   temperaments (--pm-spring in, --pm-exit out) and only flips the travel so
+   it comes from above and leaves back up. The header, scope band and footer
+   stay put; the rows scroll under a pinned ruler. */
+
+.wgi-hours-pill {
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.wgi-hours-pill > svg {
+  color: var(--wgi-icon-ink);
+}
+
+.wgi-hours-pill:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: 2px;
+}
+
+.wgi-hours-pill[aria-busy="true"] {
+  cursor: progress;
+}
+
+.portal-confirm-dialog.wgi-hours-sheet {
+  /* The column holds through the exit too, while display stays flex until the transition ends. */
+  flex-direction: column;
+  width: min(94vw, 51.25rem);
+  max-height: calc(100dvh - 3.5rem);
+  margin: 2.5rem auto auto;
+  overflow: hidden;
+  transform-origin: top center;
+}
+
+.portal-confirm-dialog.wgi-hours-sheet[open] {
+  display: flex;
+}
+
+.portal-confirm-dialog.wgi-hours-sheet:not([open]) {
+  transform: translateY(-0.5rem) scale(0.985);
+}
+
+@starting-style {
+  .portal-confirm-dialog.wgi-hours-sheet[open] {
+    opacity: 0;
+    transform: translateY(-0.75rem) scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-confirm-dialog.wgi-hours-sheet,
+  .portal-confirm-dialog.wgi-hours-sheet:not([open]) {
+    transform: none;
+  }
+
+  @starting-style {
+    .portal-confirm-dialog.wgi-hours-sheet[open] {
+      transform: none;
+    }
+  }
+}
+
+.wgi-hours-head {
+  padding: 1.5rem 1.75rem 0;
+}
+
+.wgi-hours-head .portal-confirm-dialog-title {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.wgi-hours-subtitle {
+  margin: 0.25rem 0 0;
+  color: var(--wgi-muted-ink);
+  font-size: 0.875rem;
+}
+
+.wgi-hours-scope {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 1.75rem 0;
+  padding-bottom: 0.875rem;
+  border-bottom: 1px solid var(--wgi-rule);
+}
+
+.wgi-hours-scope-switch {
+  flex: none;
+  width: 22rem;
+}
+
+.wgi-hours-scope-line {
+  margin: 0;
+  min-width: 0;
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.wgi-hours-scope-line > strong {
+  margin-right: 0.25em;
+  color: var(--wgi-name-ink);
+  font-weight: 700;
+}
+
+/* Name, track, switch: the ruler shares the columns so its marks sit over
+   the tracks they measure. */
+.wgi-hours-ruler,
+.wgi-hours-row {
+  display: grid;
+  grid-template-columns: 13.5rem minmax(0, 1fr) 3.5rem;
+  column-gap: 1rem;
+  align-items: center;
+}
+
+.wgi-hours-rows {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 1.75rem 0.75rem;
+}
+
+.wgi-hours-ruler {
+  position: sticky;
+  z-index: 3;
+  top: 0;
+  height: 1.875rem;
+  border-bottom: 1px solid var(--wgi-rule);
+  background: #fff;
+}
+
+.wgi-hours-ruler-marks {
+  position: relative;
+  grid-column: 2;
+  height: 100%;
+  color: var(--wgi-label-ink);
+  font-size: 0.6875rem;
+}
+
+.wgi-hours-ruler-marks > span {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+}
+
+.wgi-hours-ruler-marks > .wgi-hours-now-tick {
+  width: 2px;
+  height: 0.75rem;
+  border-radius: 1px;
+  background: var(--color-coral-500);
+}
+
+.wgi-hours-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.625rem;
+  margin: 0;
+  padding: 0.875rem 0 0.25rem;
+  color: var(--wgi-muted-ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.wgi-hours-group-name {
+  color: var(--wgi-label-ink);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.wgi-hours-row {
+  min-height: 3rem;
+  border-bottom: 1px solid var(--wgi-rule);
+}
+
+.wgi-hours-row[data-added] {
+  margin-inline: -0.5rem;
+  padding-inline: 0.5rem;
+  border-radius: 8px;
+  background: var(--color-mint-50);
+}
+
+.wgi-hours-who {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.0625rem;
+}
+
+.wgi-hours-name {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--wgi-name-ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wgi-hours-sub {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--wgi-muted-ink);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wgi-hours-row[data-off] .wgi-hours-name {
+  color: var(--wgi-muted-ink);
+  font-weight: 400;
+}
+
+.wgi-hours-place {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  height: 1.5rem;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid var(--wgi-chip-stroke);
+  border-radius: 6px;
+  background: #fff;
+  padding-inline: 0.375rem;
+  color: var(--wgi-name-ink);
+  font-size: 0.75rem;
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.wgi-hours-place > svg {
+  color: var(--wgi-icon-ink);
+}
+
+.wgi-hours-place:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: 1px;
+}
+
+.wgi-hours-place:active {
+  background: var(--color-slate-100);
+}
+
+/* Quarter-hour precision on an hour grid, as in Settings: a faint line at
+   every hour, the bar 22px tall at the middle of a 30px track. */
+.wgi-hours-track {
+  position: relative;
+  height: 1.875rem;
+  background-image: linear-gradient(to right, var(--wgi-rule) 1px, transparent 1px);
+  box-shadow: inset -1px 0 0 var(--wgi-rule);
+}
+
+.wgi-hours-slider,
+.wgi-hours-bar,
+.wgi-hours-was {
+  position: absolute;
+  top: 4px;
+}
+
+.wgi-hours-bar {
+  height: 22px;
+  box-sizing: border-box;
+  border: 1px solid var(--color-mint-500);
+  border-radius: 7px;
+  background: linear-gradient(var(--color-mint-100), var(--color-mint-200));
+  opacity: 0.7;
+}
+
+/* Where the bar was before this drag, so the change reads against it. */
+.wgi-hours-was {
+  height: 22px;
+  box-sizing: border-box;
+  border: 1px dashed var(--color-mint-700);
+  border-radius: 7px;
+  pointer-events: none;
+}
+
+/* The part of today that has passed: fixed, and shaded so it reads so. */
+.wgi-hours-past {
+  position: absolute;
+  inset-block: 0;
+  background: color-mix(in srgb, var(--color-slate-100) 80%, transparent);
+  box-shadow: inset -2px 0 0 var(--color-coral-500);
+  pointer-events: none;
+}
+
+.wgi-hours-off {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  display: flex;
+  align-items: center;
+  padding-inline-start: 0.5rem;
+  color: var(--wgi-muted-ink);
+  font-size: 0.75rem;
+  pointer-events: none;
+}
+
+/* A booking, as a navy rule along the bottom of the track; amber when the
+   change on the row would leave it outside the hours. */
+.wgi-hours-tick {
+  position: absolute;
+  bottom: 0;
+  height: 3px;
+  box-sizing: border-box;
+  border-inline: 1px solid #fff;
+  border-radius: 2px;
+  background: var(--color-navy-400);
+  pointer-events: none;
+}
+
+.wgi-hours-tick[data-stranded] {
+  background: var(--color-amber-500);
+}
+
+.wgi-hours-pill-time {
+  position: absolute;
+  z-index: 2;
+  top: -0.875rem;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: var(--color-navy-800);
+  padding: 0.0625rem 0.5rem;
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.wgi-hours-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.375rem 0;
+  border: 1px solid color-mix(in srgb, var(--wgi-attention-ink) 30%, transparent);
+  border-radius: 10px;
+  background: var(--wgi-attention-fill);
+  padding: 0.625rem 0.875rem;
+  color: var(--wgi-name-ink);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.wgi-hours-banner-text {
+  min-width: 0;
+  flex: 1 1 auto;
+  margin: 0;
+}
+
+.wgi-hours-banner-text > p {
+  margin: 0;
+}
+
+.wgi-hours-banner-list {
+  margin: 0.25rem 0 0;
+  padding-left: 1.125rem;
+  list-style: disc;
+}
+
+.wgi-hours-banner-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.wgi-hours-reschedule {
+  border-radius: 6px;
+  padding: 0.25rem;
+  color: var(--wgi-link-ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.wgi-hours-reschedule:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: 1px;
+}
+
+.wgi-hours-refused {
+  margin: 0.25rem 0 0.375rem;
+  color: var(--color-coral-700);
+  font-size: 0.8125rem;
+}
+
+.wgi-hours-foot {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  border-top: 1px solid var(--wgi-rule);
+  background: var(--wgi-band);
+  padding: 0.875rem 1.75rem;
+}
+
+.wgi-hours-help-slot:empty {
+  display: none;
+}
+
+.wgi-hours-settings-link {
+  border-radius: 4px;
+  color: var(--wgi-link-ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.wgi-hours-settings-link:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: 2px;
+}
+
+.wgi-hours-error {
+  flex-basis: 100%;
+  order: 3;
+  margin: 0;
+  color: var(--color-coral-700);
+  font-size: 0.8125rem;
+}
+
+.wgi-hours-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+/* A phone-width window: the scope switch stacks over its line, and each row puts the name and
+   switch above a bar that spans the sheet, with the ruler spanning it too. */
+@media (max-width: 47.99rem) {
+  .wgi-hours-head {
+    padding-inline: 1.25rem;
+  }
+
+  .wgi-hours-scope {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    margin-inline: 1.25rem;
+  }
+
+  .wgi-hours-scope-switch {
+    width: auto;
+  }
+
+  .wgi-hours-rows,
+  .wgi-hours-foot {
+    padding-inline: 1.25rem;
+  }
+
+  .wgi-hours-ruler {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wgi-hours-ruler-marks {
+    grid-column: 1;
+  }
+
+  .wgi-hours-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 0.375rem;
+    padding-block: 0.5rem;
+  }
+
+  .wgi-hours-row > .wgi-hours-track {
+    grid-row: 2;
+    grid-column: 1 / -1;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wgi-hours-place:hover {
+    background: var(--wgi-band);
+  }
+
+  .wgi-hours-reschedule:hover,
+  .wgi-hours-settings-link:hover {
+    text-decoration: underline;
+  }
+}

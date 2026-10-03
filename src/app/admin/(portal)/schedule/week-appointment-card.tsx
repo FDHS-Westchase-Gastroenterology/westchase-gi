@@ -40,9 +40,10 @@ type Face = "details" | "reschedule" | "cancel";
 
 export function AppointmentCard({
   cell,
+  face,
   onDone,
   onOpenRecord,
-}: Readonly<CardHandlers & { cell: WeekAppointmentCell }>) {
+}: Readonly<CardHandlers & { cell: WeekAppointmentCell; face?: "reschedule" }>) {
   const titleId = useId();
   const [read, setRead] = useState<WeekAppointmentOutcome | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -69,6 +70,7 @@ export function AppointmentCard({
         <AppointmentDetails
           detail={read.detail}
           titleId={titleId}
+          opening={face}
           onDone={onDone}
           onOpenRecord={onOpenRecord}
         />
@@ -111,10 +113,17 @@ export function AppointmentCard({
 function AppointmentDetails({
   detail,
   titleId,
+  opening,
   onDone,
   onOpenRecord,
-}: Readonly<CardHandlers & { detail: WeekAppointmentDetail; titleId: string }>) {
-  const [face, setFace] = useState<Face>("details");
+}: Readonly<
+  CardHandlers & { detail: WeekAppointmentDetail; titleId: string; opening?: "reschedule" }
+>) {
+  /* The Hours sheet (#353) opens a stranded visit's card on its Reschedule
+     face, when the visit can still move. */
+  const [face, setFace] = useState<Face>(() =>
+    opening === "reschedule" && cardActions(detail).reschedule ? "reschedule" : "details",
+  );
   const command = useCommand(onDone);
   const badge = statusBadge(detail.status);
   const existing = { id: detail.id, expectedVersion: detail.version };

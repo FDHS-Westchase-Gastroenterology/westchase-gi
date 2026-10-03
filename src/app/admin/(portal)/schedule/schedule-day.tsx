@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useId, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { toast } from "sonner";
 
 import { ChevronLeft, ChevronRight } from "@/components/icons";
@@ -14,6 +15,7 @@ import { withMove } from "./day-drag-model";
 import { DayEmpty } from "./day-empty";
 import { DayFoot } from "./day-foot";
 import { DayGrid } from "./day-grid";
+import { HoursButton } from "./day-hours-sheet";
 import type { DayAppointmentCell, ScheduleDay } from "./schedule-day-model";
 import { useSchedulePeople } from "./schedule-people";
 import { ShortcutsList, useScheduleShortcuts } from "./schedule-shortcuts";
@@ -77,6 +79,8 @@ export function ScheduleDayView({ view, admin }: Readonly<{ view: ScheduleDay; a
   });
 
   const landed = useUndoLanded();
+  /* The Hours sheet's "Reschedule James" opens his card on its Reschedule face. */
+  const [opening, setOpening] = useState<string | null>(null);
 
   function checkIn(cell: Readonly<DayAppointmentCell>) {
     if (checking !== null) return;
@@ -156,7 +160,25 @@ export function ScheduleDayView({ view, admin }: Readonly<{ view: ScheduleDay; a
   const nobody = view.activeProviderCount === 0;
   return (
     <section className="wgi-schedule wgi-dayview" aria-labelledby={titleId}>
-      <DayHeader view={view} titleId={titleId} targets={targets} />
+      <DayHeader
+        view={view}
+        titleId={titleId}
+        targets={targets}
+        hours={
+          admin && view.date >= view.today ? (
+            <HoursButton
+              date={view.date}
+              onReschedule={(id) => {
+                setKeyed(false);
+                setOpening(id);
+                // The visit may sit below the fold; bring it into view so the card opens beside it.
+                document.getElementById(`${baseId}-${id}`)?.scrollIntoView({ block: "nearest" });
+                card.open(`${baseId}-${id}`);
+              }}
+            />
+          ) : null
+        }
+      />
       <DayGrid
         view={shown}
         baseId={baseId}
@@ -197,12 +219,22 @@ export function ScheduleDayView({ view, admin }: Readonly<{ view: ScheduleDay; a
         side="top"
         keyed={keyed}
       />
-      <Popover handle={card}>
+      <Popover
+        handle={card}
+        onOpenChange={(open) => {
+          if (!open) setOpening(null);
+        }}
+      >
         {({ payload }) =>
           payload === undefined ? null : (
             <WeekCardPopup
               key={payload.kind === "appointment" ? payload.cell.id : payload.cell.key}
               payload={payload}
+              face={
+                payload.kind === "appointment" && payload.cell.id === opening
+                  ? "reschedule"
+                  : undefined
+              }
               keyed={keyed}
               onDone={(_message, change) => {
                 card.close();
@@ -226,7 +258,13 @@ function DayHeader({
   view,
   titleId,
   targets,
-}: Readonly<{ view: ScheduleDay; titleId: string; targets: ShortcutTargets }>) {
+  hours,
+}: Readonly<{
+  view: ScheduleDay;
+  titleId: string;
+  targets: ShortcutTargets;
+  hours: ReactNode;
+}>) {
   return (
     <header className="wgi-schedule-head">
       <div className="wgi-schedule-nav">
@@ -245,7 +283,9 @@ function DayHeader({
           Today
         </Link>
       </div>
-      <ScheduleTools value="day" targets={targets} />
+      <ScheduleTools value="day" targets={targets}>
+        {hours}
+      </ScheduleTools>
     </header>
   );
 }
