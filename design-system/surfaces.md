@@ -118,26 +118,25 @@ stands alone between two sections of one surface is a `Separator`.
 
 | Component | When | Real uses |
 | --- | --- | --- |
-| `Badge` | A status word on a colored ground: four brand variants, `variant` required | `status-badge.tsx` |
+| `Badge` | A status word on a colored ground: four brand variants, `variant` required | `week-appointment-card.tsx`, `patient-record-sheet.tsx`, `help-samples.tsx` |
 
 The variants, the status each one stamps and the rule that color never speaks alone are in
-[stamps.md](stamps.md). Two route-owned wrappers map product status to them
-([components.md](components.md#route-owned-compositions)): `StatusBadge` for the requests queue
-and detail page, and `LineStatusBadge` for the staff home's rows and its record sheet, repainted
-in `home.css` under `.wgi-badge*`. A new surface that shows request status imports one of them
-rather than choosing a variant itself. `motion` is `none` by default; `shadcn` has no consumer.
+[stamps.md](stamps.md). A request's status renders through `LineStatusBadge`, a route-owned
+`<span>` in `(home)/parts/` that wears the same paints under `.wgi-badge*` in `home.css`, on the
+staff home's rows, record card and sheet, its print sheet and the Schedule's person records. An
+appointment's status on the Schedule wears `Badge` itself, its variant and label from
+`statusBadge()` in `week-card-model.ts`. A new surface that shows request status imports
+`LineStatusBadge` rather than choosing a variant itself. `motion` is `none` by default; `shadcn` has no consumer.
 
 ## Empty states
 
-Nothing to show is still a surface, and which one depends on how much is empty. All four are
-hand-built classes today; `Empty` (`stock/empty.tsx`) replaces them under
+Nothing to show is still a surface, and which one depends on how much is empty. The route-level
+one is a hand-built class today; `Empty` (`stock/empty.tsx`) replaces it under
 [roadmap item 5](roadmap.md#5-empty-states-callouts-and-pagers).
 
 | Class | What it is | Where |
 | --- | --- | --- |
 | `.portal-empty-state` | The whole route has nothing: 19rem tall, start-aligned between hairlines, an optional teal icon, an `h2`, a 58ch line and a row of actions | `error.tsx`, `not-found.tsx`, four states in `requests/print/page.tsx` |
-| `.portal-queue-empty` | A list panel came back empty: 18rem, centered, an `h2`, a 52ch line and one `.portal-inline-link` | `request-queue-empty.tsx` |
-| `.portal-request-notes-empty` `.portal-request-history-empty` | One muted 0.9rem line inside a section that is already open, with no box around it | `[id]/page.tsx`, `request-notes.tsx` |
 
 A settings list with no rows keeps its `<ul>` and says so in one muted `<li>` at `py-4`
 (`recipients-manager.tsx#L642`); a new one writes `text-[length:var(--pt-sm)]`, not its `0.95rem`.

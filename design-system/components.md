@@ -50,16 +50,14 @@ below.
 | Component | When | Real uses |
 | --- | --- | --- |
 | `AuthCard` | The signed-out staff screens: sign-in, reset request, set password, confirmation ([item 1](roadmap.md#1-card-surfaces)) | `login/page.tsx`, `forgot-password/page.tsx`, `set-password/page.tsx`, `confirm/page.tsx` |
-| `StatusBadge` | A request's status in the queue and on its detail page ([surfaces.md](surfaces.md#badges)) | `requests/page.tsx`, `[id]/request-detail-header.tsx` |
-| `PrintChooser` | Choosing what to print from the Requests page; the staff home prints from its own sheet ([overlays.md](overlays.md#modal-dialogs)) | `requests-output-actions.tsx` |
-| `followed` | The promise a save toast follows ([forms.md](forms.md#saving)) | `created-toast.ts`, `request-notes.tsx`, `use-workflow-panel.ts` |
-| `PortalPageHeader` | Every portal page's title block ([layout.md](layout.md#page-structures)). A settings page renders none of its own; `settings/layout.tsx` renders one above every settings page ([modules.md](modules.md#a-settings-page)) | `settings/layout.tsx`, `requests/new/page.tsx` |
+| `followed` | The promise a save toast follows ([forms.md](forms.md#saving)) | `use-card-booking.ts`, `created-toast.ts`, `record-note-composer.tsx` |
+| `PortalPageHeader` | Every portal page's title block ([layout.md](layout.md#page-structures)). A settings page renders none of its own; `settings/layout.tsx` renders one above every settings page ([modules.md](modules.md#a-settings-page)) | `settings/layout.tsx`, `requests/print/page.tsx` |
 | `ActivityLog` | The Activity log: its search, category chips, provider and date pickers, and the day-banded feed that reads on as it scrolls | `audit/page.tsx` |
 | `ActivityLogRow` | One change in the feed, phrased as a sentence; the row is a `Collapsible` that opens in place to its before and after | `activity-log-parts.tsx` |
 | `FlyerCard` | One review flyer: its preview, and Print and Download over it | `review-flyer-printer.tsx` |
 | `FlyerDownloadMenu` | A flyer's files as `MenuLinkItem` download links, and the .zip of all three when all three exist | `flyer-card.tsx` |
 | `PrintSeveralMenu` | Choosing which flyers to print together | `review-flyer-printer.tsx` |
-| `PortalFeedbackProvider` `PortalFeedbackMessage` | A result with no promise to follow, or one that has to outlive a toast; the settings managers report inline instead ([forms.md](forms.md#reporting-a-result)) | `home-workbench.tsx`, `requests-output-actions.tsx`, `print-controls.tsx` |
+| `PortalFeedbackProvider` `PortalFeedbackMessage` | A result with no promise to follow, or one that has to outlive a toast; the settings managers report inline instead ([forms.md](forms.md#reporting-a-result)) | `home-workbench.tsx`, `print-controls.tsx`, `review-flyer-printer.tsx` |
 
 The staff home keeps its converted registry parts in `(home)/parts/`, repainted in `home.css`
 under `.wgi-*`. They are route-owned: outside the staff home, only the Schedule's person records

@@ -93,16 +93,13 @@ export function HomeWorkbench({
         {lines === null ? (
           <div data-testid="queue-overview-unavailable" className="portal-sheet-notice">
             <h2>Today&rsquo;s calls could not load.</h2>
-            <p>
-              This is not an empty day. Open Requests to read the live queue, then print from a
-              current view.
-            </p>
+            <p>This is not an empty day. Reload Home to read the live line before calling.</p>
             <Link
-              href="/admin/requests"
+              href="/admin"
               data-slot="button"
               className={cn(buttonVariants(), "portal-sheet-notice-action")}
             >
-              Open Requests
+              Reload Home
             </Link>
           </div>
         ) : (

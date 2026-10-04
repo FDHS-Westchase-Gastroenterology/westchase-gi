@@ -84,7 +84,7 @@ export function ClosedTailNote() {
   return (
     <span className="wgi-list-note">
       Showing the latest closed requests —{" "}
-      <Link href="/admin/requests?status=closed">older ones live in Requests</Link>.
+      <Link href="/admin/schedule">search the Schedule for older ones</Link>.
     </span>
   );
 }

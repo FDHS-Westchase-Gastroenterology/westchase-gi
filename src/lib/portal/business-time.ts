@@ -32,17 +32,6 @@ const NY_DAY = new Intl.DateTimeFormat("en-CA", {
   timeZone: PRACTICE_TZ,
 });
 
-const NY_WEEKDAY = new Intl.DateTimeFormat("en-US", {
-  weekday: "long",
-  timeZone: PRACTICE_TZ,
-});
-
-const NY_MONTH_DAY = new Intl.DateTimeFormat("en-US", {
-  month: "long",
-  day: "numeric",
-  timeZone: PRACTICE_TZ,
-});
-
 const NY_WALL = new Intl.DateTimeFormat("en-US", {
   timeZone: PRACTICE_TZ,
   year: "numeric",
@@ -223,15 +212,4 @@ export function previousBusinessMorningBoundary(now: Date = new Date()): Date {
     }
     day -= 1;
   }
-}
-
-// "yesterday", a weekday name within the past week, or "July 18" beyond it.
-// Null while the request arrived on the current practice-local calendar day.
-export function waitingSince(iso: string, now: Date = new Date()): string | null {
-  const created = new Date(iso);
-  const dayDiff = nyDayNumber(now) - nyDayNumber(created);
-  if (dayDiff <= 0) return null;
-  if (dayDiff === 1) return "yesterday";
-  if (dayDiff <= 6) return NY_WEEKDAY.format(created);
-  return NY_MONTH_DAY.format(created);
 }

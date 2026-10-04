@@ -1,8 +1,5 @@
-import { randomUUID } from "node:crypto";
-
 import { test, expect } from "@playwright/test";
 
-import { intakeResponseSchema } from "../../src/lib/portal/contracts";
 import { seedAdmin, serviceDb } from "../harness/env";
 import { signIn } from "../harness/session";
 
@@ -47,7 +44,6 @@ const VIEWPORTS = [
 
 const PORTAL_PAGES = [
   { name: "home", path: "/admin" },
-  { name: "queue", path: "/admin/requests" },
   { name: "review-flyers", path: "/admin/review-flyers" },
   { name: "settings-providers", path: "/admin/settings/providers" },
   { name: "settings-appointment-types", path: "/admin/settings/appointment-types" },
@@ -110,8 +106,8 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
               /^Software$/,
             ]
           : viewport.width < 960
-            ? [/^Home$/, /^Schedule$/, /^Requests/, /^Settings$/, /^Help$/]
-            : [/^Home$/, /^Schedule$/, /^Requests/, /^Activity log$/, /^Review flyers$/],
+            ? [/^Home$/, /^Schedule$/, /^Settings$/, /^Help$/]
+            : [/^Home$/, /^Schedule$/, /^Activity log$/, /^Review flyers$/],
         { useInnerText: true },
       );
       const navBoxes = await visibleNav.locator("a").evaluateAll((links) =>
@@ -120,7 +116,7 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
           return { height: rect.height, left: rect.left, right: rect.right };
         }),
       );
-      expect(navBoxes).toHaveLength(settingsWindow ? 7 : 5);
+      expect(navBoxes).toHaveLength(settingsWindow ? 7 : 4);
       for (const box of navBoxes) {
         expect(box.height, "nav target height").toBeGreaterThanOrEqual(44);
         expect(box.left, "nav item starts on screen").toBeGreaterThanOrEqual(0);
@@ -288,61 +284,6 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
   }
 });
 
-test("VAL-ADMIN-016: the waiting count rides on the Requests nav item", async ({
-  page,
-  request,
-}) => {
-  const marker = `navbadge-${randomUUID().slice(0, 8)}@example.test`;
-  const staged = await request.post("/api/requests", {
-    data: {
-      name: "TEST Nav Badge",
-      phone: "8135550122",
-      email: marker,
-      location: "tampa",
-      time: "morning",
-      message: "TEST staged for the nav badge check.",
-      locale: "en",
-      sourcePath: "/en/appointment",
-    },
-  });
-  expect(staged.status()).toBe(201);
-  const db = serviceDb();
-
-  try {
-    await signIn(page);
-    // Settings swaps the sidebar for its own panes, so check from a page
-    // That keeps the portal sections.
-    await page.goto("/admin/audit");
-
-    // Other specs on the same Preview Branch can add or remove
-    // New requests mid-run; accept the badge once it matches the SQL count
-    // At the same instant (and is gone only when that count is zero).
-    await expect
-      .poll(
-        async () => {
-          await page.reload();
-          // The sidebar and the mobile bar both carry the badge; one shows.
-          const badge = page.locator(
-            'nav[aria-label="Portal sections"]:visible [data-testid="nav-waiting-badge"]',
-          );
-          const shown = (await badge.count()) > 0;
-          const text = shown ? Number((await badge.textContent())?.replace(/\D+/g, "")) : null;
-          const { count, error } = await db
-            .from("requests")
-            .select("id", { count: "exact", head: true })
-            .eq("status", "new");
-          expect(error).toBeNull();
-          if ((count ?? 0) === 0) return shown ? "badge-shown-at-zero" : "consistent";
-          return shown && text === count ? "consistent" : `badge=${text} sql=${count}`;
-        },
-        { timeout: 30_000, intervals: [500, 1_000, 2_000] },
-      )
-      .toBe("consistent");
-  } finally {
-    await db.from("requests").delete().eq("email", marker);
-  }
-});
-
 test("the compact rail opens over the canvas with focus inside and returns it to the toggle", async ({
   page,
 }) => {
@@ -359,8 +300,8 @@ test("the compact rail opens over the canvas with focus inside and returns it to
   expect((await sidebar.boundingBox())?.width).toBe(72);
 
   // Folded, each destination is named by a tooltip beside it.
-  await sidebar.getByRole("link", { name: "Requests" }).first().hover();
-  await expect(page.locator('[data-slot="tooltip-content"]')).toHaveText("Requests");
+  await sidebar.getByRole("link", { name: "Activity log" }).first().hover();
+  await expect(page.locator('[data-slot="tooltip-content"]')).toHaveText("Activity log");
 
   // Return opens it at once and moves focus to the current destination;
   // Escape puts it away and gives focus back to the toggle.
@@ -391,8 +332,8 @@ test("the compact rail opens over the canvas with focus inside and returns it to
   // Moving to another page puts it away and returns focus.
   await page.keyboard.press("Enter");
   await expect(current).toBeFocused();
-  await sidebar.getByRole("link", { name: "Requests" }).first().click();
-  await expect(page).toHaveURL(/\/admin\/requests\/?$/);
+  await sidebar.getByRole("link", { name: "Activity log" }).first().click();
+  await expect(page).toHaveURL(/\/admin\/audit\/?$/);
   await expect(sidebar).not.toHaveAttribute("data-expanded");
   await expect(show).toBeFocused();
 });
@@ -450,27 +391,8 @@ test("VAL-REG-005: no assistant placeholder ships before the assistant works", a
   test.setTimeout(120_000);
   await signIn(page);
 
-  // Stage one request so a detail page exists for the portal-wide check.
-  const response = await page.request.post("/api/requests", {
-    data: {
-      name: "TEST Assistant Widget",
-      phone: "8135550188",
-      email: "assistant-widget@example.test",
-      location: "any",
-      time: "any",
-      locale: "en",
-      sourcePath: "/en/appointment",
-    },
-    headers: { "X-Forwarded-For": "2001:db8:5ea3:1::5" },
-  });
-  expect(response.status()).toBe(201);
-  const body = intakeResponseSchema.parse(await response.json());
-  if (!body.ok) throw new Error("Expected an accepted intake response");
-  const { id } = body;
-
   // No floating placeholder covers content on any portal page.
-  const everyPage = [...ASSISTANT_SEAM_PAGES, `/admin/requests/${id}`];
-  for (const path of everyPage) {
+  for (const path of ASSISTANT_SEAM_PAGES) {
     await page.goto(path);
     await expect(page.locator("main")).toBeVisible();
     await expect(
@@ -494,7 +416,4 @@ test("VAL-REG-005: no assistant placeholder ships before the assistant works", a
     maxRedirects: 0,
   });
   expect([404, 307]).toContain(assistantPage.status());
-
-  // Cleanup the staged request.
-  await serviceDb().from("requests").delete().eq("id", id);
 });

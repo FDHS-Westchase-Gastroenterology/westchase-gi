@@ -1,8 +1,7 @@
 import type { TextFilterParam } from "./types";
 
 /* Text search shares the definition shape so it lives in the same URL and the
-   same bar as every other filter. Length cap mirrors the requests surface's
-   REQUEST_SEARCH_MAX_LENGTH. */
+   same bar as every other filter. */
 const MAX_LENGTH = 100;
 
 /* Strip control characters (Unicode category Cc), collapse runs of whitespace. */

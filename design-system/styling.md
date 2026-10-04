@@ -103,19 +103,16 @@ repeats it and fails on a restyle this table lacks or a row the code no longer m
 | --- | --- | --- | --- |
 | `Card` | `rounded-[var(--radius-lg)]` `bg-white` `text-base` `leading-[1.55]` `shadow-[var(--shadow-card)]` `ring-0` | `auth-card.tsx` | [Item 1](roadmap.md#1-card-surfaces) |
 | `CardDescription` | `text-[0.9rem]` `text-[var(--color-muted-ink)]` | `auth-card.tsx` | [Item 1](roadmap.md#1-card-surfaces) |
-| `Button` | `disabled:opacity-60` | `call-again-fieldset.tsx`, `request-notes.tsx`, `workflow-panel.tsx`, `staff-request-form-footer.tsx`, `recipients-manager.tsx`, `maintainer-access.tsx`, `staff-manager.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
-| `Button` | `aria-disabled:opacity-60` | `request-current-feedback.tsx`, `print-controls.tsx`, `flyer-output.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
-| `buttonVariants` | `aria-disabled:opacity-60` | `print-chooser.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
+| `Button` | `disabled:opacity-60` | `staff-request-form-footer.tsx`, `recipients-manager.tsx`, `maintainer-access.tsx`, `staff-manager.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
+| `Button` | `aria-disabled:opacity-60` | `print-controls.tsx`, `flyer-output.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
 | `Button` | `disabled:opacity-65` | `confirm-form.tsx`, `reset-request-form.tsx`, `password-form.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
 | `Button` | `disabled:opacity-70` | `AppointmentForm.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
 | `Button` | `disabled:opacity-100` | `login-form.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
-| `Button` | `transition-transform` `duration-150` `active:scale-[0.97]` `motion-reduce:transition-none` `motion-reduce:active:scale-100` | `request-notes.tsx` | [Item 16](roadmap.md#16-motion-literals) |
 | `buttonVariants` | `bg-white` | `ReviewHub.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
 | `TableCell` | `text-[var(--color-body)]` | `audit/page.tsx`, `release-engagement.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
 | `TableCell` | `text-[var(--color-muted-ink)]` | `audit/page.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
 | `TableCell` | `font-bold` `text-[var(--color-ink)]` | `audit/page.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
 | `TableRow` | `text-[0.88rem]` | `release-engagement.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
-| `FieldLabel` | `text-[0.8125rem]` | `request-search-form.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
 | `Input` | `text-[0.85rem]` | `recipient-row.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
 | `NativeSelect` | `font-bold` `text-[var(--color-body)]` | `staff-manager.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
 
@@ -136,7 +133,7 @@ a new pressable wears `Button` or `buttonVariants()` ([buttons.md](buttons.md#bu
 | `:lang()` blocks | Per-locale font family swaps and script-specific leading and tracking. Unlayered on purpose. |
 | `@layer base` | Element defaults (`html`, `body`, headings, links, `::selection`, `:focus-visible`, `img`) and the reduced-motion posture with every authored opt-out ([motion.md](motion.md#reduced-motion)). |
 | `@layer components` | Layout primitives (`.container-x`, `.section`), typography helpers (`.display`, `.h1`–`.h3`, `.lead`, `.measure`), link and list styles, the `.portal-scope` token assignment, the `overlay-rise` keyframes the legacy dialogs share, and legacy feature blocks queued for extraction. |
-| Print blocks | `@page` and `@media print` compositions for printed patient-site pages, the request detail and the review flyer. The request packet prints from `portal-workbench.css` and the staff home list from `home.css`. |
+| Print blocks | `@page` and `@media print` compositions for printed patient-site pages, the printed request page box and the review flyer. The request packet prints from `portal-workbench.css` and the staff home list from `home.css`. |
 | The semantic bridge | `@theme inline` mapping `--color-*` onto semantic names, then `:root` and `.dark` mapping semantic names onto brand tokens. The one literal is the dark `--destructive`; light `--destructive` reads `coral-700`. |
 
 A new `globals.css` rule answers "which block, and why not a recipe?". A component-named rule

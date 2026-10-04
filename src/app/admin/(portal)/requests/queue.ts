@@ -11,8 +11,8 @@ import { readRequestWorklist } from "@/lib/portal/request-worklist/service";
 import { presentationStatus, storedRequestStateSchema } from "@/lib/portal/workflow/contracts";
 import type { RequestStatus } from "@/lib/portal/workflow/contracts";
 
-// Shared queue reads for the requests list and the detail page's
-// Previous/next continuity: one attention derivation, one fetch shape.
+// Shared queue reads for Home's list and Schedule's worked-row refresh: one
+// Attention derivation, one fetch shape.
 
 export interface QueueRow {
   id: string;
@@ -76,53 +76,6 @@ function toQueueRow({
     version: Number(row.version),
     patientId: link?.patient_id ?? null,
   };
-}
-
-export interface RequestDetailRow {
-  id: string;
-  name: string;
-  phone: string;
-  email: string | null;
-  location: RequestLocation;
-  preferred_time: RequestTime;
-  message: string | null;
-  locale: string;
-  created_at: string;
-  source_path: string;
-}
-
-const requestDetailSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  phone: z.string(),
-  email: z.string().nullable(),
-  location: z.enum(REQUEST_LOCATIONS),
-  preferred_time: z.enum(REQUEST_TIMES),
-  message: z.string().nullable(),
-  locale: z.string(),
-  created_at: z.string(),
-  source_path: z.string(),
-}) satisfies z.ZodType<RequestDetailRow>;
-
-/**
- * The patient-facing columns of one request for the detail page. Null when
- * the request does not exist or its row does not parse; throws on a failed
- * read, which the error boundary handles.
- */
-export async function fetchRequestDetail(
-  db: SupabaseClient,
-  requestId: string,
-): Promise<RequestDetailRow | null> {
-  const { data, error } = await db
-    .from("requests")
-    .select(
-      "id, name, phone, email, location, preferred_time, message, locale, created_at, source_path",
-    )
-    .eq("id", requestId)
-    .maybeSingle();
-  if (error) throw new Error("Request detail read failed");
-  const parsed = requestDetailSchema.safeParse(data);
-  return parsed.success ? parsed.data : null;
 }
 
 /**

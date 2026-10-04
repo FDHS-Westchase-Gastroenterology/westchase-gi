@@ -10,8 +10,7 @@ import { buttonVariants } from "@/components/ui/button-variants";
 /* The sheet's ways out. Cancel leads and the answer trails, as in every
    Apple sheet: the eye ends on the action. Hosted on Home's glass, each
    button names its glass role (`data-glass`, home.css "Glass sheets") and
-   the sheet paints the capsule; on the standalone page the same buttons
-   wear the plain recipe. `data-request-exit` marks the controls a field's
+   the sheet paints the capsule. `data-request-exit` marks the controls a field's
    blur check must not answer: focus leaving for them means the sheet is
    closing or asking to (staff-request-fields.tsx). */
 
@@ -22,20 +21,16 @@ function submitLabel(unavailable: boolean): string {
 export function StaffRequestFormFooter({
   cancelRef,
   conflicted,
-  hosted,
   pending,
   unavailable,
   returnHref,
-  returnLabel,
   onCancelClick,
 }: Readonly<{
   cancelRef: RefObject<HTMLAnchorElement | null>;
   conflicted: boolean;
-  hosted: boolean;
   pending: boolean;
   unavailable: boolean;
   returnHref: string;
-  returnLabel: string;
   onCancelClick: (event: MouseEvent<HTMLAnchorElement>) => void;
 }>) {
   return (
@@ -52,11 +47,11 @@ export function StaffRequestFormFooter({
         onClick={onCancelClick}
         className={buttonVariants({ variant: "outline" })}
       >
-        {hosted ? "Cancel" : returnLabel}
+        Cancel
       </Link>
       {conflicted ? (
         <Link
-          href="/admin/requests?status=new"
+          href="/admin?status=new"
           data-slot="button"
           data-glass="primary"
           className={buttonVariants()}

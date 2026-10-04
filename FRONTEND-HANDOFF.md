@@ -19,7 +19,7 @@ contracts are not yet on `main`.
 
 | Staff work | Backend available | Frontend work to complete | Contract |
 | --- | --- | --- | --- |
-| Finish a contact without another call | One contact-and-close save, combined history, and Undo | Connected: both Home No call choices use completion; regression coverage includes history, replay, stale input, reload, and Undo | [Contact completion](#contact-completion) |
+| Finish a contact without another call | One contact-and-close save, combined history, and a database Undo | Connected: both Home No call choices use completion; regression coverage includes history, replay, stale input, and reload. No portal surface offers request Undo | [Contact completion](#contact-completion) |
 | Manage patients | Registration, search, demographics, reviewed request links, archive/restore, and history | Connected on the Schedule: one search over patients and unlinked open requests (`findSchedulePeople`), the patient's record with visits and read-only clinical lists, and registration when a request is booked. Remaining: demographic edits, identity review, and administrator archive/restore | [Patients](#patients), [Schedule search and records](#schedule-search-and-records) |
 | Set up scheduling | Providers, locations, appointment types, hours, time off, closed days, and preparation buffers | Connected: the Settings window's Schedule group (`/admin/settings/providers`, `/appointment-types`, `/locations`) applies each change as it is made, warns before time off or a closed day covers bookings and lists them to rebook after, and offers Undo. Staff read every pane with no edit controls. The Day view's Hours sheet changes one day's hours, or a weekday's from that day on, and offers Undo | [Settings window](#settings-window), [Day hours](#day-hours) |
 | See month availability | One summary per practice date: open count, booked share, seen visits, closed days, and per-provider openings | Connected: `/admin/schedule` month view with the day preview, the week view (`week_schedule`), and the Day view (`day_schedule`): one column per working provider, open time that books, and the no-providers empty state | [Scheduling](#scheduling) |
@@ -28,7 +28,7 @@ contracts are not yet on `main`.
 | Run the practice's accounts and alerts | Staff invites and roles, notification addresses with a test send, and website maintainers, each audited and admin-only (#355) | Connected: the Settings window's Practice and About groups (`/admin/settings/staff`, `/notifications`, `/software`). Staff read all three panes with no edit controls, and the server refuses their writes | [Settings: Practice and About](#settings-practice-and-about) |
 | See what staff did | One newest-first Activity log over appointment, schedule, request, patient, sign-in and settings history, with chip, provider, date and search filters and role scoping (#357) | Connected: `/admin/audit` reads `readActivityPage` with the category and appointment chips, provider, date range and search, scrolls into the next page, phrases every row, and expands a row into its detail; front desk gets no Settings chip and no Technical record | [Activity log](#activity-log) |
 | Learn the portal | One tour record per account and tour (`staff_tours`) written through `portal_set_staff_tour`, refused by role and audited, and a session read that names the tour to start (#358) | Connected: the first sign-in runs the role's tour (front desk from Home, an admin from Settings › Providers), Done or Skip tour is recorded, Help (`/admin/help`) restarts either tour and opens topics by address, and `ui/help-button` answers on a screen and opens its topic in Help | [Help and tours](#help-and-tours) |
-| Read the request queue | Complete filtered results, counts, attention order, and Previous/Next | Existing screens already use the complete reads; preserve them when changing filters or paging | [Worklists](#worklists) |
+| Read the request queue | Complete filtered results, counts, attention order, and Previous/Next | Home reads the complete open set; use these reads when Home adds server paging | [Worklists](#worklists) |
 | Record billing, when used | Patient-owned charges, payments recorded elsewhere, refunds, adjustments, and corrections | Optional ledger screens, role-aware actions, and reconciliation | [Billing](#billing) |
 | Keep clinical records, when used | Notes, external document references, drafts, signing, amendments, and corrections | Optional clinical screens, signer administration, and protected record history | [Clinical records](#clinical-records) |
 
@@ -91,16 +91,16 @@ completion. Do not substitute a separate `closeRequest` call.
 
 Success uses the existing `CommandOutcome`: state `closed`, a new version, null callback and
 appointment times, and an Undo descriptor. The closure reason is `no_further_contact`. History
-contains one `contact_completed` decision with the contact result and finished state. Its original
-evidence remains after Undo, which restores the prior state and callback within 15 minutes.
+contains one `contact_completed` decision with the contact result and finished state. The database
+Undo command restores the prior state and callback within 15 minutes and keeps the original
+evidence; no portal surface issues it.
 This operation does not create, cancel, or change an appointment.
 
 The [Home completion browser regression](e2e/portal/home-contact-completion.spec.ts) exercises
 both contact outcomes from New and Contacted, including the disabled calendar, persisted closure
-and callback, one completion history decision, identical replay, stale input, reload, and Undo.
+and callback, one completion history decision, identical replay, stale input, and reload.
 [The card save model](src/app/admin/(portal)/(home)/record-card-save.ts) keeps both explicit
-callback mappings and the separate ordinary Close request action. Undo remains available from the
-full request record after the Home card closes.
+callback mappings and the separate ordinary Close request action.
 
 ## Patients
 
@@ -458,8 +458,7 @@ Pages default to 50 and allow 200. There is no 500-row candidate cutoff. Neighbo
 ordered scope and return `prevId`, `nextId`, and a one-based position, or nulls outside that scope.
 
 Preserve the established attention order and latest-activity fields. Home reads the complete open
-set in bounded pages for its existing local filters; its 60-row closed tail is intentional. The
-Requests page already uses complete page/count reads, and detail uses complete neighbors. If Home
+set in bounded pages for its existing local filters; its 60-row closed tail is intentional. If Home
 becomes server-paged, use this contract. Offset pages reflect current data; refresh the visible
 slice after actions change ordering. A service failure is not an empty result.
 

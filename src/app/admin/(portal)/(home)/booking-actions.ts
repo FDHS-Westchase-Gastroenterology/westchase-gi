@@ -118,7 +118,5 @@ export async function bookFromCard(
   if (!outcome.ok) return { ok: false, code: outcome.code };
   revalidatePath("/admin");
   revalidatePath("/admin/schedule");
-  revalidatePath("/admin/requests");
-  if (sourceRequestId !== null) revalidatePath(`/admin/requests/${sourceRequestId}`);
   return { ok: true };
 }

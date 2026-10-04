@@ -430,8 +430,8 @@ shared database by closing/reopening a child PR, or hand-patch it into an unrepr
 
 Open [`ui-reference/README.md`](ui-reference/README.md) before frontend work. Refresh the
 affected images against the matching local or Preview origin; use the default live-origin
-capture after deployment for public pages. The portal atlas covers only the eight top-level
-staff routes, the Schedule's week and Day views and the empty add-request form with the Preview Branch
+capture after deployment for public pages. The portal atlas covers only the top-level
+staff routes, the Schedule's week and Day views and the Settings window's panes with the Preview Branch
 seed identity, redacts
 in-browser, and never runs against Production.
 
@@ -600,10 +600,8 @@ Day-to-day incident basics (the portal's Help page covers the front-desk view):
 - **A secret leaked somewhere:** rotate it (above). The repo's history is provably clean
   (`node scripts/verify-no-secrets.mjs`) and must stay that way.
 
-**Data export:** self-serve CSV from the queue (Export CSV, or
-`GET /admin/requests/export?status=...` authenticated). For a full copy, Supabase dashboard
-backups (plan-dependent) or `pg_dump` with the database password — the practice's data is
-standard Postgres, no lock-in. A downloaded export is a clinic-controlled sensitive copy;
+**Data export:** Supabase dashboard backups (plan-dependent) or `pg_dump` with the database
+password — the practice's data is standard Postgres, no lock-in. A downloaded export is a clinic-controlled sensitive copy;
 handle and dispose of it under clinic rules.
 
 **Verifier toolbox:**

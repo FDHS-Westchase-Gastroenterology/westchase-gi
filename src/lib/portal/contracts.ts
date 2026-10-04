@@ -102,8 +102,6 @@ export const requestInputSchema = z.object({
   sourcePath: z.string().trim().min(1).max(300).startsWith("/"),
 });
 
-export const STAFF_REQUEST_SOURCE_PATH = "/admin/requests/new";
-
 export const staffRequestInputSchema = requestInputSchema.omit({
   locale: true,
   sourcePath: true,

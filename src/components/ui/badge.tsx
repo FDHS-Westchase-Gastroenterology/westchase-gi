@@ -12,10 +12,10 @@ import { cn } from "cn";
  * executable: each hue holds exactly one role, and a stamp always carries
  * words beside its color.
  *
- * Importers: src/app/admin/(portal)/requests/status-badge.tsx (the portal
- * queue and request-detail pages) and the week card's appointment status
- * (schedule/week-appointment-card.tsx, over Home's .wgi-badge paints); the
- * staff home has its own wrapper. Current consumers of every variant are in
+ * Importers: the Schedule's appointment statuses
+ * (schedule/week-appointment-card.tsx and patient-record-sheet.tsx, over
+ * Home's .wgi-badge paints) and Help's samples; the staff home has its own
+ * wrapper. Current consumers of every variant are in
  * design-system/surfaces.md "Badges".
  *
  * Two axes, decoupled per design-system/components.md
@@ -61,9 +61,7 @@ const badgeVariants = cva(
            ink that clears 4.5:1 on both ends. Amber means attention, teal
            means current, mint means settled, and slate recedes as a ghost
            with no fill. The same paint as the staff home's .wgi-badge-*
-           (home.css), so a status looks the same on Home and on Requests.
-           All four are worn by status-badge.tsx — new=attention,
-           contacted=current, scheduled=settled, closed=quiet. */
+           (home.css), so a status looks the same on Home and on the Schedule. */
         attention:
           "border-amber-500 bg-linear-to-b from-amber-300 to-amber-400 text-navy-900 shadow-[inset_0_1px_0_rgb(255_255_255/0.55)]",
         current:

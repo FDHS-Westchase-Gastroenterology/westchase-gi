@@ -134,7 +134,8 @@ What is the note?
 
 - **No disclosure or accordion.** No patient source file uses `<details>` and no `ui/` recipe covers
   one; content that would collapse is a `Reveal` band instead.
-- **No `Badge`.** Its variants name request states; its one consumer is `requests/status-badge.tsx`.
+- **No `Badge`.** Its variants name portal states; its consumers are the Schedule's
+  `week-appointment-card.tsx` and `patient-record-sheet.tsx`, and Help's `help-samples.tsx`.
 - **No toast.** Only the portal layout mounts `Toaster`. The appointment form answers in place: a
   `role="status"` region on success, a `role="alert"` block on failure, and a `FieldError` under the
   field that refused (`src/components/AppointmentForm.tsx`).

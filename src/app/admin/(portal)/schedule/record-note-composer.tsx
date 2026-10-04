@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/compone
 import { Textarea } from "@/components/ui/textarea";
 
 /* Add a note, from the foot of the Schedule's records (issue #356): a
-   popover over the button with the request page's composer in it — the
+   popover over the button with the note composer in it — the
    same server action, the same 2,000-character bound, the same reminder
    that medical details belong in the clinical record, and the same toast
    ("Saving note…", then "Note added." once the server confirmed it). A

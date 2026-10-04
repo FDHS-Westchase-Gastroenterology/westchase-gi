@@ -4,7 +4,6 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { z } from "zod";
 
-import { CONTACT_COMPLETION_LABELS } from "../../src/app/admin/(portal)/requests/format";
 import { requireDecoded } from "../harness/assert";
 import { runId, serviceDb } from "../harness/env";
 import { signIn } from "../harness/session";
@@ -31,9 +30,7 @@ for (const status of ["new", "contacted"] as const) {
     ["No answer", "no_answer"],
     ["Contacted", "reached"],
   ] as const) {
-    test(`${status}: Home ${answer} + No call completes contact once and Undo restores it`, async ({
-      page,
-    }) => {
+    test(`${status}: Home ${answer} + No call completes contact once`, async ({ page }) => {
       const db = serviceDb();
       const id = randomUUID();
       const name = `TEST Home completion ${runId} ${status} ${outcome}`;
@@ -118,36 +115,6 @@ for (const status of ["new", "contacted"] as const) {
         expect(await stale.text()).toContain("stale_version");
         expect((await events()).data).toEqual(completedEvents.data);
         expect((await current()).data).toEqual(completed.data);
-
-        await page.goto(`/admin/requests/${id}`);
-        const history = page.getByTestId("request-history");
-        await expect(history).toContainText(
-          `${CONTACT_COMPLETION_LABELS[outcome]} — request closed; no further contact needed`,
-        );
-        await page.reload();
-        await expect(history).toContainText("no further contact needed");
-        await expect(page.getByTestId("undo-latest")).toBeVisible();
-        await page.getByTestId("undo-latest").click();
-        await expect(page.getByTestId("workflow-toast")).toContainText("Undone");
-        const restored = await current();
-        expect(restored.error).toBeNull();
-        expect(restored.data).toMatchObject({
-          status,
-          version: 3,
-          closure_reason: null,
-          appointment_at: null,
-          record_handoff_at: null,
-        });
-        const restoredCallback = requireDecoded(
-          z.object({ follow_up_at: z.string().nullable() }).safeParse(restored.data),
-          "Undo must return the prior callback",
-        ).follow_up_at;
-        expect(restoredCallback === null ? null : new Date(restoredCallback).toISOString()).toBe(
-          callback,
-        );
-        await page.reload();
-        await expect(history).toContainText("no further contact needed");
-        await expect(page.getByTestId("undo-latest")).toHaveCount(0);
       } finally {
         await db.from("requests").delete().eq("id", id);
         await db.from("audit_log").delete().eq("entity_id", id);

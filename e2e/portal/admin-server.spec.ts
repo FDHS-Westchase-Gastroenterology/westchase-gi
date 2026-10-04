@@ -45,20 +45,6 @@ const auditRowSchema = z.object({
 
 const { email: SEED_ADMIN_EMAIL } = seedAdmin();
 const GENERIC_LOGIN_ERROR = "Unable to sign in. Check your credentials and try again.";
-const CSV_HEADER = [
-  "id",
-  "created_at",
-  "status",
-  "name",
-  "phone",
-  "email",
-  "location",
-  "preferred_time",
-  "locale",
-  "source_path",
-  "message",
-] as const;
-
 const db = serviceDb();
 const staffEmail = `portal-staff-${runId}@example.test`;
 const targetEmail = `portal-target-${runId}@example.test`;
@@ -74,19 +60,11 @@ let targetUserId: string | null = null;
 let staffProfileId: string | null = null;
 let targetProfileId: string | null = null;
 let recipientId: string | null = null;
-const requestIds = new Set<string>();
 const auditEntityIds = new Set<string>();
 
 interface MutationResponse {
   status: number;
   body: JsonObject;
-}
-
-interface CsvFetch {
-  status: number;
-  contentType: string;
-  contentDisposition: string;
-  text: string;
 }
 
 async function mutate(page: Page, operation: string, input: JsonObject): Promise<MutationResponse> {
@@ -129,76 +107,6 @@ function fallbackSetupUrl(
   expect(fragment.get("type")).toBe(expectedType);
   expect(Boolean(fragment.get("token_hash"))).toBe(true);
   return setupUrlString;
-}
-
-function parseCsv(document: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let field = "";
-  let quoted = false;
-
-  for (let index = 0; index < document.length; index += 1) {
-    const char = document[index];
-
-    if (quoted) {
-      if (char === `"` && document[index + 1] === `"`) {
-        field += `"`;
-        index += 1;
-      } else if (char === `"`) {
-        quoted = false;
-      } else {
-        field += char;
-      }
-      continue;
-    }
-
-    if (char === `"`) {
-      quoted = true;
-    } else if (char === ",") {
-      row.push(field);
-      field = "";
-    } else if (char === "\r" || char === "\n") {
-      if (char === "\r" && document[index + 1] === "\n") index += 1;
-      row.push(field);
-      rows.push(row);
-      row = [];
-      field = "";
-    } else {
-      field += char;
-    }
-  }
-
-  if (field.length > 0 || row.length > 0) {
-    row.push(field);
-    rows.push(row);
-  }
-  return rows;
-}
-
-async function fetchCsv(page: Page, status: string, search = ""): Promise<CsvFetch> {
-  return page.evaluate(
-    async ({ selectedStatus, selectedSearch }) => {
-      const params = new URLSearchParams({ status: selectedStatus });
-      if (selectedSearch !== "") params.set("q", selectedSearch);
-      const response = await fetch(`/admin/requests/export?${params.toString()}`);
-      return {
-        status: response.status,
-        contentType: response.headers.get("content-type") ?? "",
-        contentDisposition: response.headers.get("content-disposition") ?? "",
-        text: await response.text(),
-      };
-    },
-    { selectedStatus: status, selectedSearch: search },
-  );
-}
-
-async function sqlCount(status: string): Promise<number> {
-  const { count, error } = await db
-    .from("requests")
-    .select("id", { count: "exact", head: true })
-    .eq("status", status);
-  expect(error).toBeNull();
-  return count ?? 0;
 }
 
 test.use({ trace: "off" });
@@ -254,7 +162,6 @@ test.describe("portal management server boundaries", () => {
       .from("notification_recipients")
       .delete()
       .in("email", [recipientEmail, deniedRecipientEmail]);
-    await db.from("requests").delete().like("email", `portal-export-${runId}-%`);
     await db
       .from("audit_log")
       .delete()
@@ -846,209 +753,6 @@ test.describe("portal management server boundaries", () => {
         await db.auth.admin.deleteUser(userId);
       }
     }
-  });
-
-  test("VAL-ADMIN-011: filtered CSV is parseable, exact, and access-controlled", async ({
-    request,
-  }) => {
-    if (!staffPage) throw new Error("Staff session is unavailable");
-
-    const formulaPrefixes = ["=", "+", "-", "@", "\t", "\r", "\n"];
-    const formulaRows = formulaPrefixes.map((prefix, index) => ({
-      name: `${prefix}1+1 name`,
-      phone: `${prefix}81355502${index.toString().padStart(2, "0")}`,
-      email: `${prefix}formula-${runId}-${index}@example.test`,
-      location: "tampa",
-      preferred_time: "morning",
-      message: `${prefix}SUM(1,1)`,
-      locale: "en",
-      source_path: `${prefix}/e2e/export/${index}`,
-      status: "contacted",
-    }));
-    const stagedRows = [
-      {
-        name: `TEST Export ${runId} Alpha`,
-        phone: "8135550181",
-        email: `portal-export-${runId}-alpha@example.test`,
-        location: "tampa",
-        preferred_time: "morning",
-        message: `TEST export, quoted "value"\nsecond line`,
-        locale: "en",
-        source_path: "/en/appointment",
-        status: "contacted",
-      },
-      {
-        name: `TEST Export ${runId} Beta`,
-        phone: "8135550182",
-        email: `portal-export-${runId}-beta@example.test`,
-        location: "lutz",
-        preferred_time: "afternoon",
-        message: "TEST export plain value",
-        locale: "es",
-        source_path: "/es/contact",
-        status: "contacted",
-      },
-      {
-        name: `TEST Export ${runId} UTF-8 José`,
-        phone: "8135550183",
-        email: `portal-export-${runId}-utf8@example.test`,
-        location: "tampa",
-        preferred_time: "afternoon",
-        message: `Café, quoted "mañana"\r\n第二行`,
-        locale: "es",
-        source_path: "/es/appointment",
-        status: "contacted",
-      },
-      ...formulaRows,
-    ];
-    const { data: inserted, error: insertError } = await db
-      .from("requests")
-      .insert(stagedRows)
-      .select("id");
-    expect(insertError).toBeNull();
-    const insertedRows = requireDecoded(
-      z.array(idRowSchema).safeParse(inserted ?? []),
-      "Export fixture rows could not be decoded",
-    );
-    expect(insertedRows).toHaveLength(stagedRows.length);
-    for (const row of insertedRows) requestIds.add(row.id);
-
-    let csv: CsvFetch | null = null;
-    let parsed: string[][] = [];
-    let expectedCount = -1;
-
-    // Other portal specs can move request statuses in a fully parallel suite.
-    // Retry until the SQL count is stable across the export read.
-    for (let attempt = 0; attempt < 4; attempt += 1) {
-      const before = await sqlCount("contacted");
-      const candidate = await fetchCsv(staffPage, "contacted");
-      const after = await sqlCount("contacted");
-      const candidateRows = parseCsv(candidate.text);
-      if (before === after && candidate.status === 200 && candidateRows.length - 1 === after) {
-        csv = candidate;
-        parsed = candidateRows;
-        expectedCount = after;
-        break;
-      }
-    }
-
-    expect(csv?.status).toBe(200);
-    expect(csv?.contentType).toContain("text/csv");
-    expect(csv?.contentType).toContain("charset=utf-8");
-    expect(csv?.contentDisposition).toMatch(
-      /^attachment; filename="appointment-requests-\d{4}-\d{2}-\d{2}\.csv"$/,
-    );
-    expect(parsed[0]).toEqual([...CSV_HEADER]);
-    expect(parsed.length - 1).toBe(expectedCount);
-    expect(new Set(parsed.slice(1).map((row) => row[0])).size).toBe(expectedCount);
-
-    for (const insertedRow of insertedRows) {
-      expect(parsed.some((row) => row[0] === insertedRow.id)).toBe(true);
-    }
-    const quotedRow = parsed.find((row) => row[0] === insertedRows[0]?.id);
-    expect(quotedRow?.[10]).toBe(stagedRows[0].message);
-    const plainRow = parsed.find((row) => row[0] === insertedRows[1]?.id);
-    for (const [column, value] of [
-      [3, stagedRows[1].name],
-      [4, stagedRows[1].phone],
-      [5, stagedRows[1].email],
-      [6, stagedRows[1].location],
-      [7, stagedRows[1].preferred_time],
-      [8, stagedRows[1].locale],
-      [9, stagedRows[1].source_path],
-      [10, stagedRows[1].message],
-    ] as const) {
-      expect(plainRow?.[column]).toBe(value);
-    }
-    for (const [index, formulaRow] of formulaRows.entries()) {
-      const exported = parsed.find((row) => row[0] === insertedRows[index + 3]?.id);
-      for (const [column, value] of [
-        [3, formulaRow.name],
-        [4, formulaRow.phone],
-        [5, formulaRow.email],
-        [9, formulaRow.source_path],
-        [10, formulaRow.message],
-      ] as const) {
-        expect(exported?.[column]).toBe(`'${value}`);
-      }
-      expect(exported?.slice(6, 9)).toEqual([
-        formulaRow.location,
-        formulaRow.preferred_time,
-        formulaRow.locale,
-      ]);
-    }
-
-    // The export boundary is audited: exactly one metadata-only row for the
-    // Successful read above, nothing for the rejected calls below.
-    const { data: exportAudits, error: exportAuditError } = await db
-      .from("audit_log")
-      .select("id, actor_email, entity, entity_id, detail")
-      .eq("action", "requests.export")
-      .eq("actor_email", staffEmail)
-      .order("at", { ascending: false })
-      .limit(1);
-    expect(exportAuditError).toBeNull();
-    expect(exportAudits).toHaveLength(1);
-    expect(exportAudits?.[0].entity).toBe("requests");
-    expect(exportAudits?.[0].entity_id).toBeNull();
-    expect(exportAudits?.[0].detail).toMatchObject({
-      row_count: expectedCount,
-      status_filter: "contacted",
-      has_search: false,
-    });
-    expect(JSON.stringify(exportAudits?.[0].detail)).not.toContain("portal-export-");
-
-    const scopedCsv = await fetchCsv(
-      staffPage,
-      "contacted",
-      `portal-export-${runId}-utf8@example.test`,
-    );
-    expect(scopedCsv.status).toBe(200);
-    expect(scopedCsv.contentType).toContain("text/csv; charset=utf-8");
-    const scopedRows = parseCsv(scopedCsv.text);
-    expect(scopedRows[0]).toEqual([...CSV_HEADER]);
-    expect(scopedRows).toHaveLength(2);
-    expect(scopedRows[1]?.[0]).toBe(insertedRows[2]?.id);
-    expect(scopedRows[1]?.[2]).toBe("contacted");
-    expect(scopedRows[1]?.[3]).toBe(stagedRows[2].name);
-    expect(scopedRows[1]?.[5]).toBe(stagedRows[2].email);
-    expect(scopedRows[1]?.[10]).toBe(stagedRows[2].message);
-
-    const { data: scopedAudits, error: scopedAuditError } = await db
-      .from("audit_log")
-      .select("detail")
-      .eq("action", "requests.export")
-      .eq("actor_email", staffEmail)
-      .order("at", { ascending: false })
-      .limit(1);
-    expect(scopedAuditError).toBeNull();
-    expect(scopedAudits?.[0]?.detail).toMatchObject({
-      row_count: 1,
-      status_filter: "contacted",
-      has_search: true,
-    });
-    expect(JSON.stringify(scopedAudits?.[0]?.detail)).not.toContain("portal-export-");
-
-    const invalidFilter = await fetchCsv(staffPage, "not-a-status");
-    expect(invalidFilter.status).toBe(400);
-
-    const anonymous = await request.get("/admin/requests/export?status=contacted", {
-      maxRedirects: 0,
-    });
-    expect([307, 401]).toContain(anonymous.status());
-    if (anonymous.status() === 307) {
-      expect(new URL(anonymous.headers().location, "http://localhost:3100").pathname).toBe(
-        "/admin/login",
-      );
-    }
-
-    const { count: exportAuditTotal, error: exportAuditCountError } = await db
-      .from("audit_log")
-      .select("id", { count: "exact", head: true })
-      .eq("action", "requests.export")
-      .eq("actor_email", staffEmail);
-    expect(exportAuditCountError).toBeNull();
-    expect(exportAuditTotal).toBe(2);
   });
 
   test("VAL-ADMIN-019: the Activity log renders the audit record in plain language", async () => {

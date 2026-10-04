@@ -6,7 +6,6 @@ import { z } from "zod";
 import { jsonObjectSchema } from "../../src/lib/json";
 import type { JsonObject } from "../../src/lib/json";
 import { requiredEnv, runId, serviceDb } from "../harness/env";
-import { signIn } from "../harness/session";
 
 interface LifecycleFixture {
   status?: string;
@@ -97,102 +96,6 @@ test.describe("isolated appointment-request lifecycle", () => {
         .in("entity_id", [...requestIds]);
     }
     await db.from("audit_log").delete().eq("actor_email", lifecycleActor);
-  });
-
-  test("staff classifies closure from the request detail page", async ({ page }) => {
-    // A migrated closure with no recorded outcome (DEC-13): closed, review
-    // Flag set, no invented closure fact. It resolves only through the
-    // Dedicated ClassifyLegacyClosure repair path in the workflow panel.
-    const bookedReviewId = await stageRequest("legacy-booked", {
-      status: "closed",
-      legacy_review_required: true,
-    });
-    const unbookedReviewId = await stageRequest("legacy-unbooked", {
-      status: "closed",
-      legacy_review_required: true,
-    });
-    await signIn(page);
-
-    // Reviewed as booked: the record resolves to durable `booked`,
-    // Presented to staff as Scheduled (DEC-04) with migration-safe
-    // Retention (the clock starts at review, not in the past).
-    await page.goto(`/admin/requests/${bookedReviewId}`);
-    const panel = page.getByTestId("workflow-panel");
-    await expect(panel).toContainText("Finish this request's record");
-    // The review is not an ordinary work surface: no contact/close rows.
-    await expect(page.getByTestId("save-workflow")).toHaveCount(0);
-    await panel.getByText("An appointment was booked", { exact: true }).click();
-    await page.getByTestId("classify-legacy").click();
-    await expect(page.getByTestId("workflow-toast")).toContainText("marked Scheduled");
-
-    const bookedRow = await db
-      .from("requests")
-      .select(
-        "status, legacy_review_required, record_handoff_at, closed_at, closure_reason, version",
-      )
-      .eq("id", bookedReviewId)
-      .single();
-    expect(bookedRow.error).toBeNull();
-    expect(bookedRow.data).toMatchObject({
-      status: "booked",
-      legacy_review_required: false,
-      closed_at: null,
-      closure_reason: null,
-    });
-    expect(bookedRow.data?.record_handoff_at).toBeTruthy();
-    expect(Number(bookedRow.data?.version)).toBe(2);
-
-    // Reviewed as unbooked: normal CLOSED with a typed reason; the
-    // Retention clock starts no earlier than the review itself.
-    await page.goto(`/admin/requests/${unbookedReviewId}`);
-    await page
-      .getByTestId("workflow-panel")
-      .getByText("No appointment — patient wouldn't schedule", {
-        exact: true,
-      })
-      .click();
-    await page.getByTestId("classify-legacy").click();
-    await expect(page.getByTestId("workflow-toast")).toContainText("stays closed");
-
-    const unbookedRow = await db
-      .from("requests")
-      .select("status, legacy_review_required, record_handoff_at, closed_at, closure_reason")
-      .eq("id", unbookedReviewId)
-      .single();
-    expect(unbookedRow.error).toBeNull();
-    expect(unbookedRow.data).toMatchObject({
-      status: "closed",
-      legacy_review_required: false,
-      record_handoff_at: null,
-      closure_reason: "wont_schedule",
-    });
-    expect(unbookedRow.data?.closed_at).toBeTruthy();
-
-    // Each classification appends one immutable legacy_review transition
-    // And one PHI-free technical audit entry.
-    for (const [id, toState] of [
-      [bookedReviewId, "booked"],
-      [unbookedReviewId, "closed"],
-    ] as const) {
-      const { data: transitions, error: transitionsError } = await db
-        .from("request_transitions")
-        .select("command, from_state, to_state, provenance")
-        .eq("request_id", id);
-      expect(transitionsError).toBeNull();
-      expect(transitions).toEqual([
-        {
-          command: "classify_legacy_closure",
-          from_state: "closed",
-          to_state: toState,
-          provenance: "legacy_review",
-        },
-      ]);
-    }
-
-    await db.from("requests").delete().in("id", [bookedReviewId, unbookedReviewId]);
-    await db.from("audit_log").delete().in("entity_id", [bookedReviewId, unbookedReviewId]);
-    requestIds.delete(bookedReviewId);
-    requestIds.delete(unbookedReviewId);
   });
 
   test("the retired generic close path can no longer manufacture an unclassified closure", async () => {

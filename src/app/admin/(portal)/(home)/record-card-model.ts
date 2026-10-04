@@ -80,8 +80,8 @@ export function followUpsFor(answer: CardAnswer | null): readonly FollowUp[] {
 
 /** The sentence a line with no rows shows instead of the question. */
 export function cardNoteFor(status: RequestStatus): string | null {
-  if (status === "scheduled") return "Scheduled. Reopen it from the full record if plans change.";
-  if (status === "closed") return "Closed. Reopen it from the full record to work it again.";
+  if (status === "scheduled") return "Scheduled. Nothing is left to record.";
+  if (status === "closed") return "Closed. Nothing is left to record.";
   return null;
 }
 
@@ -174,7 +174,7 @@ export function cardReducer(draft: Readonly<CardDraft>, event: Readonly<CardEven
    a picked time is on the clock. */
 
 /** Save is enabled only for a complete, in-bounds decision. */
-export function canSave(draft: Readonly<CardDraft>, today: string): boolean {
+function canSave(draft: Readonly<CardDraft>, today: string): boolean {
   if (draft.answer === null) return false;
   if (contactOutcomeFor(draft.answer) !== null && draft.followUp === null) return false;
   if (!needsDay(draft.answer, draft.followUp)) return true;

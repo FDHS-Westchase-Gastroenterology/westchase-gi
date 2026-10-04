@@ -41,7 +41,6 @@ interface Failure {
 function changed() {
   revalidatePath("/admin/schedule");
   revalidatePath("/admin");
-  revalidatePath("/admin/requests");
 }
 
 /** Remember the single provider staff last picked. A failed write never

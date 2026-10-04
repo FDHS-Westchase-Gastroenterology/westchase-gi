@@ -22,7 +22,7 @@ What does the color tell the reader?
 ├── This is current, or has keyboard focus         → teal-ink text; the --ring ring
 ├── Look here, or this removes something saved     → amber glass or amber-soft; amber-deep marks
 ├── You can act on this: hovered, open, checked    → a mint wash
-├── A request's status                             → StatusBadge (stamps.md)
+├── A request's status                             → LineStatusBadge (stamps.md)
 └── Invalid, a failed save, or discarding a draft  → coral: --destructive, with words beside it
 ```
 
@@ -94,11 +94,10 @@ The portal still paints several focus indicators amber. Each row waits on
 | Where | Treatment |
 | --- | --- |
 | `.portal-scope :where(a, button, input, select, textarea, summary)` in `portal-workbench.css`, and three more workbench rules | A 3px `amber-deep` outline at a 3px offset. A recipe inside the portal still shows its teal ring, because `outline-none` sits in the utilities layer, which outranks this components-layer rule; one screen can show both colors. |
-| `call-again-fieldset.tsx` | A 3px `amber` outline when a link lands focus on the correction group; the reopen group uses `teal-ink`. |
 
 Contrast does not decide between them: on portal surfaces `amber-deep` measures 3.3 to 3.7 and
-`teal` 3.4 to 3.9, both above the 3:1 a focus indicator needs, while `amber` measures 1.8 to 2.0.
-Meaning does: amber already says "look here".
+`teal` 3.4 to 3.9, both above the 3:1 a focus indicator needs. Meaning
+does: amber already says "look here".
 
 ## Selection
 
@@ -141,8 +140,3 @@ properties.
 | `portal-workbench.css` | 43 | 21 | The printed request sheet's `#172b39` and `#a6b3ba` inks; `--portal-nav-current`, the current sidebar row, in an off-palette green `rgb(80 168 165 / 20%)`; `.portal-request-form-alert` in a second red built from OKLCH literals; the confirm scrim; sidebar text at `rgb(226 239 240 / 58%)`; shadow colors. Mint washes mix at six strengths from 36% to 76%, where Home uses `mint` and `mint-2`. All wait on [roadmap item 10](roadmap.md#10-portal-surface-tints). |
 | `globals.css` | 34 | 12 | Most sit in print blocks; the review flyer's inks are a [recorded exception](tokens.md#recorded-exceptions). The rest belong to the legacy feature blocks, among them `.list-avoid`'s red cross (`oklch(0.5 0.19 25)`, the same red as the workbench alert): [roadmap item 7](roadmap.md#7-the-legacy-feature-blocks) and [item 10](roadmap.md#10-portal-surface-tints). |
 | `home.css` | 9 | 8 | Two shadow colors, three white alphas and four `#fff` fallbacks behind the teal focus ring in the approved Home frame, plus 36 literals inside its custom properties, including shared paints for the portaled `.wgi-record-card` and the `.wgi-sheet`'s own paints: a [recorded exception](tokens.md#recorded-exceptions). |
-
-Route files carry one more: the invalid-field red `aria-[invalid=true]:border-[oklch(0.5_0.19_25)]`,
-with a background mixed from a second OKLCH literal, in `outcome-choice-list.tsx`'s `fieldClass`
-(`#L84`) and `call-again-fieldset.tsx#L114`. An invalid field is `--destructive`'s job
-([Roles](#roles)); these move onto it with [roadmap item 3](roadmap.md#3-choice-lists).

@@ -53,7 +53,7 @@ const requestIdRowSchema = z.object({ request_id: z.string() });
 
 /** The full record from reads a caller already holds: the request's own
     columns, its work surface and the staff name map. */
-export function composeFullRecord(
+function composeFullRecord(
   row: RecordRow,
   // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the work surface carries workflow history entries whose types cannot be made readonly
   surface: RequestWorkSurface,

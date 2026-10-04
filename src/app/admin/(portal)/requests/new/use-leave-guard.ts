@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { MouseEvent, Ref, RefObject } from "react";
 
@@ -24,19 +23,16 @@ export function useLeaveGuard({
   dirty,
   pending,
   dismiss,
-  returnHref,
   onDiscard,
   handleRef,
 }: Readonly<{
   dirty: boolean;
   pending: boolean;
-  /** Present when a dialog hosts the form: leaving closes it instead of navigating. */
-  dismiss: (() => void) | null;
-  returnHref: string;
+  /** Leaving closes the dialog. */
+  dismiss: () => void;
   onDiscard: () => void;
   handleRef: Ref<StaffRequestFormHandle> | undefined;
 }>): LeaveGuard {
-  const router = useRouter();
   const [asking, setAsking] = useState(false);
   const cancelRef = useRef<HTMLAnchorElement>(null);
   const askedFromRef = useRef<HTMLElement | null>(null);
@@ -64,14 +60,6 @@ export function useLeaveGuard({
     setAsking(false);
   }
 
-  function leave() {
-    if (dismiss === null) {
-      router.push(returnHref);
-      return;
-    }
-    dismiss();
-  }
-
   useImperativeHandle(
     handleRef,
     () => ({
@@ -85,7 +73,7 @@ export function useLeaveGuard({
           ask();
           return;
         }
-        dismiss?.();
+        dismiss();
       },
     }),
     [asking, dirty, dismiss, pending],
@@ -100,10 +88,8 @@ export function useLeaveGuard({
         return;
       }
       if (!dirty) {
-        if (dismiss !== null) {
-          event.preventDefault();
-          dismiss();
-        }
+        event.preventDefault();
+        dismiss();
         return;
       }
       event.preventDefault();
@@ -112,7 +98,7 @@ export function useLeaveGuard({
     keepEditing,
     discard() {
       onDiscard();
-      leave();
+      dismiss();
     },
   };
 }

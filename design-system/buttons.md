@@ -25,7 +25,7 @@ What does pressing it do?
 
 ```tsx
 // Correct (staff-request-form-footer.tsx): navigation wears the recipe and keeps link semantics
-<Link href="/admin/requests?status=new" data-slot="button" className={buttonVariants()}>
+<Link href="/admin?status=new" data-slot="button" className={buttonVariants()}>
 ```
 
 ```tsx incorrect
@@ -37,21 +37,20 @@ What does pressing it do?
 
 A download has a URL, so it is a plain `<a href download>`: `Link` is for route transitions, and an
 `onClick` `Button` loses middle-click and save-as. Printing stays a `Button` calling
-`window.print()` (`print-controls.tsx`). An occasional output wears `REQUESTS_OUTPUT_UTILITY_CLASS`,
-not a variant: `.portal-utility-link` is a quiet `--pt-xs` weight-600 `--color-body` label that
-turns teal on hover, with a 1rem leading icon, and `min-h-11` adds the target floor. The export
-anchor and `PrintChooser`'s trigger wear it, without `data-slot`.
+`window.print()` (`print-controls.tsx`).
 
 - **`useOutputGuard()`** (`output-feedback.ts`) locks 1.5 seconds against a double press:
   `begin()` returns false while locked, shown as `aria-disabled`; an anchor calls
   `event.preventDefault()`. `releaseOnAfterPrint` lifts a print's lock when its dialog closes.
-- **An `sr-only` span** named by `aria-describedby` says which rows the file actually covers.
 - **`publish()`** puts the result in the page's one `PortalFeedbackMessage`, read out by its tone.
 
 ```tsx
-// Correct (requests-output-actions.tsx): an anchor, guarded, described and announced
-<a href={exportHref} download aria-describedby="request-export-scope"
-   aria-disabled={exportGuard.locked || undefined} className={REQUESTS_OUTPUT_UTILITY_CLASS}>
+// Correct (flyer-output.tsx): a download link's press, guarded and announced
+if (!begin()) {
+  event.preventDefault();
+  return;
+}
+publish({ source: FEEDBACK_SOURCE, tone: "status", message });
 ```
 
 A patient-site download exists only when the documents registry (`src/lib/documents.ts`) holds a
@@ -114,7 +113,7 @@ trims that side's padding and sizes the icon at 16px, so it carries no size clas
 (measured on `Footer`'s review links), and an `h-*` or `w-*` class is inert the same way.
 
 ```tsx
-// Correct (print-chooser.tsx)
+// Correct (print-requests-sheet.tsx)
 <Printer data-icon="inline-start" />
 ```
 

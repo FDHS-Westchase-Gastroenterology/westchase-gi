@@ -101,7 +101,7 @@ There is one theme, light, in the practice's palette. Each register assigns it t
 | Patient site | the root, no class (`src/app/[locale]/layout.tsx`) | Display serif headings, the fluid `--step-*` type, section rhythm, the button lift. |
 | Staff portal | `.portal-scope` on `<body>` (`src/app/admin/layout.tsx`) | Lato only, the closed `--pt-*` and `--ps-*` scales, `--pm-*` motion aliases, the flattened button knobs. |
 | Staff home | `.wgi-home` on the section, plus portaled `.wgi-record-card` and `.wgi-sheet` (`home.css`) | The approved Home frame's `--wgi-*` sizes, paints and canvas; its popover and sheet receive their Home paints outside the section. |
-| Print | `@page` and `@media print` | Paper: screen chrome hides, scrolled regions open to print every line, backgrounds drop to white. The request detail, the request packet and the review flyer each name their own `@page`. |
+| Print | `@page` and `@media print` | Paper: screen chrome hides, scrolled regions open to print every line, backgrounds drop to white. The request packet and the review flyer each name their own `@page`. |
 | Locale | `:lang(vi)`, `:lang(ko)`, `:lang(ar)` | Font faces, leading, tracking; Arabic reads right to left through `dir`. |
 
 Dark mode is not a shipped surface. The `.dark` mapping exists only so a stray `dark:` utility lands

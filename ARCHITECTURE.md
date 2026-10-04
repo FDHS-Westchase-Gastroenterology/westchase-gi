@@ -37,7 +37,7 @@ the patient website and the staff portal. A third root route tree supports the p
 | Patient website | `/{en,es,vi,ko,ar}/**` | Static-first React Server Components, five typed locales, Arabic RTL |
 | Staff portal | `/admin/**` | Dynamic React Server Components, Server Actions, route handlers, Supabase Auth |
 | Review hub | `/review` | Public, locale-less, stable target for the printed master QR |
-| HTTP interfaces | `/api/**` and selected route handlers | Intake, telemetry, Preview attestation, Auth callbacks, CSV, and protected flyer assets |
+| HTTP interfaces | `/api/**` and selected route handlers | Intake, telemetry, Preview attestation, Auth callbacks, and protected flyer assets |
 
 Most behavior falls into three layers:
 
@@ -179,11 +179,9 @@ breaker. Index-backed reads select the latest request activity and latest named 
 so long audit histories do not truncate either value.
 
 `/api/admin/request-worklist` exposes the same read to active onboarded staff through private,
-uncached, same-origin POST requests. The Appointments list fetches only its 50-row page. Detail
-navigation uses the complete filtered set. The current Home interface loads the entire open
-set through bounded 200-row reads because its filters operate on already-loaded rows; its
-closed tail remains a 60-row working window, with the complete archive on Appointments. A
-frontend that adds server paging can use the same API without changing ordering rules.
+uncached, same-origin POST requests. Home loads the entire open set through bounded 200-row
+reads because its filters operate on already-loaded rows; its closed tail is a 60-row working
+window. A frontend that adds server paging can use the same API without changing ordering rules.
 
 ### Appointment-request commands
 
@@ -209,8 +207,9 @@ Date choices are fingerprinted before resolution. A retry after midnight or afte
 date passes replays its original stored result instead of choosing a new date or rejecting a
 save that already succeeded.
 
-Undo appends a compensating transition and restores a saved coherent snapshot only when the
-target is still the latest eligible transition. It never deletes history.
+The database Undo command appends a compensating transition and restores a saved coherent
+snapshot only when the target is still the latest eligible transition. It never deletes history.
+No portal surface issues a request Undo; history still renders past Undo events.
 
 Read `src/lib/portal/workflow/contracts.ts` and `machine.ts` before changing states, commands,
 queue ordering, history, Undo, staff-facing labels, or workflow controls.
@@ -219,8 +218,7 @@ Contact completion uses the explicit `recordContactAndClose` Server Action. It a
 ID, expected version, idempotency key, contact result (`reached`, `voicemail`, or `no_answer`),
 and an optional note. It is legal from New and Contacted. The database saves the contact fact,
 closes the request with `no_further_contact`, clears its callback, and appends history, audit,
-and a replay receipt in one transaction. It increments the request version once. Undo restores
-the full prior state within the existing correction window and preserves the original evidence.
+and a replay receipt in one transaction. It increments the request version once.
 
 `No call` is this explicit completion intent. A missing callback on `recordContactAttempt`
 remains invalid; it never implicitly closes a request. A changed save against a stale version
@@ -230,7 +228,7 @@ classification commands, since those commands do not record the required contact
 
 ### Staff-authored appointment intake
 
-`/admin/requests/new` uses the patient field contract but has a separate atomic write path.
+The Add request dialog on Home (`requests/new/staff-request-form.tsx`) uses the patient field contract but has a separate atomic write path.
 `portal_create_staff_request` binds an opaque idempotency key to the actor and payload, then writes
 the request, staff-origin creation event, metadata-only audit row, and receipt together. Exact
 retries return the original request. Reusing the key with different details conflicts without
@@ -557,8 +555,7 @@ notes remain sensitive even though the public form asks patients not to submit m
 - Audit metadata may contain identifiers, staff identity, state changes, closure outcomes,
   authorization references, and counts. It must not contain patient names, contact details,
   intake text, or appointment-request notes.
-- The application keeps no duplicate patient-data archive. A downloaded CSV is a
-  clinic-controlled sensitive copy outside application retention.
+- The application keeps no duplicate patient-data archive.
 - Backups are recovery copies, not archives. Lifecycle scheduling remains off until privacy,
   custody, security, test, Preview, and approval gates are complete.
 
@@ -620,10 +617,9 @@ the adapter or database. The matching change-type check matrix is
   request handlers → `src/lib/portal/intake.ts` and `intake-notification.ts` → the owning RPC.
 - **Appointment-request workflow:** `src/lib/portal/workflow/contracts.ts` (states, staff-facing
   statuses, commands, rejections) and `machine.ts` → `requests/workflow-actions.ts` →
-  `workflow/commands.ts` → `portal_execute_request_command`. The request work panel is
-  `requests/[id]/workflow-panel-model.ts` (choices, copy, reducer), `use-workflow-panel.ts`
-  (commands and outcome handling), and `workflow-panel.tsx` with its two fieldset files;
-  `request-history.ts` turns the surface's history into the ledger lines the detail page renders.
+  `workflow/commands.ts` → `portal_execute_request_command`. Staff record outcomes on Home's
+  record card (`(home)/record-card-model.ts`, `use-record-commit.ts`); `requests/request-history.ts`
+  turns a request's history into the ledger lines the full-record sheet and printed page render.
 - **Clinical notes and document references:** `src/lib/portal/clinical/` and `/api/admin/clinical` → patient-owned clinical records, revisions, signer permissions, and command receipts.
 - **Portal authorization and sessions:** `src/lib/portal/auth.ts`, `server.ts`, `src/proxy.ts`,
   Auth entry routes, and `staff_profiles`.

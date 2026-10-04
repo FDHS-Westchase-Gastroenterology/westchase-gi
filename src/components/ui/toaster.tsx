@@ -18,10 +18,9 @@ import type { ToasterProps } from "sonner";
  * (design-system/adoption.md "Standing findings"); the registry's Base UI
  * Toast stays unadopted. Every consumer follows one save with
  * `toast.promise`: the staff home record card (use-record-commit.ts), the
- * staff request form in the add-appointment dialog
- * and on the new-request page (staff-request-form.tsx, through
- * created-toast.ts), the note composer (request-notes.tsx) and the request
- * work panel (use-workflow-panel.ts). The portal layout mounts this once, so
+ * staff request form in the add-appointment dialog (staff-request-form.tsx,
+ * through created-toast.ts) and the Schedule's note composer
+ * (record-note-composer.tsx). The portal layout mounts this once, so
  * a result outlives the popover, dialog or page that earned it.
  *
  * Kept from the registry recipe: the lucide icon set with the loader

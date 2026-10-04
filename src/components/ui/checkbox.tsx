@@ -9,8 +9,8 @@ import { Check, Minus } from "@/components/icons";
 
 /*
  * Brand adaptation of the shadcn Checkbox, adopted from
- * src/components/stock/checkbox.tsx for the print chooser's status list
- * (requests/print-chooser.tsx). Base UI renders a `role="checkbox"` control
+ * src/components/stock/checkbox.tsx for the Print sheet's request list
+ * ((home)/print-sheet-body.tsx). Base UI renders a `role="checkbox"` control
  * with a hidden native input beside it, so a wrapping FieldLabel and
  * Playwright's `.check()` both work.
  *
