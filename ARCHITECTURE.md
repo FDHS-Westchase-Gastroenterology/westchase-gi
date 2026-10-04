@@ -268,6 +268,11 @@ rejects Production before the first database call; credentialed runs retain no t
 or HTML report. Database-adjacent PRs use a disposable Docker Supabase stack in CI with no
 hosted Supabase, Vercel, or repository secrets.
 
+The `beta` deployment runs on a nightly copy of Production, the persistent Supabase branch
+`beta` (CONTRIBUTING.md "Beta"). It holds real patient and staff records, so E2E runs, seed
+scripts, and `npm run demo:data` never target it. Writes there are discarded at the next
+refresh and never reach Production.
+
 `verify-schema.mjs --target prod` creates and deletes a temporary request. Treat that as
 authorized maintenance, not a read-only check. The complete check matrix, UI baseline
 procedure, CI policy, merge rules, and application/database release procedure live in

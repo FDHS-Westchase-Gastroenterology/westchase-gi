@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { AuthCard } from "@/app/admin/auth-card";
 import { getSessionUser } from "@/lib/portal/auth";
+import { previewAliasEnabled } from "@/lib/portal/server";
 
 import { LoginForm } from "./login-form";
 
@@ -40,7 +41,7 @@ export default async function AdminLoginPage({
           administrator for a new invitation.
         </p>
       ) : null}
-      <LoginForm allowPreviewAlias={process.env.VERCEL_ENV === "preview"} />
+      <LoginForm allowPreviewAlias={previewAliasEnabled()} />
     </AuthCard>
   );
 }

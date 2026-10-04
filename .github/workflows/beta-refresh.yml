@@ -1,0 +1,217 @@
+name: Beta Refresh
+
+# Rebuilds the beta database (Supabase branch `beta`) from Production each night:
+# reset to Production's migration head, load Production's records, then apply the
+# migrations `beta` adds. Writes made on beta do not survive a refresh.
+# CONTRIBUTING.md "Beta" describes the model.
+on:
+  schedule:
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: beta-refresh
+  cancel-in-progress: false
+
+env:
+  PRODUCTION_REF: gfvrjaoxamvshzplxmep
+  BETA_REF: jzvlkdohxycbortwrklc
+
+jobs:
+  refresh:
+    name: beta-refresh
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SOURCE_URL: ${{ secrets.BETA_REFRESH_SOURCE_DATABASE_URL }}
+      TARGET_URL: ${{ secrets.BETA_REFRESH_TARGET_DATABASE_URL }}
+    steps:
+      - name: Refuse any target but the beta database
+        run: |
+          case "$SOURCE_URL" in
+            "postgresql://beta_refresh_reader.$PRODUCTION_REF:"*) ;;
+            *) echo "The source must be Production's read-only refresh role."; exit 1 ;;
+          esac
+          case "$TARGET_URL" in
+            *"$PRODUCTION_REF"*) echo "The target names Production."; exit 1 ;;
+            "postgresql://postgres.$BETA_REF:"*) ;;
+            *) echo "The target must be the beta branch database."; exit 1 ;;
+          esac
+          echo "DUMP_DIR=$RUNNER_TEMP/beta-refresh" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: beta
+          persist-credentials: false
+
+      - name: Install the Postgres 17 client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -yqq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -yqq postgresql-client-17
+          echo /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
+
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2.1.1
+        with:
+          version: 2.109.1
+
+      - name: Read Production's migration head
+        id: head
+        run: |
+          applied="$(psql "$SOURCE_URL" -At -c \
+            "select version from supabase_migrations.schema_migrations order by 1")"
+          head="$(printf '%s\n' "$applied" | tail -n 1)"
+          local_through_head="$(ls supabase/migrations | cut -d_ -f1 | sort \
+            | awk -v head="$head" '$1 <= head')"
+          if [ "$applied" != "$local_through_head" ]; then
+            echo "beta's migrations through $head differ from Production's applied set:"
+            diff <(printf '%s\n' "$applied") <(printf '%s\n' "$local_through_head") || true
+            exit 1
+          fi
+          echo "Production is at $head ($(printf '%s\n' "$applied" | wc -l) migrations)."
+          echo "version=$head" >> "$GITHUB_OUTPUT"
+
+      - name: Dump Production records
+        run: |
+          mkdir -p "$DUMP_DIR"
+          pg_dump "$SOURCE_URL" --data-only --schema=public --schema=private \
+            --file "$DUMP_DIR/app.sql"
+          pg_dump "$SOURCE_URL" --data-only --table=auth.users --table=auth.identities \
+            --file "$DUMP_DIR/auth.sql"
+
+      - name: Reset beta to Production's migration head
+        env:
+          VERSION: ${{ steps.head.outputs.version }}
+        run: supabase db reset --db-url "$TARGET_URL" --version "$VERSION" --no-seed --yes
+
+      - name: Mirror Production's automatic RLS on new tables
+        run: |
+          # Production's dashboard setting enables RLS on each new public table through
+          # the ensure_rls event trigger, which no migration creates.
+          enabled="$(psql "$SOURCE_URL" -At -c \
+            "select count(*) from pg_event_trigger where evtname = 'ensure_rls'")"
+          if [ "$enabled" = 1 ]; then
+            {
+              psql "$SOURCE_URL" -At -v ON_ERROR_STOP=1 -c \
+                "select pg_get_functiondef(evtfoid) from pg_event_trigger where evtname = 'ensure_rls'"
+              cat <<'SQL'
+          ;
+          revoke all on function public.rls_auto_enable() from public, anon, authenticated;
+          grant execute on function public.rls_auto_enable() to service_role;
+          drop event trigger if exists ensure_rls;
+          create event trigger ensure_rls on ddl_command_end
+            when tag in ('CREATE TABLE', 'CREATE TABLE AS', 'SELECT INTO')
+            execute function public.rls_auto_enable();
+          SQL
+            } | psql "$TARGET_URL" -q -v ON_ERROR_STOP=1 --single-transaction
+          fi
+
+      - name: Compare beta's schema with Production's
+        run: |
+          fingerprint() {
+            psql "$1" -Atq -v ON_ERROR_STOP=1 <<'SQL'
+          set search_path = pg_catalog;
+          with app as (
+            select oid from pg_namespace where nspname in ('public', 'private')
+          )
+          select 'column', c.relnamespace::regnamespace::text, c.relname::text, a.attname::text,
+                 format_type(a.atttypid, a.atttypmod), a.attnotnull::text,
+                 coalesce(pg_get_expr(d.adbin, d.adrelid), '')
+            from pg_attribute a
+            join pg_class c on c.oid = a.attrelid
+            left join pg_attrdef d on d.adrelid = a.attrelid and d.adnum = a.attnum
+           where c.relnamespace in (select oid from app) and c.relkind in ('r', 'p', 'v')
+             and a.attnum > 0 and not a.attisdropped
+          union all
+          select 'constraint', connamespace::regnamespace::text, conrelid::regclass::text, conname::text,
+                 pg_get_constraintdef(oid), '', ''
+            from pg_constraint where connamespace in (select oid from app)
+          union all
+          select 'index', schemaname::text, tablename::text, indexname::text, indexdef, '', ''
+            from pg_indexes where schemaname in ('public', 'private')
+          union all
+          select 'policy', schemaname::text, tablename::text, policyname::text, cmd,
+                 coalesce(qual, ''), coalesce(with_check, '')
+            from pg_policies where schemaname in ('public', 'private')
+          union all
+          select 'function', pronamespace::regnamespace::text, proname::text,
+                 pg_get_function_identity_arguments(oid), md5(pg_get_functiondef(oid)),
+                 coalesce(proacl::text, ''), ''
+            from pg_proc where pronamespace in (select oid from app) and prokind in ('f', 'p')
+          union all
+          select 'grant', c.relnamespace::regnamespace::text, c.relname::text,
+                 coalesce(nullif(g.grantee, 0)::regrole::text, 'PUBLIC'), g.privilege_type, '', ''
+            from pg_class c cross join lateral aclexplode(c.relacl) g
+           where c.relnamespace in (select oid from app)
+          union all
+          select 'event trigger', evtname::text, evtevent::text, evtfoid::regproc::text,
+                 evtenabled::text, evtowner::regrole::text, coalesce(evttags::text, '')
+            from pg_event_trigger
+          union all
+          select 'rls', relnamespace::regnamespace::text, relname::text,
+                 relrowsecurity::text, relforcerowsecurity::text, '', ''
+            from pg_class where relnamespace in (select oid from app) and relkind in ('r', 'p')
+          order by 1, 2, 3, 4, 5;
+          SQL
+          }
+          fingerprint "$SOURCE_URL" > "$DUMP_DIR/production.schema"
+          fingerprint "$TARGET_URL" > "$DUMP_DIR/beta.schema"
+          if ! diff -u "$DUMP_DIR/production.schema" "$DUMP_DIR/beta.schema"; then
+            echo "beta at Production's migration head does not match Production's schema."
+            exit 1
+          fi
+          echo "Schemas match: $(wc -l < "$DUMP_DIR/beta.schema") catalog entries."
+
+      - name: Load Production records into beta
+        run: |
+          # Some migrations write rows as they replay. Empty the app tables first so
+          # beta holds exactly Production's rows.
+          cat > "$DUMP_DIR/clear.sql" <<'SQL'
+          set session_replication_role = replica;
+          do $$
+          declare
+            tables text;
+          begin
+            select string_agg(format('%I.%I', schemaname, tablename), ', ')
+              into tables
+              from pg_tables
+             where schemaname in ('public', 'private');
+            if tables is not null then
+              execute 'truncate ' || tables;
+            end if;
+          end
+          $$;
+          SQL
+          psql "$TARGET_URL" -q -v ON_ERROR_STOP=1 --single-transaction \
+            -f "$DUMP_DIR/clear.sql" \
+            -f "$DUMP_DIR/auth.sql" \
+            -f "$DUMP_DIR/app.sql"
+
+      - name: Apply beta's own migrations
+        run: supabase db push --db-url "$TARGET_URL" --yes
+
+      - name: Report row counts
+        run: |
+          psql "$TARGET_URL" -At -v ON_ERROR_STOP=1 <<'SQL'
+          select format('%s.%s: %s rows', n.nspname, c.relname,
+                        (xpath('/row/n/text()', query_to_xml(
+                          format('select count(*) as n from %I.%I', n.nspname, c.relname),
+                          false, true, '')))[1]::text)
+            from pg_class c
+            join pg_namespace n on n.oid = c.relnamespace
+           where c.relkind in ('r', 'p')
+             and (n.nspname in ('public', 'private')
+                  or (n.nspname = 'auth' and c.relname in ('users', 'identities')))
+           order by n.nspname, c.relname;
+          select format('migrations applied on beta: %s, head %s', count(*), max(version))
+            from supabase_migrations.schema_migrations;
+          SQL
+
+      - name: Delete the dump
+        if: always()
+        run: rm -rf "$DUMP_DIR"
