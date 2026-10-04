@@ -15,7 +15,7 @@ import {
   resolveStaffAuthState,
 } from "@/lib/portal/auth";
 import type { PasswordAuthFlow, PortalStaffAuthState } from "@/lib/portal/auth";
-import { portalUrl, previewAliasEnabled, serverClient, serviceClient } from "@/lib/portal/server";
+import { portalUrl, serverClient, serviceClient } from "@/lib/portal/server";
 
 export interface LoginActionState {
   error: string | null;
@@ -65,7 +65,7 @@ function previewLoginCredentials(
   submittedEmail: string,
   submittedPassword: string,
 ): { email: string; password: string } | null {
-  if (!previewAliasEnabled()) return null;
+  if (process.env.VERCEL_ENV !== "preview") return null;
 
   const username = process.env.PORTAL_PREVIEW_USERNAME?.trim();
   const password = process.env.PORTAL_PREVIEW_PASSWORD;
