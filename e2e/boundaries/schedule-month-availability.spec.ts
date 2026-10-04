@@ -53,8 +53,10 @@ test("month availability lists open starts per provider and office, with a reaso
     // Day 11 shares a weekday with 4, 18 and 25: never the first or the last of a month.
     const noHoursDay = date(11);
     const noHoursWeekday = new Date(`${noHoursDay}T12:00:00Z`).getUTCDay();
-    // A 30-minute visit with 5-minute buffers reserves 40 minutes on a 15-minute grid:
-    // 08:55-09:35 holds one visit (09:00); 08:55-10:20 holds two (09:00 and 09:45).
+    // A 30-minute visit with 5-minute buffers reserves 40 minutes.
+    // The hourly booking interval holds the provider for the hour.
+    // So 08:55-09:35 and 08:55-10:20 each offer one opening (09:00).
+    // A 10:00 start would run past 10:20.
     const hours = (locationId: string, closeMinute: number) =>
       Array.from({ length: 7 }, (_, weekday) => weekday)
         .filter((weekday) => weekday !== noHoursWeekday)
@@ -178,7 +180,7 @@ test("month availability lists open starts per provider and office, with a reaso
     expect(atLutz.providers.map((row) => row.id)).toContain(double);
     expect(atLutz.providers.map((row) => row.id)).not.toContain(single);
     expect(entries(atLutz, openDay, double)).toEqual([
-      { locationId: lutz, open: ["09:00", "09:45"], booked: 0, capacity: 2, reason: null },
+      { locationId: lutz, open: ["09:00"], booked: 0, capacity: 1, reason: null },
     ]);
 
     const anywhere = await read("any");
@@ -187,7 +189,7 @@ test("month availability lists open starts per provider and office, with a reaso
     );
     expect(entries(anywhere, openDay, single)).toEqual(openAt(["09:00"]));
     expect(entries(anywhere, openDay, double)).toEqual([
-      { locationId: lutz, open: ["09:00", "09:45"], booked: 0, capacity: 2, reason: null },
+      { locationId: lutz, open: ["09:00"], booked: 0, capacity: 1, reason: null },
     ]);
 
     // The patient's own 09:00-09:30 visit on the full day blocks overlapping starts at Lutz.

@@ -85,6 +85,7 @@ export const schedulingChangeCommandSchema = z.enum([
   "add_location_closure",
   "remove_location_closure",
   "set_provider_day_hours",
+  "set_booking_interval",
 ]);
 const snapshotSchema = z.union([
   providerScheduleSchema,

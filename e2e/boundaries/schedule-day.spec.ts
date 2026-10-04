@@ -74,8 +74,10 @@ test("the day read gives every working provider a column and names who is off", 
     const [first, second] = fixture.locationIds;
     const date = schedulingFixtureDate(14);
     const weekday = weekdayOf(date);
-    // A 30-minute visit with 5-minute buffers reserves 40 minutes on a 15-minute grid, so
-    // 08:55-10:20 holds two starts (09:00, 09:45) and 11:55-13:20 two more (12:00, 12:45).
+    // A 30-minute visit with 5-minute buffers reserves 40 minutes.
+    // The hourly booking interval holds the provider for the hour.
+    // So 08:55-10:20 offers one opening (09:00) and 11:55-13:20 one more (12:00).
+    // A 10:00 or 13:00 start would run past the close.
     const row = (locationId: string, day: number, openMinute: number, closeMinute: number) => ({
       locationId,
       weekday: day,
@@ -200,11 +202,9 @@ test("the day read gives every working provider a column and names who is off", 
       }),
     ]);
     expect(split?.open.map((slot) => [iso(slot.startsAt), slot.locationId])).toEqual([
-      [at(date, "09:45"), first],
       [at(date, "12:00"), second],
-      [at(date, "12:45"), second],
     ]);
-    expect(split).toMatchObject({ openCount: 3, seen: null });
+    expect(split).toMatchObject({ openCount: 1, seen: null });
 
     const gap = byId.get(providers.Gap);
     expect(gap?.working.map((range) => [iso(range.from), iso(range.until)])).toEqual([
@@ -212,13 +212,13 @@ test("the day read gives every working provider a column and names who is off", 
       [at(date, "11:55"), at(date, "13:20")],
     ]);
     expect(gap?.open.map((slot) => iso(slot.startsAt))).toEqual(
-      ["09:00", "09:45", "12:00", "12:45"].map((time) => at(date, time)),
+      ["09:00", "12:00"].map((time) => at(date, time)),
     );
 
     const extra = byId.get(providers.Extra);
     expect(extra?.working.map((range) => range.locationId)).toEqual([second]);
     expect(extra?.open.map((slot) => iso(slot.startsAt))).toEqual(
-      ["12:00", "12:45"].map((time) => at(date, time)),
+      ["12:00"].map((time) => at(date, time)),
     );
 
     // Every column's open count is the month summary's for the same provider and date.

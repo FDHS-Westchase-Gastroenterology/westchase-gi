@@ -49,8 +49,10 @@ test("the week read lays out one to three providers' days in lane order", async 
     const locationId = location.id;
     const weekStart = boundaryWeek();
     const tuesday = shift(weekStart, 2);
-    // A 30-minute visit with 5-minute buffers reserves 40 minutes on a 15-minute grid.
-    // Hours of 08:55-09:35 hold one (09:00), 08:55-10:20 two (09:00, 09:45), 11:55-13:20 two.
+    // A 30-minute visit with 5-minute buffers reserves 40 minutes.
+    // The hourly booking interval holds the provider for the hour.
+    // So 08:55-09:35 and 08:55-10:20 each offer one opening (09:00), 11:55-13:20 one (12:00).
+    // A 10:00 start would run past 10:20.
     const row = (weekday: number, openMinute: number, closeMinute: number) => ({
       locationId,
       weekday,
@@ -155,10 +157,11 @@ test("the week read lays out one to three providers' days in lane order", async 
       [at(weekStart, "11:55"), at(weekStart, "13:20")],
     ]);
     expect(sunday.open.map((slot) => iso(slot.startsAt))).toEqual(
-      ["09:00", "09:45", "12:00", "12:45"].map((time) => at(weekStart, time)),
+      ["09:00", "12:00"].map((time) => at(weekStart, time)),
     );
-    expect(sunday).toMatchObject({ openCount: 4, seen: null, appointments: [] });
-    expect(mondayRow.openCount).toBe(3);
+    expect(sunday).toMatchObject({ openCount: 2, seen: null, appointments: [] });
+    // The 09:00 booking takes the morning's one opening.
+    expect(mondayRow.openCount).toBe(1);
     expect(mondayRow.appointments).toEqual([
       expect.objectContaining({
         startsAt: expect.any(String),

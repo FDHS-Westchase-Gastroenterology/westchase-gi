@@ -43,8 +43,10 @@ test("the month summary counts open, full, past, and closed practice days at one
       startsAt: at(closedDay, "00:00"),
       endsAt: at(nextDate(closedDay), "00:00"),
     } as const;
-    // A 30-minute visit with 5-minute buffers reserves 40 minutes on a 15-minute grid: one fits
-    // 08:55-09:35 (09:00), two fit 08:55-10:20 (09:00 and 09:45).
+    // A 30-minute visit with 5-minute buffers reserves 40 minutes.
+    // The hourly booking interval holds the provider for the hour.
+    // So 08:55-09:35 and 08:55-10:20 each offer one opening (09:00).
+    // Staff can still book 09:45 from the time picker.
     const hours = (closeMinute: number) =>
       Array.from({ length: 7 }, (_, weekday) => ({
         locationId,
@@ -159,9 +161,9 @@ test("the month summary counts open, full, past, and closed practice days at one
 
     expect(await day(openDay)).toMatchObject({
       status: "open",
-      open: 3,
+      open: 2,
       booked: 0,
-      capacity: 3,
+      capacity: 2,
       bookedShare: 0,
     });
     const open = await day(openDay);
@@ -169,11 +171,10 @@ test("the month summary counts open, full, past, and closed practice days at one
     // Providers in their Settings order, which starts as the order they were added.
     expect(open.providers.map((provider) => [provider.name, provider.open])).toEqual([
       ["TEST schedule-month Single", 1],
-      ["TEST schedule-month Double", 2],
+      ["TEST schedule-month Double", 1],
     ]);
     expect(open.providers[1].firstOpen.map((start) => new Date(start).toISOString())).toEqual([
       at(openDay, "09:00"),
-      at(openDay, "09:45"),
     ]);
     expect(await day(fullDay)).toMatchObject({
       status: "full",
@@ -183,7 +184,7 @@ test("the month summary counts open, full, past, and closed practice days at one
       // 120 reserved of 125 working minutes: the five minutes left cannot hold another visit.
       bookedShare: 0.96,
     });
-    expect(await day(releasedDay)).toMatchObject({ status: "open", open: 3, booked: 0 });
+    expect(await day(releasedDay)).toMatchObject({ status: "open", open: 2, booked: 0 });
     expect(await day(closedDay)).toEqual({
       date: closedDay,
       status: "closed",

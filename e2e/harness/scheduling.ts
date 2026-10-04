@@ -77,16 +77,35 @@ export async function saveSettings(
     idempotencyKey: randomUUID(),
     command,
   });
-  const result = await db.rpc("portal_save_scheduling_settings", {
-    p_actor_id: actorId,
-    p_idempotency_key: parsed.idempotencyKey,
-    p_fingerprint: createHmac("sha256", "TEST scheduling acceptance fixture")
-      .update(JSON.stringify({ actorId, action: "settings_command", command: parsed.command }))
-      .digest("hex"),
-    p_command: parsed.command,
-  });
+  const result = await db.rpc(
+    parsed.command.kind === "set_booking_interval"
+      ? "portal_set_booking_interval"
+      : "portal_save_scheduling_settings",
+    {
+      p_actor_id: actorId,
+      p_idempotency_key: parsed.idempotencyKey,
+      p_fingerprint: createHmac("sha256", "TEST scheduling acceptance fixture")
+        .update(JSON.stringify({ actorId, action: "settings_command", command: parsed.command }))
+        .digest("hex"),
+      p_command: parsed.command,
+    },
+  );
   expect(result.error).toBeNull();
   return settingsCommandOutcomeSchema.parse(result.data);
+}
+
+/** Puts the practice's booking interval back, whatever its version; specs that change it restore it. */
+export async function restoreBookingInterval(db: SupabaseClient, actorId: string, minutes = 60) {
+  const settings = await readSettings(db, actorId);
+  if (!settings.ok) throw new Error("Settings read failed");
+  if (settings.practice.bookingIntervalMinutes === minutes) return;
+  const outcome = await saveSettings(db, actorId, {
+    kind: "set_booking_interval",
+    id: settings.practice.id,
+    expectedVersion: settings.practice.version,
+    minutes,
+  });
+  expect(outcome.ok).toBe(true);
 }
 
 /** The Settings window's read. */

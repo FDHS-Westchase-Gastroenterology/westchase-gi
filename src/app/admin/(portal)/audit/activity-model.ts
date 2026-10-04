@@ -4,9 +4,10 @@
    the same. Browser-safe: the page and its rows both import it. */
 
 import { STATUS_LABELS } from "@/app/admin/(portal)/requests/format";
-import { asJsonArray, asJsonBoolean, asJsonObject, asJsonString } from "@/lib/json";
+import { asJsonArray, asJsonBoolean, asJsonNumber, asJsonObject, asJsonString } from "@/lib/json";
 import type { Json, JsonObject } from "@/lib/json";
 import type { ActivityRow, AppointmentAction } from "@/lib/portal/activity-contracts";
+import { intervalLength } from "@/lib/portal/scheduling/booking-interval";
 import { parseRequestStatus } from "@/lib/portal/workflow/contracts";
 
 import { describeAction } from "./audit-sentences";
@@ -208,6 +209,14 @@ function scheduleSentence(row: Readonly<ActivityRow>): ActionDescription {
         asJsonString(dayHours.scope) === "weekday_from"
           ? `changed ${possessive(provider)} ${weekdayOf(date)} hours from ${calendarDayLabel(date)}`
           : `changed ${possessive(provider)} hours for ${calendarDayLabel(date)}`,
+      );
+    }
+    case "set_booking_interval": {
+      const minutes = asJsonNumber(after.bookingIntervalMinutes);
+      return known(
+        minutes === null
+          ? "changed the booking interval"
+          : `changed the booking interval to ${intervalLength(minutes)}`,
       );
     }
     case "undo":
