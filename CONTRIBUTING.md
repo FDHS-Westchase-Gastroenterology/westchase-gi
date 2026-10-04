@@ -241,11 +241,13 @@ persistent Supabase branch `beta` (`jzvlkdohxycbortwrklc`), linked to the `beta`
   setting no migration creates, is mirrored onto beta each run.
 - **The copy is real patient and staff data.** Staff sign in with their own Production
   accounts. The shared preview sign-in is off for `beta` (`previewAliasEnabled` in
-  `src/lib/portal/server.ts`), and the alias variables scoped to `beta` are blank. The dump
+  `src/lib/portal/server.ts`), and the alias variables scoped to `beta` are empty. The dump
   passes through a GitHub-hosted runner and is deleted when the job ends.
-- **Nothing leaves beta.** Preview has no `RESEND_*` variables, so beta sends no email, and
-  no GitHub App variables, so the Website panel shows Not configured. There are no pg_cron
-  jobs or Vercel crons.
+- **The app sends nothing from beta.** Preview has no `RESEND_*` variables, so the portal sends
+  no email, and no GitHub App variables, so the Website panel shows Not configured. There are
+  no pg_cron jobs or Vercel crons. Supabase Auth on the beta project still sends its own
+  emails, such as password recovery, to the copied staff addresses, and its Site URL and
+  redirect allowlist (step 5) are not configured, so recovery on beta does not work.
 - **Credentials.** The refresh reads Production as `beta_refresh_reader`: login, read-only by
   default, `pg_read_all_data`, `BYPASSRLS`, three connections, 15-minute statement timeout.
   Its URL is the repository secret `BETA_REFRESH_SOURCE_DATABASE_URL`; beta's postgres URL is
@@ -261,7 +263,8 @@ persistent Supabase branch `beta` (`jzvlkdohxycbortwrklc`), linked to the `beta`
   beta's project reference and keys, so they are set once.
 - **Migrations.** Beta's migrations apply on each push through the Supabase integration and
   again after every refresh. Production's applied set must match `beta`'s migration files up to
-  Production's head, or the refresh fails.
+  Production's head, or the refresh fails. The workflow file runs from `main`, so an edit to it
+  takes effect once merged there; the migrations it replays come from `beta`.
 - **Promotion is one pull request from `beta` to `main`.** Feature branches merge into `beta`;
   when beta is ready, open the PR, pass the gates, and merge. Merging does not apply migrations
   to Production; that follows step 2 above and needs its own authorization. Afterwards merge
