@@ -30,13 +30,14 @@ export function serviceRoleKey(): string {
   return requiredEnv(["SUPABASE_SERVICE_ROLE_KEY"]);
 }
 
-/** Git branches whose deployments read and write the Production database. */
+/** Git branches whose deployments hold real patient and staff records: `main` on
+ * the Production database and `beta` on its nightly copy. */
 const PRODUCTION_DATA_BRANCHES: ReadonlySet<string> = new Set(["main", "beta"]);
 
 /** The shared preview sign-in maps to the seed admin account. It exists only on
- * Preview deployments of branches that run against a Preview Branch database,
- * never on `beta`, whose Preview deployments use the Production database. A
- * deployment that does not name its branch gets no alias. */
+ * Preview deployments of branches that run against a fictional Preview Branch
+ * database, never on `beta`. A deployment that does not name its branch gets no
+ * alias. */
 export function previewAliasEnabled(): boolean {
   const branch = process.env.VERCEL_GIT_COMMIT_REF?.trim();
   return (
