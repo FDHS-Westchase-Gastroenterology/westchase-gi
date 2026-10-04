@@ -94,6 +94,16 @@ export function AddRequestDialog({
       onKeyDownCapture={(event) => {
         event.currentTarget.toggleAttribute("data-instant", true);
       }}
+      /* Escape is answered here, before it becomes a close request: Chrome
+         lets a page refuse only a couple of Escape cancels in a row and
+         closes the dialog on the next, which would drop the draft. */
+      onKeyDown={(event) => {
+        if (event.key !== "Escape" || event.defaultPrevented || event.nativeEvent.isComposing) {
+          return;
+        }
+        event.preventDefault();
+        requestClose();
+      }}
       onCancel={(event) => {
         if (event.target !== event.currentTarget) return;
         event.preventDefault();

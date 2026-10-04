@@ -1463,9 +1463,12 @@
     font-size: 0.9rem;
   }
 
+  /* Each sheet keeps its printed 8.5in width on screen; a window narrower
+     than the paper pans the packet instead of the page. */
   .portal-print-packet {
     display: grid;
     gap: 1.5rem;
+    overflow-x: auto;
   }
 
   .portal-print-follow-up {
@@ -1565,5 +1568,6 @@
 
   .portal-print-packet {
     display: block !important;
+    overflow: visible !important;
   }
 }

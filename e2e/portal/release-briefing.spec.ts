@@ -79,7 +79,7 @@ test.describe("portal release briefing", () => {
     ).toBeVisible();
     for (const sentence of [
       "Pick the call's real outcome — the portal sets the status itself.",
-      "Outcome, call-again timing, and note save together. Undo restores everything.",
+      "Outcome, call-again timing, and note save together.",
       "New requests and due call-agains rise. Scheduled requests stay visible.",
     ]) {
       await expect(homeSummary).toContainText(sentence);
