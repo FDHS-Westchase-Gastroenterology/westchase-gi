@@ -13,7 +13,7 @@ import { createStaffFixture, signIn } from "../harness/session";
 /* Issue #352: the Settings window's Schedule group as staff use it. Time off
    warns about the bookings it covers before it is added and lists them to
    rebook after; a type turns off and back on with Undo, and moves in the
-   booking order from the keyboard; the booking interval changes with Undo;
+   booking order from the keyboard; the booking interval is typed, saved and undone;
    an office closes a day the same way time
    off does. Staff read every pane with no edit controls. The shared Preview
    database has other providers, types and offices, so every check is scoped
@@ -149,7 +149,7 @@ test("a type turns off and back on with Undo, and moves in the booking order fro
   }
 });
 
-test("the booking interval changes with Undo", async ({ page }) => {
+test("an admin types the booking interval, saves it, and Undo puts it back", async ({ page }) => {
   test.setTimeout(90_000);
   const db = serviceDb();
   const fixture = await createSchedulingFixture(db, `settings-interval-${runId}`);
@@ -163,18 +163,27 @@ test("the booking interval changes with Undo", async ({ page }) => {
     await restoreBookingInterval(db, actor);
     await signIn(page, fixture.staff);
     await page.goto("/admin/settings/appointment-types");
-    const choice = page.getByRole("radiogroup", { name: "Booking interval" });
-    await expect(choice.getByRole("radio", { name: "1 hour" })).toBeChecked();
+    const field = page.getByRole("spinbutton", { name: "Booking interval minutes" });
+    const save = page.getByRole("button", { name: "Save" });
+    await expect(field).toHaveValue("60");
+    await expect(save).toBeDisabled();
 
-    await choice.getByRole("radio", { name: "30 min" }).click();
-    await expect(page.getByText("Openings every 30 minutes")).toBeVisible();
-    await expect.poll(interval).toBe(30);
-    await expect(page.getByText(/one opening every 30 minutes/u)).toBeVisible();
+    // Between the quarter hours: the fix shows and nothing saves.
+    await field.fill("50");
+    await expect(page.getByText("Use a multiple of 15 minutes, from 15 to 480.")).toBeVisible();
+    await expect(field).toHaveAttribute("aria-invalid", "true");
+    await expect(save).toBeDisabled();
+
+    await field.fill("90");
+    await field.press("Enter");
+    await expect(page.getByText("Openings every 1 hour 30 minutes")).toBeVisible();
+    await expect.poll(interval).toBe(90);
+    await expect(page.getByText(/one opening every 1 hour 30 minutes\./u)).toBeVisible();
 
     await page.getByRole("button", { name: "Undo" }).click();
     await expect(page.getByText("Undone.")).toBeVisible();
     await expect.poll(interval).toBe(60);
-    await expect(choice.getByRole("radio", { name: "1 hour" })).toBeChecked();
+    await expect(field).toHaveValue("60");
   } finally {
     await restoreBookingInterval(db, actor);
     await fixture.dispose();
@@ -253,9 +262,8 @@ test("staff read the Schedule group with no edit controls", async ({ page }) => 
     await expect(page.getByRole("button", { name: `Move ${name}` })).toHaveCount(0);
     await expect(page.getByRole("button", { name: `More for ${name}` })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Add type" })).toHaveCount(0);
-    const choice = page.getByRole("radiogroup", { name: "Booking interval" });
-    await expect(choice.getByRole("radio", { name: "1 hour" })).toBeChecked();
-    await expect(choice.getByRole("radio", { name: "30 min" })).toBeDisabled();
+    await expect(page.getByRole("spinbutton", { name: "Booking interval minutes" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Save" })).toHaveCount(0);
 
     await page.goto("/admin/settings/locations");
     const office = `TEST ${prefix} First`;

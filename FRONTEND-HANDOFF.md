@@ -169,7 +169,8 @@ available exceptions less unavailable exceptions; a date with none is closed. A 
 location names, its own `open` count, and up to two `firstOpen` starts. `open` places the
 shortest active appointment type under the availability rules, including buffers, one opening per
 practice booking interval (Settings › Appointment types; one hour by default): the next opening
-starts one interval later, or after the type's time when that is longer. The week and Day views
+starts one interval later, or after the type's time when that is longer, and a booked appointment
+holds its provider the same way, so booking an opening leaves the later openings in place. The week and Day views
 and `month_availability` offer the same openings. The provider counts sum to the day's count. Only starts after `observedAt` count, so today reads
 `full` with zero capacity once its hours have passed. The summary is a planning signal; booking
 still reads `availability`.
@@ -282,7 +283,7 @@ the key, shows the result as a toast, and registers Undo by sending the inverse 
 | `set_appointment_type_active` / `delete_appointment_type` | `active`; deletion takes no more. |
 | `save_location_details` | `name`, address, `mapsQuery`, and the office's open `hours`. |
 | `add_location_closure` / `remove_location_closure` | `closedOn`, `note`, `dryRun`; removal takes `closureId`. |
-| `set_booking_interval` | `minutes`: 15, 30 or 60. `id` and `expectedVersion` are the read's `practice` row; the result's `entity` is `practice`. It spaces the openings the schedule offers; booking, moving and `availability` still accept any start the type fits, and booked appointments keep their times. |
+| `set_booking_interval` | `minutes`: a multiple of 15 from 15 to 480. `id` and `expectedVersion` are the read's `practice` row; the result's `entity` is `practice`. It spaces the openings the schedule offers; booking, moving and `availability` still accept any start the type fits, and booked appointments keep their times. |
 
 The action refuses a staff session with `forbidden`, and the database refuses it again. A dry run
 (`dryRun: true`) saves nothing and returns the `conflicts` the change would cover; the pane shows

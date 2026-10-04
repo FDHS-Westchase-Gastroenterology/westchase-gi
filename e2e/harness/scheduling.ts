@@ -21,10 +21,7 @@ import {
   schedulingSettingsOutcomeSchema,
   settingsCommandOutcomeSchema,
 } from "../../src/lib/portal/scheduling/settings-contracts";
-import type {
-  BookingInterval,
-  SettingsCommand,
-} from "../../src/lib/portal/scheduling/settings-contracts";
+import type { SettingsCommand } from "../../src/lib/portal/scheduling/settings-contracts";
 import { resolveAppointmentStart } from "../../src/lib/portal/scheduling/time";
 import { removePatients, savePatient } from "./patients";
 import { createStaffFixture } from "./session";
@@ -98,11 +95,7 @@ export async function saveSettings(
 }
 
 /** Puts the practice's booking interval back, whatever its version; specs that change it restore it. */
-export async function restoreBookingInterval(
-  db: SupabaseClient,
-  actorId: string,
-  minutes: BookingInterval = 60,
-) {
+export async function restoreBookingInterval(db: SupabaseClient, actorId: string, minutes = 60) {
   const settings = await readSettings(db, actorId);
   if (!settings.ok) throw new Error("Settings read failed");
   if (settings.practice.bookingIntervalMinutes === minutes) return;

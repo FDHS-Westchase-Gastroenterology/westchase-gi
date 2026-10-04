@@ -67,9 +67,12 @@ const officeDaySchema = z
 
 /* How far apart the schedule offers openings: one booking per hour unless an admin chooses a
    finer grid. A type longer than the interval still keeps its own time. */
-export const BOOKING_INTERVALS = [15, 30, 60] as const;
-export type BookingInterval = (typeof BOOKING_INTERVALS)[number];
-const bookingIntervalSchema = z.union([z.literal(15), z.literal(30), z.literal(60)]);
+/* The practice's booking interval: whole quarter hours, because openings are found on the
+   schedule's 15-minute grid, from a quarter hour to a full working day. */
+export const BOOKING_INTERVAL_MINUTES = { min: 15, max: 480, step: 15 } as const;
+const bookingIntervalSchema = quarterSchema.pipe(
+  z.number().min(BOOKING_INTERVAL_MINUTES.min).max(BOOKING_INTERVAL_MINUTES.max),
+);
 
 const existing = { id: z.uuid(), expectedVersion: schedulingVersionSchema };
 export const settingsCommandSchema = z

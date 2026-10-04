@@ -3,37 +3,21 @@
 import { useState } from "react";
 
 import type { SettingsSend } from "@/app/admin/(portal)/settings/use-settings-command";
-import { SegmentedControl } from "@/components/ui/segmented-control";
-import type { SegmentedControlOption } from "@/components/ui/segmented-control";
-import { BOOKING_INTERVALS } from "@/lib/portal/scheduling/settings-contracts";
-import type {
-  BookingInterval,
-  SchedulingSettings,
-} from "@/lib/portal/scheduling/settings-contracts";
+import { Button } from "@/components/ui/button";
+import { Field, FieldError } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { intervalEvery, parseInterval } from "@/lib/portal/scheduling/booking-interval";
+import { BOOKING_INTERVAL_MINUTES } from "@/lib/portal/scheduling/settings-contracts";
+import type { SchedulingSettings } from "@/lib/portal/scheduling/settings-contracts";
 
 /* The practice's booking interval: how often the Schedule offers each
-   provider an opening, one an hour unless an admin chooses a finer grid. A
-   type longer than the interval keeps its full length, and booked
-   appointments never move. Staff read it; admins change it, applied as it
-   is chosen and confirmed in the Undo toast. */
+   provider an opening, one an hour unless an admin sets another. An admin
+   types any whole quarter hour up to a working day and saves it; the Undo
+   toast confirms it. A booked visit holds its provider for the interval
+   the way an opening does. A type longer than the interval keeps its full
+   length, and booked appointments never move. Staff read it. */
 
-const LABELS = {
-  15: "15 min",
-  30: "30 min",
-  60: "1 hour",
-} as const satisfies Record<BookingInterval, string>;
-
-const OPTIONS: readonly SegmentedControlOption<`${BookingInterval}`>[] = BOOKING_INTERVALS.map(
-  (minutes) => ({ value: `${minutes}`, label: LABELS[minutes] }),
-);
-
-function spoken(minutes: BookingInterval): string {
-  return minutes === 60 ? "every hour" : `every ${String(minutes)} minutes`;
-}
-
-function intervalOf(value: string): BookingInterval {
-  return BOOKING_INTERVALS.find((minutes) => `${minutes}` === value) ?? 60;
-}
+const { min, max, step } = BOOKING_INTERVAL_MINUTES;
 
 export function BookingIntervalBand({
   practice,
@@ -44,36 +28,42 @@ export function BookingIntervalBand({
   canEdit: boolean;
   send: SettingsSend;
 }>) {
-  /* The control shows the choice at once; the server's answer replaces it
-     when the practice's version moves on. */
+  /* The field holds the draft; the server's answer replaces it when the
+     practice's version moves on. */
   const [seenVersion, setSeenVersion] = useState(practice.version);
-  const [minutes, setMinutes] = useState(practice.bookingIntervalMinutes);
+  const [saved, setSaved] = useState(practice.bookingIntervalMinutes);
+  const [draft, setDraft] = useState(String(practice.bookingIntervalMinutes));
   if (seenVersion !== practice.version) {
     setSeenVersion(practice.version);
-    setMinutes(practice.bookingIntervalMinutes);
+    setSaved(practice.bookingIntervalMinutes);
+    setDraft(String(practice.bookingIntervalMinutes));
   }
+  const minutes = parseInterval(draft);
+  const invalid = draft.trim() !== "" && minutes === null;
 
-  function choose(next: BookingInterval) {
-    if (next === minutes) return;
-    const previous = minutes;
-    setMinutes(next);
+  function save() {
+    if (minutes === null || minutes === saved) return;
+    const previous = saved;
+    setSaved(minutes);
     const command = {
       kind: "set_booking_interval",
       id: practice.id,
       expectedVersion: practice.version,
     } as const;
     void send(
-      { ...command, minutes: next },
+      { ...command, minutes },
       {
         undo: {
-          headline: `Openings ${spoken(next)}`,
+          headline: `Openings ${intervalEvery(minutes)}`,
           detail: "Booked appointments keep their times.",
           inverse: { ...command, minutes: previous },
           slot: "booking-interval",
         },
       },
     ).then((outcome) => {
-      if (!outcome.ok) setMinutes(practice.bookingIntervalMinutes);
+      if (outcome.ok) return;
+      setSaved(practice.bookingIntervalMinutes);
+      setDraft(String(practice.bookingIntervalMinutes));
     });
   }
 
@@ -87,21 +77,58 @@ export function BookingIntervalBand({
           id="booking-interval-line"
           className="text-[0.8125rem] leading-[1.125rem] text-(--wgi-muted-ink)"
         >
-          The schedule offers each provider one opening {spoken(minutes)}. A longer visit keeps its
-          full length.
+          The schedule offers each provider one opening {intervalEvery(saved)}. A longer visit keeps
+          its full length.
         </p>
       </div>
-      <SegmentedControl<`${BookingInterval}`>
-        aria-labelledby="booking-interval-title"
-        aria-describedby="booking-interval-line"
-        options={OPTIONS}
-        value={`${minutes}`}
-        disabled={!canEdit}
-        className="settings-interval-switch"
-        onValueChange={(value) => {
-          choose(intervalOf(value));
+      <form
+        className="settings-interval-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          save();
         }}
-      />
+      >
+        <Field data-invalid={invalid || undefined} className="settings-interval-field">
+          <div className="flex items-center gap-2">
+            <Input
+              id="booking-interval-input"
+              type="number"
+              inputMode="numeric"
+              min={min}
+              max={max}
+              step={step}
+              aria-labelledby="booking-interval-title booking-interval-unit"
+              aria-describedby={
+                invalid ? "booking-interval-line booking-interval-error" : "booking-interval-line"
+              }
+              aria-invalid={invalid}
+              disabled={!canEdit}
+              className="w-24"
+              value={draft}
+              onChange={(event) => {
+                setDraft(event.target.value);
+              }}
+            />
+            <span id="booking-interval-unit" className="text-sm text-(--wgi-muted-ink)">
+              minutes
+            </span>
+            {canEdit ? (
+              <Button
+                type="submit"
+                variant="outline"
+                disabled={minutes === null || minutes === saved}
+              >
+                Save
+              </Button>
+            ) : null}
+          </div>
+          {invalid ? (
+            <FieldError id="booking-interval-error">
+              Use a multiple of {step} minutes, from {min} to {max}.
+            </FieldError>
+          ) : null}
+        </Field>
+      </form>
     </section>
   );
 }

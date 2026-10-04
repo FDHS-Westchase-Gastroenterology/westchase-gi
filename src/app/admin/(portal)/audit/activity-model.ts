@@ -7,6 +7,7 @@ import { STATUS_LABELS } from "@/app/admin/(portal)/requests/format";
 import { asJsonArray, asJsonBoolean, asJsonNumber, asJsonObject, asJsonString } from "@/lib/json";
 import type { Json, JsonObject } from "@/lib/json";
 import type { ActivityRow, AppointmentAction } from "@/lib/portal/activity-contracts";
+import { intervalLength } from "@/lib/portal/scheduling/booking-interval";
 import { parseRequestStatus } from "@/lib/portal/workflow/contracts";
 
 import { describeAction } from "./audit-sentences";
@@ -215,7 +216,7 @@ function scheduleSentence(row: Readonly<ActivityRow>): ActionDescription {
       return known(
         minutes === null
           ? "changed the booking interval"
-          : `changed the booking interval to ${minutes === 60 ? "1 hour" : `${minutes} minutes`}`,
+          : `changed the booking interval to ${intervalLength(minutes)}`,
       );
     }
     case "undo":

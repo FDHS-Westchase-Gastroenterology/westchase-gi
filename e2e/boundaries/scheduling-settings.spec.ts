@@ -195,14 +195,16 @@ test("the booking interval spaces each provider's openings, and only admins chan
   }
   try {
     await restoreBookingInterval(db, actor);
-    expect(
+    // Any whole quarter hour from 15 minutes to 8 hours; nothing between the quarters.
+    const accepts = (minutes: number) =>
       settingsCommandSchema.safeParse({
         kind: "set_booking_interval",
         id: randomUUID(),
         expectedVersion: 1,
-        minutes: 45,
-      }).success,
-    ).toBe(false);
+        minutes,
+      }).success;
+    expect([15, 45, 90, 480].map(accepts)).toEqual([true, true, true, true]);
+    expect([0, 10, 50, 495, 22.5].map(accepts)).toEqual([false, false, false, false, false]);
 
     const read = await readSettings(db, actor);
     if (!read.ok) throw new Error("Settings read failed");
@@ -235,7 +237,17 @@ test("the booking interval spaces each provider's openings, and only admins chan
           p_actor_id: actor,
           p_idempotency_key: randomUUID(),
           p_fingerprint: fingerprint,
-          p_command: { ...command, minutes: 45 },
+          p_command: { ...command, minutes: 50 },
+        })
+      ).data,
+    ).toEqual({ ok: false, code: "invalid_command" });
+    expect(
+      (
+        await db.rpc("portal_set_booking_interval", {
+          p_actor_id: actor,
+          p_idempotency_key: randomUUID(),
+          p_fingerprint: fingerprint,
+          p_command: { ...command, minutes: 495 },
         })
       ).data,
     ).toEqual({ ok: false, code: "invalid_command" });
