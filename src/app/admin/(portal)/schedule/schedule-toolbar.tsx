@@ -1,20 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import type { ReactNode, Ref } from "react";
 
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import type { SegmentedControlOption } from "@/components/ui/segmented-control";
 
+import { useScheduleNavigation } from "./schedule-navigation";
 import { ScheduleSearch } from "./schedule-search";
 import { ShortcutsList, useScheduleShortcuts } from "./schedule-shortcuts";
 import type { ShortcutTargets } from "./schedule-shortcuts";
 
 /* What the Schedule's three views share in their headers: the arrows a
    view steps with, and the tools on the right, the patient search (schedule-search.tsx) and
-   the Day · Week · Month switch, which goes where D, W and M go. */
+   the Day · Week · Month switch, which goes where D, W and M go. A view's own
+   tool stands before the search, so the switch keeps one place in every view
+   and the view it opens never moves it out from under the pointer.
+
+   The switch answers the press: its thumb slides to the chosen view while the
+   server renders it (schedule-navigation.tsx). Arrow keys move the choice too,
+   and a choice made from the keyboard jumps rather than slides. */
 
 export type ScheduleView = "day" | "week" | "month";
 
@@ -23,6 +29,12 @@ const VIEW_OPTIONS: readonly SegmentedControlOption<ScheduleView>[] = [
   { value: "week", label: "Week" },
   { value: "month", label: "Month" },
 ];
+
+/** Marks a view's section while a move away from it waits on the server. */
+export function usePendingSection() {
+  const { pending } = useScheduleNavigation();
+  return pending === null ? {} : { "aria-busy": true, "data-pending": "" };
+}
 
 /** A previous or next arrow; a step the schedule cannot take is a disabled button. */
 export function ScheduleArrow({
@@ -52,25 +64,33 @@ export function ScheduleTools({
   value: ScheduleView;
   targets: ShortcutTargets;
   toolsRef?: Ref<HTMLDivElement>;
-  /** A view's own tool after the switch, such as the Day view's Hours. */
+  /** A view's own tool before the search, such as the Day view's Hours. */
   children?: ReactNode;
 }>) {
-  const router = useRouter();
+  const { pending, navigate } = useScheduleNavigation();
+  const keyed = useRef(false);
   return (
     <div ref={toolsRef} className="wgi-schedule-tools">
+      {children}
       <ScheduleSearch />
       <SegmentedControl<ScheduleView>
         aria-label="View"
         paper="glass"
+        motion={pending?.instant === true ? "none" : "wgi"}
         options={VIEW_OPTIONS}
-        value={value}
+        value={pending?.view ?? value}
         className="w-auto"
+        onPointerDown={() => {
+          keyed.current = false;
+        }}
+        onKeyDownCapture={() => {
+          keyed.current = true;
+        }}
         onValueChange={(next) => {
           const href = targets[next];
-          if (href !== null) router.push(href);
+          if (href !== null) navigate(href, { view: next, instant: keyed.current });
         }}
       />
-      {children}
     </div>
   );
 }

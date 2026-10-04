@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useEffectEvent } from "react";
 import type { RefObject } from "react";
 
@@ -8,6 +7,9 @@ import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Popover, PopoverClose, PopoverContent, PopoverTitle } from "@/components/ui/popover";
 import type { PopoverChangeDetails, PopoverHandle } from "@/components/ui/popover-behavior";
 import { SCHEDULE_SHORTCUTS, spokenKeys } from "@/lib/portal/schedule-shortcut-list";
+
+import { useScheduleNavigation } from "./schedule-navigation";
+import type { ScheduleView } from "./schedule-toolbar";
 
 /* The Schedule's single-key shortcuts and the list that names them (issue
    #351; Figma S5 shortcuts frame). Day, Week and Month all answer them:
@@ -37,13 +39,19 @@ export interface ShortcutTargets {
 const OWNS_KEYS =
   'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="combobox"], [role="dialog"], [role="menu"], [role="listbox"]';
 
+const VIEW_KEYS: ReadonlyMap<string, ScheduleView> = new Map([
+  ["d", "day"],
+  ["w", "week"],
+  ["m", "month"],
+]);
+
 function ownsKeys(target: EventTarget | null): boolean {
   return target instanceof Element && target.closest(OWNS_KEYS) !== null;
 }
 
 /** Listens for the Schedule's shortcuts on the document while mounted. */
 export function useScheduleShortcuts(targets: Readonly<ShortcutTargets>, onHelp: () => void) {
-  const router = useRouter();
+  const { navigate } = useScheduleNavigation();
 
   const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
     if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
@@ -61,6 +69,7 @@ export function useScheduleShortcuts(targets: Readonly<ShortcutTargets>, onHelp:
       return;
     }
     if (event.shiftKey) return;
+    const key = event.key.toLowerCase();
     const href = {
       t: targets.today,
       j: targets.next,
@@ -68,10 +77,10 @@ export function useScheduleShortcuts(targets: Readonly<ShortcutTargets>, onHelp:
       d: targets.day,
       w: targets.week,
       m: targets.month,
-    }[event.key.toLowerCase()];
+    }[key];
     if (href === undefined || href === null) return;
     event.preventDefault();
-    router.push(href);
+    navigate(href, { view: VIEW_KEYS.get(key) ?? null, instant: true });
   });
 
   useEffect(() => {

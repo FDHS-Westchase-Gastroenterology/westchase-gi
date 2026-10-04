@@ -23,6 +23,21 @@
   }
 }
 
+/* While a move to another view or date waits on the server
+   (schedule-navigation.tsx), the view on screen reads as on its way out,
+   in the in-progress ink its buttons use. The header keeps full ink: the
+   switch in it already shows where the move is going. The fade waits a
+   base beat, so a move that lands quickly never dims, and the next view
+   replaces this one in a single cut. The transition lives on the pending
+   rule alone, so a move that keeps the same view (J, K, T) also lands as a
+   cut rather than fading back up. Input stays live throughout. Reduced
+   motion: the blanket reset drops the fade; the dim still waits its beat. */
+.wgi-schedule[data-pending] > :not(.wgi-schedule-head) {
+  cursor: progress;
+  opacity: 0.7;
+  transition: opacity var(--motion-base-duration) var(--motion-standard) var(--motion-base-duration);
+}
+
 .wgi-schedule :where(a, button, input, [tabindex]):focus-visible {
   outline: none;
   box-shadow:

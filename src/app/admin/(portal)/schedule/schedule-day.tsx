@@ -20,7 +20,7 @@ import type { DayAppointmentCell, ScheduleDay } from "./schedule-day-model";
 import { useSchedulePeople } from "./schedule-people";
 import { ShortcutsList, useScheduleShortcuts } from "./schedule-shortcuts";
 import type { ShortcutTargets } from "./schedule-shortcuts";
-import { ScheduleArrow, ScheduleTools } from "./schedule-toolbar";
+import { ScheduleArrow, ScheduleTools, usePendingSection } from "./schedule-toolbar";
 import { weekAppointmentCommand } from "./week-actions";
 import type { WeekAppointmentOutcome } from "./week-actions";
 import { practiceTime } from "./week-calendar";
@@ -53,6 +53,7 @@ export function ScheduleDayView({ view, admin }: Readonly<{ view: ScheduleDay; a
   const router = useRouter();
   const baseId = useId();
   const titleId = `${baseId}-title`;
+  const pendingSection = usePendingSection();
   const [card] = useState(() => createPopoverHandle<WeekCardPayload>());
   /* Opened from the keyboard: the card appears and leaves at once. */
   const [keyed, setKeyed] = useState(false);
@@ -159,7 +160,7 @@ export function ScheduleDayView({ view, admin }: Readonly<{ view: ScheduleDay; a
   const shown = withMove(view, move);
   const nobody = view.activeProviderCount === 0;
   return (
-    <section className="wgi-schedule wgi-dayview" aria-labelledby={titleId}>
+    <section className="wgi-schedule wgi-dayview" aria-labelledby={titleId} {...pendingSection}>
       <DayHeader
         view={view}
         titleId={titleId}

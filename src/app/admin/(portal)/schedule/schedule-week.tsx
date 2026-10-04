@@ -11,7 +11,7 @@ import { createPopoverHandle } from "@/components/ui/popover-behavior";
 import { TooltipContent } from "@/components/ui/tooltip";
 
 import { useSchedulePeople } from "./schedule-people";
-import { ScheduleArrow, ScheduleToolsWithShortcuts } from "./schedule-toolbar";
+import { ScheduleArrow, ScheduleToolsWithShortcuts, usePendingSection } from "./schedule-toolbar";
 import type { ScheduleWeek, WeekProviderChoice } from "./schedule-week-model";
 import { rememberWeekProvider } from "./week-actions";
 import { dayHref, weekHref } from "./week-calendar";
@@ -65,6 +65,7 @@ export function ScheduleWeekView({
 }: Readonly<{ view: ScheduleWeek; catalog: readonly WeekProviderChoice[] }>) {
   const baseId = useId();
   const titleId = `${baseId}-title`;
+  const pendingSection = usePendingSection();
   const [tip] = useState(() => Tooltip.createHandle<TipPayload>());
   const [band] = useState(() => Tooltip.createHandle<TipPayload>());
   const [card] = useState(() => createPopoverHandle<WeekCardPayload>());
@@ -75,7 +76,7 @@ export function ScheduleWeekView({
   const grid: Grid = { view, baseId, tip, band, card, onKeyed: setKeyed };
 
   return (
-    <section className="wgi-schedule wgi-week" aria-labelledby={titleId}>
+    <section className="wgi-schedule wgi-week" aria-labelledby={titleId} {...pendingSection}>
       <WeekHeader view={view} catalog={catalog} titleId={titleId} />
       <WeekGrid grid={grid} />
       <Tooltip.Root handle={tip} disableHoverablePopup>

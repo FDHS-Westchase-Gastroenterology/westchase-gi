@@ -30,7 +30,7 @@ import type { PopoverHandle } from "@/components/ui/popover-behavior";
 
 import { CellBody, DayPreviewPopup, Legend } from "./month-day-preview";
 import type { DayPreview, ScheduleCell, ScheduleMonth } from "./schedule-model";
-import { ScheduleArrow, ScheduleToolsWithShortcuts } from "./schedule-toolbar";
+import { ScheduleArrow, ScheduleToolsWithShortcuts, usePendingSection } from "./schedule-toolbar";
 import { dayHref, weekHref, weekStartOf } from "./week-calendar";
 
 /* The Schedule's month view (Figma Ypf9ohpRcGWF5C9T9bSvWW, section 08, S1;
@@ -253,6 +253,7 @@ export function ScheduleMonthView({ view }: Readonly<{ view: ScheduleMonth }>) {
   const router = useRouter();
   const baseId = useId();
   const titleId = `${baseId}-title`;
+  const pendingSection = usePendingSection();
   const cellId = (date: string) => `${baseId}-${date}`;
   const days = view.weeks.flat().filter((cell) => cell.kind !== "blank");
   const firstDay = days[0]?.date ?? "";
@@ -383,7 +384,7 @@ export function ScheduleMonthView({ view }: Readonly<{ view: ScheduleMonth }>) {
   );
 
   return (
-    <section className="wgi-schedule" aria-labelledby={titleId}>
+    <section className="wgi-schedule" aria-labelledby={titleId} {...pendingSection}>
       <header className="wgi-schedule-head">
         <div className="wgi-schedule-nav">
           <h1 id={titleId} className="wgi-schedule-title">

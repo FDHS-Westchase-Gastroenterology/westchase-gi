@@ -24,7 +24,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
  * it. Segments are equal width, so the thumb's place is the chosen index
  * alone (`--segment-index` / `--segment-count`) and needs no
  * measuring: the server render already shows the choice. Ink is
- * slate-700, the chosen segment ink (slate-950) at weight 600. Focus is
+ * slate-700, the chosen segment ink (slate-950) at weight 600; each label
+ * reserves its weight-600 width, so a choice never resizes the control or
+ * moves what sits beside it. Focus is
  * the recipe teal ring on the segment. `readOnly` keeps the choice and
  * still submits it (a locked draft); `disabled` dims and drops it.
  *
@@ -67,7 +69,7 @@ const segmentedControlVariants = cva(
       motion: {
         /* The staff home's fast beat for the thumb and the ink. */
         wgi: "[--segment-duration:var(--motion-fast-duration)] [--segment-ease:var(--motion-standard)]",
-        /* No transitions at all; no consumer today. */
+        /* No transitions at all: the Schedule's view switch when a key chose the view. */
         none: "[--segment-duration:0s] [--segment-ease:linear]",
       },
     },
@@ -190,7 +192,12 @@ function SegmentedControl<Value extends string>({
             className={segmentVariants({ paper })}
           >
             {option.icon}
-            {option.label}
+            <span
+              data-label={option.label}
+              className="flex flex-col items-center after:invisible after:h-0 after:overflow-hidden after:font-semibold after:content-[attr(data-label)]"
+            >
+              {option.label}
+            </span>
           </RadioPrimitive.Root>
         );
         return option.disabledReason === undefined ? (

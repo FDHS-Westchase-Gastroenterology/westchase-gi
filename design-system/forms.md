@@ -40,9 +40,10 @@ aria-invalid={error === null ? undefined : true}
 | `SegmentedControl` | Choosing one of two to four short options, all visible at once, one always chosen | `staff-request-fields.tsx` (preferred office and time) |
 | `Checkbox` | An independent yes or no, including each row of a multi-select list | `print-sheet-body.tsx` |
 
-The four controls share one `motion` axis: `wgi` (default), `shadcn` and `none`, and only `wgi`
-has consumers. `Input`, `Textarea` and `NativeSelect` fade their border and ring over 200ms
-`ease`, a recorded literal ([item 16](roadmap.md#16-motion-literals)). `Checkbox` draws a 4px
+The four controls share one `motion` axis. `wgi` (default) has consumers on all four. `none` has
+one: the Schedule's view switch wears it while a move chosen from the keyboard is on its way, so
+its thumb jumps. `shadcn` has no consumer today. `Input`, `Textarea` and `NativeSelect` fade their
+border and ring over 200ms `ease`, a recorded literal ([item 16](roadmap.md#16-motion-literals)). `Checkbox` draws a 4px
 corner off the radius steps ([item 8](roadmap.md#8-the-radius-ramp)).
 
 Selects stay native. A native `<select>` opens the platform picker on phones, speaks every

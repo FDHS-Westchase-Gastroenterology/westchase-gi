@@ -28,10 +28,13 @@
 
 /* Title, controls and tools share the frame's 48px row; in compare mode
    the lanes' surnames sit beneath it (W2) and the row stays put. */
+/* Top-aligned, so the search and the view switch sit where Day and Month
+   put them and a change of view never nudges the switch. */
 .wgi-week .wgi-schedule-tools {
   height: 3rem;
   min-width: min-content;
   flex: 1 0 0;
+  align-items: flex-start;
   justify-content: flex-end;
 }
 
