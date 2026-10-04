@@ -229,7 +229,7 @@ migration-changing, or otherwise untrusted PRs are rejected before review. Execu
 
 `beta` is a long-lived branch for trying features on the Production database before they
 reach `main`. Vercel deploys each push to `beta` as a Preview at the branch URL
-`westchase-gi-git-beta-<team>.vercel.app`. Preview variables scoped to the `beta` branch point it
+`westchase-gi-git-beta-jasongitdev-1290s-projects.vercel.app`. Preview variables scoped to the `beta` branch point it
 at Production: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
 `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_SECRET_KEY`,
 `RESEND_API_KEY`, `RESEND_FROM` and `PORTAL_BASE_URL`, copied from the Production target.
