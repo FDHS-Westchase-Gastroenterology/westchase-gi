@@ -119,7 +119,8 @@ jobs:
       - name: Compare beta's schema with Production's
         run: |
           fingerprint() {
-            psql "$1" -At -v ON_ERROR_STOP=1 <<'SQL'
+            psql "$1" -Atq -v ON_ERROR_STOP=1 <<'SQL'
+          set search_path = pg_catalog;
           with app as (
             select oid from pg_namespace where nspname in ('public', 'private')
           )
