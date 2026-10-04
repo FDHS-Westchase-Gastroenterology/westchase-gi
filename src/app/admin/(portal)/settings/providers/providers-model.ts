@@ -18,12 +18,14 @@ import type {
    server checks it against the office's hours and the bookings it would
    leave outside it. */
 
-/** One window of the week as the command sends it. */
+/** One window of the week as the command sends it. A window on office hours takes its
+    office's hours for that day and is the only one that day. */
 export interface WeekWindow {
   readonly locationId: string;
   readonly weekday: number;
   readonly openMinute: number;
   readonly closeMinute: number;
+  readonly followsOffice: boolean;
 }
 
 export interface MinuteSpan {
@@ -37,8 +39,14 @@ function ordered(week: readonly WeekWindow[]): WeekWindow[] {
   );
 }
 
-function windowOf({ locationId, weekday, openMinute, closeMinute }: Readonly<WeekWindow>) {
-  return { locationId, weekday, openMinute, closeMinute };
+function windowOf({
+  locationId,
+  weekday,
+  openMinute,
+  closeMinute,
+  followsOffice,
+}: Readonly<WeekWindow>) {
+  return { locationId, weekday, openMinute, closeMinute, followsOffice };
 }
 
 /** The week in force on `date`: the rows valid that day, ordered by day and time. */
@@ -54,7 +62,7 @@ function weekKey(week: readonly WeekWindow[]): string {
   return ordered(week)
     .map(
       (w) =>
-        `${w.locationId}/${String(w.weekday)}/${String(w.openMinute)}-${String(w.closeMinute)}`,
+        `${w.locationId}/${String(w.weekday)}/${String(w.openMinute)}-${String(w.closeMinute)}/${String(w.followsOffice)}`,
     )
     .join(",");
 }
@@ -130,7 +138,15 @@ export function officeWeek(location: Readonly<SettingsLocation> | undefined): We
     const office = officeDay(location, weekday);
     return office === null
       ? []
-      : [{ locationId: location.id, weekday, openMinute: office.open, closeMinute: office.close }];
+      : [
+          {
+            locationId: location.id,
+            weekday,
+            openMinute: office.open,
+            closeMinute: office.close,
+            followsOffice: true,
+          },
+        ];
   });
 }
 
@@ -150,13 +166,16 @@ export function rulerAt(span: Readonly<MinuteSpan>, minute: number): number {
   return ((minute - span.open) / (span.close - span.open)) * 100;
 }
 
-/** A day's hours as one line: "Tampa · 8:00 AM – 5:00 PM", or "Tampa · 8:00 AM – 12:00 PM,
-    Lutz · 1:00 – 5:00 PM" when the day moves offices. */
+/** A day's hours as one line: "Tampa · Office hours, 8:00 AM – 5:00 PM", "Tampa · 8:00 AM –
+    4:00 PM", or "Tampa · 8:00 AM – 12:00 PM, Lutz · 1:00 – 5:00 PM" when the day moves offices. */
 export function dayLine(windows: readonly WeekWindow[], locations: readonly SettingsLocation[]) {
   const name = (id: string) => {
     const place = locations.find((location) => location.id === id);
     return place === undefined ? "Office" : placeName(place);
   };
+  const first = windows.at(0);
+  if (first?.followsOffice === true)
+    return `${name(first.locationId)} · Office hours, ${clockRange(first.openMinute, first.closeMinute)}`;
   const oneOffice = windows.every((window) => window.locationId === windows[0]?.locationId);
   if (oneOffice && windows.length > 0)
     return `${name(windows[0]?.locationId ?? "")} · ${windows
@@ -172,11 +191,12 @@ export function dayLine(windows: readonly WeekWindow[], locations: readonly Sett
 
 /* ---- The Edit hours sheet's draft ---- */
 
-/** One block of a working day. */
+/** One block of a working day. A block on office hours is the whole of its office's day. */
 export interface DraftBlock {
   readonly locationId: string;
   readonly open: number;
   readonly close: number;
+  readonly followsOffice: boolean;
 }
 
 /** Each weekday's blocks, Monday first; a day with none is a day off. */
@@ -190,6 +210,7 @@ export function draftOf(week: readonly WeekWindow[]): WeekDraft {
         locationId: window.locationId,
         open: window.openMinute,
         close: window.closeMinute,
+        followsOffice: window.followsOffice,
       })),
     ]),
   );
@@ -202,11 +223,17 @@ export function weekOfDraft(draft: WeekDraft): WeekWindow[] {
       weekday,
       openMinute: block.open,
       closeMinute: block.close,
+      followsOffice: block.followsOffice,
     })),
   );
 }
 
-/** A day turned on: the office the provider works most that is open then, for its hours. */
+/** Whether `location` has hours of its own on `weekday` to follow. */
+export function hasOfficeDay(location: Readonly<SettingsLocation> | undefined, weekday: number) {
+  return location?.hours.some((row) => row.weekday === weekday) === true;
+}
+
+/** A day turned on: the office the provider works most that is open then, on its hours. */
 export function startDay(
   draft: WeekDraft,
   weekday: number,
@@ -216,25 +243,52 @@ export function startDay(
   const hours = officeDay(office ?? undefined, weekday);
   return office === null || hours === null
     ? []
-    : [{ locationId: office.id, open: hours.open, close: hours.close }];
+    : [
+        {
+          locationId: office.id,
+          open: hours.open,
+          close: hours.close,
+          followsOffice: hasOfficeDay(office, weekday),
+        },
+      ];
 }
 
-/** A block moved to another office: one that kept the old office's hours takes the new
-    office's; any other keeps its times inside the new office's hours. */
+/** A block moved to another office: one on office hours takes the new office's day; a custom
+    one keeps its times inside the new office's hours. */
 export function moveBlock(
   block: Readonly<DraftBlock>,
   weekday: number,
-  from: Readonly<SettingsLocation> | undefined,
   to: Readonly<SettingsLocation>,
 ): DraftBlock {
-  const was = officeDay(from, weekday);
   const now = officeDay(to, weekday) ?? { open: block.open, close: block.close };
-  const open = was !== null && block.open === was.open ? now.open : Math.max(block.open, now.open);
-  const close =
-    was !== null && block.close === was.close ? now.close : Math.min(block.close, now.close);
+  if (block.followsOffice)
+    return {
+      locationId: to.id,
+      open: now.open,
+      close: now.close,
+      followsOffice: hasOfficeDay(to, weekday),
+    };
+  const open = Math.max(block.open, now.open);
+  const close = Math.min(block.close, now.close);
   return close > open
-    ? { locationId: to.id, open, close }
-    : { locationId: to.id, open: now.open, close: now.close };
+    ? { locationId: to.id, open, close, followsOffice: false }
+    : { locationId: to.id, open: now.open, close: now.close, followsOffice: false };
+}
+
+/** A day put on office hours: one block, its office's whole day. */
+export function officeBlock(
+  block: Readonly<DraftBlock>,
+  weekday: number,
+  locations: readonly SettingsLocation[],
+): DraftBlock {
+  const location = locations.find((each) => each.id === block.locationId);
+  const office = officeDay(location, weekday) ?? { open: block.open, close: block.close };
+  return {
+    locationId: block.locationId,
+    open: office.open,
+    close: office.close,
+    followsOffice: true,
+  };
 }
 
 /** More hours later in the day: an hour after the last block ends, to the office's close. */
@@ -252,7 +306,7 @@ export function laterBlock(
   if (office === null) return null;
   const open = last.close + 60;
   return office.close - open >= 15
-    ? { locationId: last.locationId, open, close: office.close }
+    ? { locationId: last.locationId, open, close: office.close, followsOffice: false }
     : null;
 }
 

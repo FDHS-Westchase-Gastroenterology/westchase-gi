@@ -41,12 +41,15 @@ function windowsOverlap(
   );
 }
 
+/* A window on office hours takes its office's hours for that weekday from the server, and is
+   the only window that day. */
 export const weeklyWindowSchema = z
   .strictObject({
     locationId: z.uuid(),
     weekday: weekdaySchema,
     openMinute: openMinuteSchema,
     closeMinute: closeMinuteSchema,
+    followsOffice: z.boolean().default(false),
   })
   .refine((window) => window.closeMinute > window.openMinute)
   .readonly();
@@ -55,6 +58,13 @@ const weeklyHoursSchema = z
   .array(weeklyWindowSchema)
   .max(50)
   .refine((hours) => !windowsOverlap(hours))
+  .refine((hours) =>
+    hours.every(
+      (window, index) =>
+        !window.followsOffice ||
+        hours.every((other, at) => at === index || other.weekday !== window.weekday),
+    ),
+  )
   .readonly();
 const officeDaySchema = z
   .strictObject({
@@ -296,6 +306,7 @@ export const settingsProviderSchema = z
             closeMinute: minuteSchema,
             validFrom: dateSchema,
             validTo: dateSchema.nullable(),
+            followsOffice: z.boolean(),
           })
           .readonly(),
       )

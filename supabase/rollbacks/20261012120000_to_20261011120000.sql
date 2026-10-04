@@ -1,8 +1,9 @@
 -- Reverses 20261012120000_settings_follow_the_clinic. Settings commands check the provider or
 -- office row version again, weekly hours apply from today only, office hours refuse instead of
--- moving providers, and retire, restore and closed-day runs are gone. Retired providers and
--- offices stay inactive, closed days and hours rows stay as written, and the change history of
--- the new commands is removed so the command check can return.
+-- moving providers, office-hours days become plain hours, and retire, restore and closed-day
+-- runs are gone. Retired providers and offices stay inactive, closed days and hours rows stay as
+-- written, and the change history of the new commands is removed so the command check can
+-- return.
 
 delete from public.scheduling_changes
   where command in ('retire_provider','restore_provider','retire_location','restore_location');
@@ -624,6 +625,8 @@ revoke execute on function public.portal_scheduling_settings(uuid) from public,a
 grant execute on function public.portal_scheduling_settings(uuid) to service_role;
 
 drop function public.portal_settings_conflicts(uuid[]);
+drop function public.portal_settings_week(jsonb);
+alter table public.provider_hours drop column follows_office;
 drop trigger provider_hours_bump_version on public.provider_hours;
 drop trigger appointment_type_providers_bump_version on public.appointment_type_providers;
 drop function public.portal_bump_provider_hours_version();

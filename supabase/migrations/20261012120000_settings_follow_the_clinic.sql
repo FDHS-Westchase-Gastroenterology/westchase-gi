@@ -14,10 +14,12 @@
 -- they are and the Settings read lists them under needsNewTime, beside the ones time off and
 -- closed days leave behind. A dry run answers with the same list and writes nothing.
 --
--- Office hours lead provider hours. When an office's hours change, every provider's hours there
--- follow from today: an edge that matched the office's old opening or closing moves with it, any
--- other edge stays where it is inside the new hours, and a day the office no longer opens is
--- dropped. The answer names the providers whose hours moved.
+-- Each weekly hours row either follows its office's hours for that day or keeps its own. A day
+-- on office hours is one block, and the server takes its times from the office, so it moves when
+-- the office's hours do. A custom day keeps its times, and an office change only trims them to
+-- fit. A day the office no longer opens is dropped either way, from today, and the answer names
+-- the providers whose hours moved. Rows the Schedule's Hours sheet writes are custom. Existing
+-- rows that are the whole of their office's day start out following it.
 --
 -- Providers and offices retire instead of disappearing. Retiring refuses while appointments are
 -- still booked with them and answers with those appointments; a retired office ends every
@@ -44,6 +46,50 @@ alter table public.scheduling_locations
     check (details_version between 1 and 9007199254740991);
 comment on column public.scheduling_locations.details_version is
   'Name, address, office hours and retirement. Closed days do not move it.';
+
+alter table public.provider_hours
+  add column follows_office boolean not null default false;
+comment on column public.provider_hours.follows_office is
+  'The row takes its office''s hours for its weekday and moves with them; otherwise its times are the provider''s own.';
+-- A row in force that is the provider's only one that weekday and spans its office's whole day
+-- is on office hours.
+update public.provider_hours h set follows_office=true
+  from public.location_hours o
+  where o.location_id=h.location_id and o.weekday=h.weekday
+  and o.open_minute=h.open_minute and o.close_minute=h.close_minute
+  and (h.valid_to is null or h.valid_to>=(statement_timestamp() at time zone 'America/New_York')::date)
+  and not exists(select 1 from public.provider_hours x where x.provider_id=h.provider_id
+    and x.weekday=h.weekday and x.id<>h.id
+    and (x.valid_to is null or x.valid_to>=(statement_timestamp() at time zone 'America/New_York')::date));
+
+-- A week from a Settings command, each office-hours day given its office's times; null when the
+-- week is malformed or a day on office hours shares its weekday or has no office day to follow.
+create function public.portal_settings_week(p_hours jsonb)
+returns jsonb language plpgsql stable security invoker set search_path = '' as $$
+begin
+  if jsonb_typeof(p_hours) is distinct from 'array' or exists(select 1 from jsonb_array_elements(p_hours) h
+      where jsonb_typeof(h->'followsOffice') is distinct from 'boolean') then
+    return null;
+  end if;
+  if not public.portal_settings_hours_valid(p_hours,
+      array['locationId','weekday','openMinute','closeMinute','followsOffice']) then
+    return null;
+  end if;
+  if exists(select 1 from jsonb_array_elements(p_hours) h where (h->>'followsOffice')::boolean and (
+      exists(select 1 from jsonb_array_elements(p_hours) x where x<>h and x->>'weekday'=h->>'weekday')
+      or not exists(select 1 from public.location_hours o where o.location_id=(h->>'locationId')::uuid
+        and o.weekday=(h->>'weekday')::integer))) then
+    return null;
+  end if;
+  return coalesce((select jsonb_agg(case when (h->>'followsOffice')::boolean
+      then h||jsonb_build_object('openMinute',o.open_minute,'closeMinute',o.close_minute) else h end)
+    from jsonb_array_elements(p_hours) h
+    left join public.location_hours o on (h->>'followsOffice')::boolean
+      and o.location_id=(h->>'locationId')::uuid and o.weekday=(h->>'weekday')::integer),'[]'::jsonb);
+end;
+$$;
+revoke execute on function public.portal_settings_week(jsonb) from public, anon, authenticated;
+grant execute on function public.portal_settings_week(jsonb) to service_role;
 
 create function public.portal_bump_provider_hours_version() returns trigger
 language plpgsql security invoker set search_path = '' as $$
@@ -214,7 +260,7 @@ begin
       or not (p_command ?& array['name','credentials','hours'])
       or jsonb_typeof(p_command->'name') is distinct from 'string'
       or jsonb_typeof(p_command->'credentials') not in ('string','null')
-      or not public.portal_settings_hours_valid(p_command->'hours',array['locationId','weekday','openMinute','closeMinute']) then
+      or public.portal_settings_week(p_command->'hours') is null then
       return jsonb_build_object('ok',false,'code','invalid_command');
     end if;
     v_name:=p_command->>'name'; v_text:=p_command->>'credentials'; v_hours:=p_command->'hours';
@@ -228,6 +274,7 @@ begin
       select 1 from public.scheduling_locations where id=(h->>'locationId')::uuid and active)) then
       return jsonb_build_object('ok',false,'code','location_unavailable');
     end if;
+    v_hours:=public.portal_settings_week(v_hours);
     if exists(select 1 from jsonb_array_elements(v_hours) h where not public.portal_office_hours_allow(
       (h->>'locationId')::uuid,(h->>'weekday')::integer,(h->>'openMinute')::integer,(h->>'closeMinute')::integer)) then
       return jsonb_build_object('ok',false,'code','outside_office_hours');
@@ -235,9 +282,10 @@ begin
     insert into public.scheduling_providers(name,credentials,active,bookable,created_by,updated_by,created_at,updated_at)
       values(v_name,v_text,true,true,p_actor_id,p_actor_id,v_now,v_now) returning * into v_provider;
     v_id:=v_provider.id;
-    insert into public.provider_hours(provider_id,location_id,weekday,open_minute,close_minute,valid_from,valid_to)
+    insert into public.provider_hours(provider_id,location_id,weekday,open_minute,close_minute,valid_from,valid_to,
+        follows_office)
       select v_id,(h->>'locationId')::uuid,(h->>'weekday')::integer,(h->>'openMinute')::integer,
-        (h->>'closeMinute')::integer,v_today,null from jsonb_array_elements(v_hours) h;
+        (h->>'closeMinute')::integer,v_today,null,(h->>'followsOffice')::boolean from jsonb_array_elements(v_hours) h;
     select * into v_provider from public.scheduling_providers where id=v_id;
     v_version:=v_provider.version;
     v_aspect:=v_provider.profile_version;
@@ -298,7 +346,7 @@ begin
         or (p_command->>'startsOn') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
         or jsonb_typeof(p_command->'keepBooked') is distinct from 'boolean'
         or jsonb_typeof(p_command->'dryRun') is distinct from 'boolean'
-        or not public.portal_settings_hours_valid(p_command->'hours',array['locationId','weekday','openMinute','closeMinute']) then
+        or public.portal_settings_week(p_command->'hours') is null then
         return jsonb_build_object('ok',false,'code','invalid_command');
       end if;
       v_hours:=p_command->'hours';
@@ -317,6 +365,8 @@ begin
         select 1 from public.scheduling_locations where id=(h->>'locationId')::uuid and active)) then
         return jsonb_build_object('ok',false,'code','location_unavailable');
       end if;
+      -- Office-hours days take the office's times as they are now, under the lock.
+      v_hours:=public.portal_settings_week(v_hours);
       if exists(select 1 from jsonb_array_elements(v_hours) h where not public.portal_office_hours_allow(
         (h->>'locationId')::uuid,(h->>'weekday')::integer,(h->>'openMinute')::integer,(h->>'closeMinute')::integer)) then
         return jsonb_build_object('ok',false,'code','outside_office_hours');
@@ -343,16 +393,18 @@ begin
       update public.provider_hours set valid_to=v_starts_on-1
         where provider_id=v_id and valid_from<v_starts_on and (valid_to is null or valid_to>=v_starts_on);
       delete from public.provider_hours where provider_id=v_id and valid_from>=v_starts_on;
-      insert into public.provider_hours(provider_id,location_id,weekday,open_minute,close_minute,valid_from,valid_to)
+      insert into public.provider_hours(provider_id,location_id,weekday,open_minute,close_minute,valid_from,valid_to,
+          follows_office)
         select v_id,(h->>'locationId')::uuid,(h->>'weekday')::integer,(h->>'openMinute')::integer,
-          (h->>'closeMinute')::integer,v_starts_on,null from jsonb_array_elements(v_hours) h;
+          (h->>'closeMinute')::integer,v_starts_on,null,(h->>'followsOffice')::boolean
+        from jsonb_array_elements(v_hours) h;
       -- A week that matches the one ending the day before carries it on instead of starting anew.
       if exists(select 1 from public.provider_hours where provider_id=v_id and valid_to=v_starts_on-1)
-        and (select jsonb_agg(jsonb_build_array(h.location_id,h.weekday,h.open_minute,h.close_minute)
+        and (select jsonb_agg(jsonb_build_array(h.location_id,h.weekday,h.open_minute,h.close_minute,h.follows_office)
               order by h.location_id,h.weekday,h.open_minute,h.close_minute)
             from public.provider_hours h where h.provider_id=v_id and h.valid_to=v_starts_on-1)
           is not distinct from
-            (select jsonb_agg(jsonb_build_array(h.location_id,h.weekday,h.open_minute,h.close_minute)
+            (select jsonb_agg(jsonb_build_array(h.location_id,h.weekday,h.open_minute,h.close_minute,h.follows_office)
               order by h.location_id,h.weekday,h.open_minute,h.close_minute)
             from public.provider_hours h where h.provider_id=v_id and h.valid_from=v_starts_on) then
         delete from public.provider_hours where provider_id=v_id and valid_from=v_starts_on;
@@ -622,26 +674,25 @@ begin
       if v_location.details_version<>v_version then
         return jsonb_build_object('ok',false,'code','stale_version','currentVersion',v_location.details_version);
       end if;
-      -- Providers' hours here follow the office from today. Each row in force here gets its new
-      -- edges: an edge on the office's old opening or closing moves with it, any other edge is
-      -- kept inside the new hours, and a weekday the office no longer opens drops the row. Only
-      -- the rows that change are listed; newOpen is null for a row that goes.
+      -- Providers' hours here follow the office from today. A row on office hours takes the new
+      -- day; a custom row keeps its times inside it; a weekday the office no longer opens drops
+      -- the row. Only the rows that change are listed; newOpen is null for a row that goes.
       select coalesce(jsonb_agg(jsonb_build_object('id',c.id,'providerId',c.provider_id,'weekday',c.weekday,
-          'validFrom',c.valid_from,'validTo',c.valid_to,
+          'validFrom',c.valid_from,'validTo',c.valid_to,'followsOffice',c.follows_office,
           'newOpen',case when c.new_open is not null and c.new_close>c.new_open then c.new_open end,
           'newClose',case when c.new_open is not null and c.new_close>c.new_open then c.new_close end)),'[]'::jsonb)
         into v_cascade
         from (
           select h.id,h.provider_id,h.weekday,h.open_minute,h.close_minute,h.valid_from,h.valid_to,
+            h.follows_office,
             case when n.open_minute is null then null
-              when o.open_minute=h.open_minute then n.open_minute
+              when h.follows_office then n.open_minute
               else greatest(h.open_minute,n.open_minute) end as new_open,
             case when n.open_minute is null then null
-              when o.close_minute=h.close_minute then n.close_minute
+              when h.follows_office then n.close_minute
               else least(h.close_minute,n.close_minute) end as new_close
           from public.provider_hours h
           join public.scheduling_providers p on p.id=h.provider_id and p.active
-          left join public.location_hours o on o.location_id=v_id and o.weekday=h.weekday
           left join lateral (select (x->>'openMinute')::integer as open_minute,(x->>'closeMinute')::integer as close_minute
             from jsonb_array_elements(v_hours) x where (x->>'weekday')::integer=h.weekday) n on true
           where h.location_id=v_id and (h.valid_to is null or h.valid_to>=v_today)
@@ -697,9 +748,10 @@ begin
         select v_id,(o->>'weekday')::integer,(o->>'openMinute')::integer,(o->>'closeMinute')::integer
         from jsonb_array_elements(v_hours) o;
       -- A row that began before today keeps its past and continues from today with the new edges.
-      insert into public.provider_hours(provider_id,location_id,weekday,open_minute,close_minute,valid_from,valid_to)
+      insert into public.provider_hours(provider_id,location_id,weekday,open_minute,close_minute,valid_from,valid_to,
+          follows_office)
         select (c->>'providerId')::uuid,v_id,(c->>'weekday')::integer,(c->>'newOpen')::integer,
-          (c->>'newClose')::integer,v_today,(c->>'validTo')::date
+          (c->>'newClose')::integer,v_today,(c->>'validTo')::date,(c->>'followsOffice')::boolean
         from jsonb_array_elements(v_cascade) c
         where (c->>'validFrom')::date<v_today and c->>'newOpen' is not null;
       update public.provider_hours h set valid_to=v_today-1
@@ -866,7 +918,8 @@ begin
         -- The week in force from today and any planned from a later day: rows ending before today are history.
         'hours',coalesce((select jsonb_agg(jsonb_build_object('id',h.id,'locationId',h.location_id,
             'weekday',h.weekday,'openMinute',h.open_minute,'closeMinute',h.close_minute,
-            'validFrom',h.valid_from,'validTo',h.valid_to) order by h.weekday,h.open_minute,h.valid_from,h.id)
+            'validFrom',h.valid_from,'validTo',h.valid_to,'followsOffice',h.follows_office)
+            order by h.weekday,h.open_minute,h.valid_from,h.id)
           from public.provider_hours h where h.provider_id=p.id and (h.valid_to is null or h.valid_to>=v_today)),'[]'::jsonb),
         'timeOff',coalesce((select jsonb_agg(jsonb_build_object('id',e.id,'startsAt',e.starts_at,'endsAt',e.ends_at,
             'locationId',e.location_id,'reason',e.reason,

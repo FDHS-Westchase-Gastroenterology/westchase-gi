@@ -7,8 +7,10 @@ import { ConflictList } from "@/app/admin/(portal)/settings/needs-new-time";
 import {
   dayProblem,
   draftOf,
+  hasOfficeDay,
   laterBlock,
   moveBlock,
+  officeBlock,
   officeDay,
   plannedWeeks,
   sameWeek,
@@ -26,6 +28,7 @@ import {
   WEEK_ORDER,
   appointmentCount,
   clockOf,
+  clockRange,
   longDay,
   placeName,
   settingsFailureMessage,
@@ -36,6 +39,7 @@ import type { SettingsSend } from "@/app/admin/(portal)/settings/use-settings-co
 import { Plus, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { CalendarDay } from "@/components/ui/calendar";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Switch } from "@/components/ui/switch";
@@ -46,9 +50,11 @@ import type {
 } from "@/lib/portal/scheduling/settings-contracts";
 
 /* Edit hours (issue #352): a provider's whole week, set from a start date.
-   Every day is a row: a switch for whether they work it, and for each block
-   of the day the office and the times, chosen from that office's open hours.
-   A day turned on starts at the office they work at most, for its whole day.
+   Every day is a row: a switch for whether they work it, the office, and
+   either Office hours, which takes that office's hours for the day and moves
+   when they do, or the provider's own times, chosen from the office's open
+   hours. A day turned on starts on office hours at the office they work at
+   most.
    Saving sends the week; when bookings would fall outside it, the sheet
    lists them and saves only when asked, keeping them booked to be given new
    times. */
@@ -117,7 +123,7 @@ function BlockRow({
         value={block.locationId}
         onChange={(event) => {
           const next = locations.find((each) => each.id === event.target.value);
-          if (next !== undefined) onChange(moveBlock(block, weekday, location, next));
+          if (next !== undefined) onChange(moveBlock(block, weekday, next));
         }}
       >
         {locations.map((each) => (
@@ -127,35 +133,41 @@ function BlockRow({
           </option>
         ))}
       </NativeSelect>
-      <NativeSelect
-        aria-label={`${which}: from`}
-        className="settings-time-select"
-        value={block.open}
-        onChange={(event) => {
-          onChange({ ...block, open: Number(event.target.value) });
-        }}
-      >
-        {timeChoices(office.open, office.close, block.open, "from").map((minute) => (
-          <option key={minute} value={minute}>
-            {clockOf(minute)}
-          </option>
-        ))}
-      </NativeSelect>
-      <span className="text-[0.8125rem] text-(--wgi-muted-ink)">to</span>
-      <NativeSelect
-        aria-label={`${which}: until`}
-        className="settings-time-select"
-        value={block.close}
-        onChange={(event) => {
-          onChange({ ...block, close: Number(event.target.value) });
-        }}
-      >
-        {timeChoices(office.open, office.close, block.close, "until").map((minute) => (
-          <option key={minute} value={minute}>
-            {clockOf(minute)}
-          </option>
-        ))}
-      </NativeSelect>
+      {block.followsOffice ? (
+        <span className="settings-hours-office-times">{clockRange(block.open, block.close)}</span>
+      ) : (
+        <>
+          <NativeSelect
+            aria-label={`${which}: from`}
+            className="settings-time-select"
+            value={block.open}
+            onChange={(event) => {
+              onChange({ ...block, open: Number(event.target.value) });
+            }}
+          >
+            {timeChoices(office.open, office.close, block.open, "from").map((minute) => (
+              <option key={minute} value={minute}>
+                {clockOf(minute)}
+              </option>
+            ))}
+          </NativeSelect>
+          <span className="text-[0.8125rem] text-(--wgi-muted-ink)">to</span>
+          <NativeSelect
+            aria-label={`${which}: until`}
+            className="settings-time-select"
+            value={block.close}
+            onChange={(event) => {
+              onChange({ ...block, close: Number(event.target.value) });
+            }}
+          >
+            {timeChoices(office.open, office.close, block.close, "until").map((minute) => (
+              <option key={minute} value={minute}>
+                {clockOf(minute)}
+              </option>
+            ))}
+          </NativeSelect>
+        </>
+      )}
       {onRemove === null ? null : (
         <button
           type="button"
@@ -241,7 +253,15 @@ function DayEditor({
   onChange: (blocks: readonly DraftBlock[]) => void;
 }>) {
   const { locations } = settings;
-  const later = laterBlock(blocks, weekday, locations);
+  const first = blocks.at(0);
+  const following = first?.followsOffice === true;
+  const later = following ? null : laterBlock(blocks, weekday, locations);
+  const canFollow =
+    first !== undefined &&
+    hasOfficeDay(
+      locations.find((each) => each.id === first.locationId),
+      weekday,
+    );
   return (
     <li className="settings-hours-edit-day">
       <label className="settings-hours-edit-switch">
@@ -286,6 +306,22 @@ function DayEditor({
             <Plus aria-hidden="true" className="size-3.5" />
             Add hours later in the day
           </button>
+        )}
+        {first === undefined ? null : (
+          <label className="settings-hours-follow">
+            <Checkbox
+              checked={following}
+              disabled={!canFollow}
+              onCheckedChange={(checked) => {
+                onChange(
+                  checked
+                    ? [officeBlock(first, weekday, locations)]
+                    : [{ ...first, followsOffice: false }],
+                );
+              }}
+            />
+            Office hours
+          </label>
         )}
         {problem === null ? null : <FieldError>{problem}</FieldError>}
       </div>

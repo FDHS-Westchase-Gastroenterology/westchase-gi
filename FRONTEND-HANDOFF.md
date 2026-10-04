@@ -281,16 +281,16 @@ new version. Time off and closed days are rows of their own and carry no version
 
 | Command | Inputs beyond `id` |
 | --- | --- |
-| `add_provider` | `name`, `credentials`, weekly `hours`; creates without `id`. The pane starts a new provider Monday to Friday for the office's hours, and the database gives them every active type. |
+| `add_provider` | `name`, `credentials`, weekly `hours`; creates without `id`. The pane starts a new provider Monday to Friday on the office's hours, and the database gives them every active type. |
 | `set_provider_profile` | `expectedVersion`, `name`, `credentials`, `bookable`. |
 | `retire_provider` / `restore_provider` | `expectedVersion`. Retiring refuses `schedule_in_use` with `conflicts` while anything is booked with them; hours, time off and types are kept for a restore. |
-| `set_provider_weekly_hours` | `expectedVersion`, `startsOn`, the full weekly `hours`, `keepBooked`, `dryRun`. The week applies from `startsOn` (today to a year out); earlier rows end the day before, and a week matching the one ending then joins it. |
+| `set_provider_weekly_hours` | `expectedVersion`, `startsOn`, the full weekly `hours`, `keepBooked`, `dryRun`. Each window carries `followsOffice`: a window on office hours is the only one that weekday, and the server writes its office's times for it. The week applies from `startsOn` (today to a year out); earlier rows end the day before, and a week matching the one ending then joins it. |
 | `add_time_off` / `remove_time_off` | `startsOn`, `endsOn`, `allDay` (or one day's `startMinute`/`endMinute`), `reason`, `dryRun`; removal takes `timeOffId`. |
 | `set_provider_types` | `expectedVersion`, the full `typeIds` the provider sees. |
 | `save_appointment_type` | `expectedVersion`, `name`, `durationMinutes`, `bufferBeforeMinutes`, `bufferAfterMinutes`, `icon`, `description`, `providerIds`; a new type sends null `id` and `expectedVersion` and joins the end of the booking order. |
 | `reorder_appointment_types` | `expectedVersion`, the 1-based `position` in the booking order. |
 | `set_appointment_type_active` / `delete_appointment_type` | `expectedVersion`, `active`; deletion takes no more. |
-| `save_location_details` | `expectedVersion`, `name`, address, `mapsQuery`, the office's open `hours`, `keepBooked`, `dryRun`. Providers' hours there follow from today and the answer names them in `adjusted`. |
+| `save_location_details` | `expectedVersion`, `name`, address, `mapsQuery`, the office's open `hours`, `keepBooked`, `dryRun`. From today, provider days on office hours take the new hours and custom days are trimmed to fit; the answer names those providers in `adjusted`. |
 | `retire_location` / `restore_location` | `expectedVersion`. Retiring refuses `last_location` for the only open office and `schedule_in_use` with `conflicts` while anything is booked there; it ends every provider's hours there and names them in `adjusted`. |
 | `add_location_closure` / `remove_location_closure` | `closedOn`, `closedThrough` (up to 61 days), `note`, `dryRun`; removal takes `closureIds`. |
 | `set_booking_interval` | `expectedVersion`, `minutes`: a multiple of 15 from 15 to 480. `id` and `expectedVersion` are the read's `practice` row; the result's `entity` is `practice`. It spaces the openings the schedule offers; booking, moving and `availability` still accept any start the type fits, and booked appointments keep their times. |

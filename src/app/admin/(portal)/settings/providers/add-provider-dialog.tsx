@@ -156,7 +156,7 @@ export function AddProviderDialog({
           <FieldDescription id="provider-location-hours">
             {week.length === 0
               ? "That office has no weekday hours, so they start with none."
-              : `Starts ${weekSummary(week)}`}
+              : `Starts on ${location === undefined ? "the office" : placeName(location)}'s office hours: ${weekSummary(week)}`}
           </FieldDescription>
         </Field>
       </FieldGroup>

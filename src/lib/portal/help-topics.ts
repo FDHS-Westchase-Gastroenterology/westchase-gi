@@ -158,7 +158,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     group: "settings",
     title: "Provider hours and time off",
     body: [
-      "Settings › Providers holds each provider’s weekly hours; the schedule offers only these hours for booking. **Edit hours** sets the whole week, from today or from a later date, and a change already planned shows under the week it replaces.",
+      "Settings › Providers holds each provider’s weekly hours; the schedule offers only these hours for booking. **Edit hours** sets the whole week, from today or from a later date, and a change already planned shows under the week it replaces. A day marked **Office hours** keeps the office’s hours and changes when they do; untick it to set the provider’s own times.",
       "**Add time off** for a vacation. A provider marked **Not taking appointments** leaves booking until you switch it back, and **Retire** takes someone off the schedule for good, keeping their hours in case they return.",
       "No change cancels a booking. When one leaves an appointment outside the provider’s hours, the provider’s page shows how many **need a new time**; open it to go to each one’s day.",
     ],

@@ -566,6 +566,60 @@ test("a provider's profile, types and hours each keep their own version", async 
     ).toEqual(workDays.map(() => [600, 960]));
     expect(now.waiting(booked.id)).toBe("outside_hours");
 
+    // A day on office hours takes the office's times whatever was sent, and follows the office.
+    const officeDay = (followsOffice: boolean) =>
+      workDays.map((weekday) => ({
+        locationId: first,
+        weekday,
+        openMinute: 660,
+        closeMinute: 720,
+        followsOffice,
+      }));
+    expect(
+      await setProviderWeek(db, actor, providerId, officeDay(true), { keepBooked: true }),
+    ).toMatchObject({ ok: true });
+    now = await current(db, actor);
+    expect(
+      now
+        .provider(providerId)
+        .hours.filter((row) => row.validTo === null)
+        .map((row) => [row.openMinute, row.closeMinute, row.followsOffice]),
+    ).toEqual(workDays.map(() => [600, 960, true]));
+    expect(
+      await saveSettings(db, actor, {
+        ...shorter,
+        expectedVersion: now.location(first).detailsVersion,
+        hours: [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({
+          weekday,
+          openMinute: 540,
+          closeMinute: 1020,
+        })),
+        keepBooked: true,
+        dryRun: false,
+      }),
+    ).toMatchObject({ ok: true });
+    now = await current(db, actor);
+    expect(
+      now
+        .provider(providerId)
+        .hours.flatMap((row) => (row.validTo === null ? [[row.openMinute, row.closeMinute]] : [])),
+    ).toEqual(workDays.map(() => [540, 1020]));
+    // An office-hours day is the only block that day.
+    expect(
+      settingsCommandSchema.safeParse({
+        kind: "set_provider_weekly_hours",
+        id: providerId,
+        expectedVersion: 1,
+        startsOn: "2026-11-02",
+        hours: [
+          ...officeDay(true).slice(0, 1),
+          { ...officeDay(false)[0], openMinute: 1000, closeMinute: 1020 },
+        ],
+        keepBooked: false,
+        dryRun: false,
+      }).success,
+    ).toBe(false);
+
     // A new provider is added after every other and sees every active type.
     const added = await saveSettings(db, actor, {
       kind: "add_provider",

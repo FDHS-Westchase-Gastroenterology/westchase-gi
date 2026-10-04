@@ -261,6 +261,27 @@
   min-width: 8rem;
 }
 
+/* An office-hours day reads its times; they are the office's, not a choice. */
+.settings-hours-office-times {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  color: var(--wgi-name-ink);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-hours-follow {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.625rem;
+  align-self: flex-start;
+  color: var(--wgi-name-ink);
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+
 .settings-hours-off {
   display: flex;
   min-height: 2.75rem;
