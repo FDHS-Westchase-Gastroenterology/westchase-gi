@@ -22,15 +22,21 @@ import { Check } from "@/components/icons";
  *   the muted ink, so the change reads first.
  * - Undo is a pill on the toast's paper rather than the filled action
  *   Sonner draws: the toast is a confirmation, and Undo is the way back.
- * - The toast stays while Undo is still possible, 15 minutes, which is how
- *   long the server keeps a change undoable. Undo turns the same toast into
- *   "Undoing…" while it is sent, then into the result: what the caller's
- *   undo says, or the refusal in plain words. Either way the caller's
- *   `onSettled` runs, so the surface re-reads what is now true.
+ * - The toast offers Undo for 8 seconds, twice the toaster's plain result,
+ *   because it carries two lines and a decision; pointing at the toaster
+ *   holds it. The server keeps a change undoable for 15 minutes, but a
+ *   toast held that long stacks over the schedule, so the toast leaves well
+ *   before the server's window closes.
+ * - Sonner's close button closes it early, in the corner Sonner draws it,
+ *   wearing the Undo pill's line, paper and pressed state.
+ * - Undo turns the same toast into "Undoing…" while it is sent, then into
+ *   the result: what the caller's undo says, or the refusal in plain words.
+ *   Either way the caller's `onSettled` runs, so the surface re-reads what
+ *   is now true, and the result settles like any other toast.
  */
 
-/** How long a change stays undoable: the server's window. */
-export const UNDO_WINDOW_MS = 15 * 60_000;
+/** How long the toast offers Undo before it leaves on its own. */
+const UNDO_VISIBLE_MS = 8_000;
 
 export type UndoResult =
   | { readonly ok: true; readonly message: string }
@@ -58,7 +64,13 @@ const CLASS_NAMES = {
   actionButton: [
     "ml-auto! h-8! rounded-full! border! border-[var(--color-line-2)]! bg-white! px-3.5!",
     "text-[0.8125rem]! font-bold! text-[var(--color-ink)]!",
-    "transition-[background-color,transform]! duration-[var(--motion-micro-duration)]! ease-[var(--motion-exit)]!",
+    "transition-[background-color,scale]! duration-[var(--motion-micro-duration)]! ease-[var(--motion-exit)]!",
+    "hover:bg-[var(--color-mint-50)]! active:scale-[0.98]!",
+    "focus-visible:outline-2! focus-visible:outline-offset-2! focus-visible:outline-[var(--color-teal-ink)]!",
+  ].join(" "),
+  closeButton: [
+    "border-[var(--color-line-2)]! bg-white! text-[var(--color-ink)]!",
+    "transition-[background-color,scale]! duration-[var(--motion-micro-duration)]! ease-[var(--motion-exit)]!",
     "hover:bg-[var(--color-mint-50)]! active:scale-[0.98]!",
     "focus-visible:outline-2! focus-visible:outline-offset-2! focus-visible:outline-[var(--color-teal-ink)]!",
   ].join(" "),
@@ -67,6 +79,7 @@ const CLASS_NAMES = {
 /** What an answered toast resets, by name: Sonner merges an update over the toast it replaces. */
 const SETTLED = {
   duration: undefined,
+  closeButton: undefined,
   action: undefined,
   description: undefined,
   icon: undefined,
@@ -83,7 +96,8 @@ export function showUndoToast(input: Readonly<UndoToastInput>): string | number 
         <Check width={16} height={16} />
       </span>
     ),
-    duration: UNDO_WINDOW_MS,
+    duration: UNDO_VISIBLE_MS,
+    closeButton: true,
     classNames: CLASS_NAMES,
     action: {
       label: "Undo",
