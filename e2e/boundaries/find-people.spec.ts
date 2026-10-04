@@ -202,8 +202,11 @@ test("people are found by any word of their name or the digits of their phone, i
       );
     }
 
+    // Results start from the second character, two digits included.
+    expect((await find(line.slice(0, 2))).total).toBeGreaterThanOrEqual(2);
+
     // Too little to search returns nobody, and still says whether anyone exists.
-    for (const query of ["", " ", "m", "81", "--"]) {
+    for (const query of ["", " ", "m", "8", "--"]) {
       expect(await find(query), JSON.stringify(query)).toEqual({
         ok: true,
         anyone: true,

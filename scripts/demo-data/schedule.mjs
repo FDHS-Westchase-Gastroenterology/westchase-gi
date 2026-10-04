@@ -196,10 +196,13 @@ export function createSchedule(g, people) {
     }
   }
 
-  /** Visits per provider-day: full in the past and next two weeks, thinning further out. */
+  /** Visits per provider-day: full in the past, nearly booked out this week, thinning
+      further out, so the month view's tint runs from teal down to white. */
   function target(date) {
     const d = daysBetween(TODAY, date);
     if (d < -21) return ri(4, 6);
+    if (d < 0) return ri(5, 8);
+    if (d <= 7) return ri(7, 10);
     if (d <= 14) return ri(5, 8);
     if (d <= 21) return ri(3, 5);
     if (d <= 28) return ri(2, 4);

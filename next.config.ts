@@ -124,8 +124,12 @@ const nextConfig: NextConfig = {
     process.env.NEXT_DIST_DIR !== undefined && process.env.NEXT_DIST_DIR !== ""
       ? process.env.NEXT_DIST_DIR
       : ".next",
+  // The flyer files are read from disk at request time: the page checks
+  // Which exist, and the asset and zip routes stream them.
   outputFileTracingIncludes: {
+    "/admin/review-flyers": ["./private/review-flyers/**/*"],
     "/admin/review-flyers/assets/*": ["./private/review-flyers/**/*"],
+    "/admin/review-flyers/zip/*": ["./private/review-flyers/**/*"],
   },
   redirects() {
     return [

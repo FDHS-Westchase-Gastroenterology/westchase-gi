@@ -8,7 +8,11 @@ import {
   localeLabel,
   TIME_LABELS,
 } from "@/app/admin/(portal)/requests/format";
-import { detailsSummary, originLabel } from "@/app/admin/(portal)/requests/record-sections";
+import {
+  detailsSummary,
+  originLabel,
+  WEBSITE_ORIGIN,
+} from "@/app/admin/(portal)/requests/record-sections";
 import type {
   LatestNote,
   ReadOutcome,
@@ -145,6 +149,7 @@ export function LatestNoteBlock({ note }: Readonly<{ note: LatestNote }>) {
    chevron points at the content it hides, and turns down when open). */
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the request record carries workflow history entries whose types cannot be made readonly
 function RequestDetails({ record }: Readonly<{ record: FullRecord }>) {
+  const origin = originLabel(record);
   return (
     <HomeCollapsible className="wgi-sheet-section">
       <HomeCollapsibleTrigger>
@@ -167,11 +172,17 @@ function RequestDetails({ record }: Readonly<{ record: FullRecord }>) {
           <dt>Received</dt>
           <dd>{formatReceived(record.createdAt, true)}</dd>
           <dt>Origin</dt>
-          <dd>{originLabel(record)}</dd>
-          <dt>Form language</dt>
-          <dd>{localeLabel(record.locale)}</dd>
-          <dt>Page</dt>
-          <dd>{record.sourcePath}</dd>
+          <dd>{origin}</dd>
+          {/* The form's language and page describe a website submission; a
+              request staff added has neither. */}
+          {origin === WEBSITE_ORIGIN ? (
+            <>
+              <dt>Form language</dt>
+              <dd>{localeLabel(record.locale)}</dd>
+              <dt>Page</dt>
+              <dd>{record.sourcePath}</dd>
+            </>
+          ) : null}
         </dl>
       </HomeCollapsiblePanel>
     </HomeCollapsible>

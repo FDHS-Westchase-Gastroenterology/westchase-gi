@@ -181,8 +181,8 @@ test("the month summary counts open, full, past, and closed practice days at one
       open: 0,
       booked: 3,
       capacity: 3,
-      // 120 reserved of 125 working minutes: the five minutes left cannot hold another visit.
-      bookedShare: 0.96,
+      // The tint is the count the cell reads, booked of booked plus open: every opening is gone.
+      bookedShare: 1,
     });
     expect(await day(releasedDay)).toMatchObject({ status: "open", open: 2, booked: 0 });
     expect(await day(closedDay)).toEqual({
