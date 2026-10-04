@@ -1,14 +1,18 @@
-import { randomUUID } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 
 import { expect, test } from "@playwright/test";
 
 import { dayScheduleOutcomeSchema } from "../../src/lib/portal/scheduling/grid-contracts";
 import { monthSummaryOutcomeSchema } from "../../src/lib/portal/scheduling/read-contracts";
-import { settingsCommandSchema } from "../../src/lib/portal/scheduling/settings-contracts";
+import {
+  settingsCommandOutcomeSchema,
+  settingsCommandSchema,
+} from "../../src/lib/portal/scheduling/settings-contracts";
 import { serviceDb } from "../harness/env";
 import {
   createSchedulingFixture,
   readSettings,
+  restoreBookingInterval,
   saveSettings,
   schedulingFixtureDate,
 } from "../harness/scheduling";
@@ -157,6 +161,128 @@ test("the settings read shows staff the schedule and gives only admins edit righ
       }),
     ).toEqual({ ok: false, code: "forbidden" });
   } finally {
+    await staff.dispose();
+    await fixture.dispose();
+  }
+});
+
+test("the booking interval spaces each provider's openings, and only admins change it", async () => {
+  const db = serviceDb();
+  const fixture = await createSchedulingFixture(db, "settings-interval");
+  const staff = await createStaffFixture(db, {
+    prefix: "settings-interval-staff",
+    displayName: "TEST Interval Staff",
+  });
+  const actor = fixture.staff.userId;
+  const date = schedulingFixtureDate();
+  // One provider's openings on the fixture day, as the Day view reads them.
+  async function opens() {
+    const day = dayScheduleOutcomeSchema.parse(
+      (
+        await db.rpc("portal_schedule_day", {
+          p_actor_id: actor,
+          p_date: date,
+          p_appointment_type_id: fixture.typeId,
+        })
+      ).data,
+    );
+    if (!day.ok) throw new Error("Day read failed");
+    const column = day.providers.find((entry) => entry.id === fixture.providerIds[0]);
+    return (column?.open ?? []).map((slot) => Date.parse(slot.startsAt));
+  }
+  function gaps(starts: readonly number[]) {
+    return starts.slice(1).map((start, index) => (start - starts[index]) / 60_000);
+  }
+  try {
+    await restoreBookingInterval(db, actor);
+    expect(
+      settingsCommandSchema.safeParse({
+        kind: "set_booking_interval",
+        id: randomUUID(),
+        expectedVersion: 1,
+        minutes: 45,
+      }).success,
+    ).toBe(false);
+
+    const read = await readSettings(db, actor);
+    if (!read.ok) throw new Error("Settings read failed");
+    expect(read.practice.bookingIntervalMinutes).toBe(60);
+    const staffRead = await readSettings(db, staff.userId);
+    expect(staffRead).toMatchObject({ ok: true, canEdit: false, practice: read.practice });
+    const command = {
+      kind: "set_booking_interval",
+      id: read.practice.id,
+      expectedVersion: read.practice.version,
+      minutes: 15,
+    } as const;
+    expect(await saveSettings(db, staff.userId, command)).toEqual({
+      ok: false,
+      code: "forbidden",
+    });
+
+    // The default: one opening an hour, a 40-minute visit keeping the rest of the hour free.
+    const hourly = await opens();
+    expect(hourly.length).toBeGreaterThan(0);
+    expect(gaps(hourly).every((gap) => gap >= 60)).toBe(true);
+
+    // The RPC refuses an interval the contract does not offer, and replays a repeated key.
+    const fingerprint = createHmac("sha256", "TEST scheduling acceptance fixture")
+      .update(JSON.stringify({ actorId: actor, action: "settings_command", command }))
+      .digest("hex");
+    expect(
+      (
+        await db.rpc("portal_set_booking_interval", {
+          p_actor_id: actor,
+          p_idempotency_key: randomUUID(),
+          p_fingerprint: fingerprint,
+          p_command: { ...command, minutes: 45 },
+        })
+      ).data,
+    ).toEqual({ ok: false, code: "invalid_command" });
+    const key = randomUUID();
+    const call = async () =>
+      settingsCommandOutcomeSchema.parse(
+        (
+          await db.rpc("portal_set_booking_interval", {
+            p_actor_id: actor,
+            p_idempotency_key: key,
+            p_fingerprint: fingerprint,
+            p_command: command,
+          })
+        ).data,
+      );
+    const first = await call();
+    expect(first).toMatchObject({
+      ok: true,
+      entity: "practice",
+      version: read.practice.version + 1,
+    });
+    expect(await call()).toEqual(first);
+    expect(await saveSettings(db, actor, command)).toMatchObject({
+      ok: false,
+      code: "stale_version",
+      currentVersion: read.practice.version + 1,
+    });
+
+    // A finer grid offers more openings, each still a whole visit apart.
+    const quarterly = await opens();
+    expect(quarterly.length).toBeGreaterThan(hourly.length);
+    expect(gaps(quarterly).some((gap) => gap < 60)).toBe(true);
+
+    const changes = await db
+      .from("scheduling_changes")
+      .select("command, before_record, after_record")
+      .eq("entity", "practice")
+      .eq("version", read.practice.version + 1);
+    expect(changes.data).toEqual([
+      expect.objectContaining({
+        command: "set_booking_interval",
+        before_record: expect.objectContaining({ bookingIntervalMinutes: 60 }),
+        after_record: expect.objectContaining({ bookingIntervalMinutes: 15 }),
+      }),
+    ]);
+  } finally {
+    await restoreBookingInterval(db, actor);
     await staff.dispose();
     await fixture.dispose();
   }

@@ -314,12 +314,18 @@ export async function executeSchedulingSettingsCommand(
   );
   if (fingerprint === null) return { ok: false, code: "unavailable" };
   const result = await db
-    .rpc("portal_save_scheduling_settings", {
-      p_actor_id: actorId,
-      p_idempotency_key: idempotencyKey,
-      p_fingerprint: fingerprint,
-      p_command: command,
-    })
+    // The booking interval is the practice's, not a provider's, type's or office's.
+    .rpc(
+      command.kind === "set_booking_interval"
+        ? "portal_set_booking_interval"
+        : "portal_save_scheduling_settings",
+      {
+        p_actor_id: actorId,
+        p_idempotency_key: idempotencyKey,
+        p_fingerprint: fingerprint,
+        p_command: command,
+      },
+    )
     .abortSignal(AbortSignal.timeout(10_000));
   if (result.error !== null) return { ok: false, code: "unavailable" };
   const outcome = settingsCommandOutcomeSchema.safeParse(result.data);

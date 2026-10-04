@@ -73,6 +73,7 @@ const TABLES = [
   "scheduling_changes",
   "scheduling_command_receipts",
   "scheduling_locations",
+  "scheduling_practice",
   "scheduling_providers",
   "staff_profiles",
   "staff_request_receipts",
@@ -162,6 +163,9 @@ const RPC_SIGNATURES = {
   portal_save_scheduling_settings:
     "p_actor_id uuid, p_idempotency_key uuid, p_fingerprint text, p_command jsonb",
   portal_scheduling_settings: "p_actor_id uuid",
+  portal_booking_interval: "",
+  portal_set_booking_interval:
+    "p_actor_id uuid, p_idempotency_key uuid, p_fingerprint text, p_command jsonb",
   portal_office_hours_allow:
     "p_location_id uuid, p_weekday integer, p_open_minute integer, p_close_minute integer",
   portal_settings_hours_valid: "p_hours jsonb, p_keys text[]",
@@ -272,6 +276,8 @@ const RPC_RESULTS = {
   portal_remember_week_provider: "jsonb",
   portal_save_scheduling_settings: "jsonb",
   portal_scheduling_settings: "jsonb",
+  portal_booking_interval: "integer",
+  portal_set_booking_interval: "jsonb",
   portal_office_hours_allow: "boolean",
   portal_settings_hours_valid: "boolean",
   portal_scheduling_settings_record: "jsonb",
@@ -308,6 +314,7 @@ const AUDIT_RPC_SOURCES = {
   portal_execute_clinical_command: "staff",
   portal_save_scheduling_config: "staff",
   portal_save_scheduling_settings: "staff",
+  portal_set_booking_interval: "staff",
   portal_execute_appointment_command: "staff",
   portal_log_call_outcome: "staff",
   portal_undo_call_outcome: "staff",

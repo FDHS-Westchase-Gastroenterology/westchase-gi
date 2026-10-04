@@ -432,6 +432,23 @@ button.settings-hours-chip:active {
 
 /* ---- Appointment types ---- */
 
+/* The booking interval: its words, then the choice, in the table's card. */
+.settings-interval {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--wgi-rule);
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.settings-interval-switch {
+  width: 18rem;
+  flex-shrink: 0;
+}
+
 /* Grip, the type, who sees it, the switch, then the row's menu. The head
    and every row share the columns. */
 .settings-types {

@@ -167,8 +167,10 @@ available exceptions less unavailable exceptions; a date with none is closed. A 
 `seen` (checked in or completed). Today and later dates carry `open`, `booked`, `capacity`
 (`booked + open`), `bookedShare` (reserved minutes over working minutes), and `providers`, each with
 location names, its own `open` count, and up to two `firstOpen` starts. `open` places the
-shortest active appointment type back to back under the availability rules, including buffers;
-the provider counts sum to the day's count. Only starts after `observedAt` count, so today reads
+shortest active appointment type under the availability rules, including buffers, one opening per
+practice booking interval (Settings › Appointment types; one hour by default): the next opening
+starts one interval later, or after the type's time when that is longer. The week and Day views
+and `month_availability` offer the same openings. The provider counts sum to the day's count. Only starts after `observedAt` count, so today reads
 `full` with zero capacity once its hours have passed. The summary is a planning signal; booking
 still reads `availability`.
 
@@ -280,6 +282,7 @@ the key, shows the result as a toast, and registers Undo by sending the inverse 
 | `set_appointment_type_active` / `delete_appointment_type` | `active`; deletion takes no more. |
 | `save_location_details` | `name`, address, `mapsQuery`, and the office's open `hours`. |
 | `add_location_closure` / `remove_location_closure` | `closedOn`, `note`, `dryRun`; removal takes `closureId`. |
+| `set_booking_interval` | `minutes`: 15, 30 or 60. `id` and `expectedVersion` are the read's `practice` row; the result's `entity` is `practice`. It spaces the openings the schedule offers; booking, moving and `availability` still accept any start the type fits, and booked appointments keep their times. |
 
 The action refuses a staff session with `forbidden`, and the database refuses it again. A dry run
 (`dryRun: true`) saves nothing and returns the `conflicts` the change would cover; the pane shows
@@ -299,7 +302,7 @@ booked appointments keep it.
 
 Acceptance: [e2e/portal/settings-schedule.spec.ts](e2e/portal/settings-schedule.spec.ts) covers
 time off over a booking and its rebooking link, a type turned off and back on with Undo, a keyboard
-reorder with Undo, a closed day and its reopening, and staff reading every pane without edit
+reorder with Undo, a closed day and its reopening, the booking interval with Undo, and staff reading every pane without edit
 controls. [e2e/boundaries/scheduling-settings.spec.ts](e2e/boundaries/scheduling-settings.spec.ts)
 covers each refusal against the database.
 

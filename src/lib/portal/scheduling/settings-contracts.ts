@@ -65,6 +65,12 @@ const officeDaySchema = z
   .refine((day) => day.closeMinute > day.openMinute)
   .readonly();
 
+/* How far apart the schedule offers openings: one booking per hour unless an admin chooses a
+   finer grid. A type longer than the interval still keeps its own time. */
+export const BOOKING_INTERVALS = [15, 30, 60] as const;
+export type BookingInterval = (typeof BOOKING_INTERVALS)[number];
+const bookingIntervalSchema = z.union([z.literal(15), z.literal(30), z.literal(60)]);
+
 const existing = { id: z.uuid(), expectedVersion: schedulingVersionSchema };
 export const settingsCommandSchema = z
   .discriminatedUnion("kind", [
@@ -167,6 +173,11 @@ export const settingsCommandSchema = z
       ...existing,
       closureId: z.uuid(),
     }),
+    z.strictObject({
+      kind: z.literal("set_booking_interval"),
+      ...existing,
+      minutes: bookingIntervalSchema,
+    }),
   ])
   .readonly();
 export type SettingsCommand = z.input<typeof settingsCommandSchema>;
@@ -200,7 +211,7 @@ export const settingsCommandOutcomeSchema = z.union([
   z
     .object({
       ok: z.literal(true),
-      entity: schedulingEntitySchema,
+      entity: z.enum([...schedulingEntitySchema.options, "practice"]),
       id: z.uuid(),
       version: schedulingVersionSchema,
       dryRun: z.literal(true).optional(),
@@ -302,6 +313,13 @@ export const schedulingSettingsOutcomeSchema = z.union([
       today: dateSchema,
       timeZone: z.literal("America/New_York"),
       canEdit: z.boolean(),
+      practice: z
+        .object({
+          id: z.uuid(),
+          bookingIntervalMinutes: bookingIntervalSchema,
+          version: schedulingVersionSchema,
+        })
+        .readonly(),
       providers: z.array(settingsProviderSchema).readonly(),
       types: z.array(settingsTypeSchema).readonly(),
       locations: z.array(settingsLocationSchema).readonly(),

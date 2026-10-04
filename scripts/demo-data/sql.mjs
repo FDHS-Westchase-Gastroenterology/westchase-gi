@@ -358,6 +358,8 @@ export function resetSql(data) {
 end if;\n`;
   for (const table of PORTAL_TABLES) sql += `delete from public.${table};\n`;
   sql += `delete from public.audit_log where source is not null;\n`;
+  // The practice keeps its one settings row; the baseline offers one opening an hour.
+  sql += `update public.scheduling_practice set booking_interval_minutes = 60, version = 1, updated_by = null, updated_at = now();\n`;
   sql += `delete from public.staff_profiles where user_id <> ${operator} and (role <> 'admin' or email like '%@example.test');\n`;
 
   for (const [table, defs] of TABLES) {
