@@ -24,7 +24,8 @@ import { fileURLToPath } from "node:url";
 export const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const MANIFEST = join(repoRoot, "local-only-paths.json");
 
-const BEGIN = "# BEGIN generated from local-only-paths.json -- edit that file, then run `npm run local-only:write`";
+const BEGIN =
+  "# BEGIN generated from local-only-paths.json -- edit that file, then run `npm run local-only:write`";
 const END = "# END generated from local-only-paths.json";
 const DOC_BEGIN = "<!-- BEGIN generated from local-only-paths.json -->";
 const DOC_END = "<!-- END generated from local-only-paths.json -->";
@@ -120,12 +121,7 @@ export function renderGitignoreBlock(manifest) {
 }
 
 export function renderRulesDoc(manifest) {
-  const lines = [
-    DOC_BEGIN,
-    "",
-    "| Path | Why it is local-only |",
-    "| --- | --- |",
-  ];
+  const lines = [DOC_BEGIN, "", "| Path | Why it is local-only |", "| --- | --- |"];
   for (const e of manifest.localOnly) lines.push(`| \`${e.path}\` | ${e.reason} |`);
   lines.push("");
   lines.push("**Not local-only.** These look like tooling but are required; the guard refuses");
@@ -154,7 +150,11 @@ export function spliceBlock(text, block, begin, end) {
 /* ----------------------------------------------------------------------- git */
 
 function git(args) {
-  const r = spawnSync("git", args, { cwd: repoRoot, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  const r = spawnSync("git", args, {
+    cwd: repoRoot,
+    encoding: "utf8",
+    maxBuffer: 64 * 1024 * 1024,
+  });
   if (r.status !== 0) throw new Error(`git ${args.join(" ")} failed: ${r.stderr}`);
   return r.stdout.split("\n").filter(Boolean);
 }
@@ -216,7 +216,10 @@ function main(argv) {
 
   if (mode === "write") {
     const gi = join(repoRoot, ".gitignore");
-    writeFileSync(gi, spliceBlock(readFileSync(gi, "utf8"), renderGitignoreBlock(manifest), BEGIN, END));
+    writeFileSync(
+      gi,
+      spliceBlock(readFileSync(gi, "utf8"), renderGitignoreBlock(manifest), BEGIN, END),
+    );
     console.log("wrote .gitignore managed block");
     mkdirSync(dirname(RULES_DOC), { recursive: true });
     const existing = existsSync(RULES_DOC)
@@ -229,10 +232,10 @@ function main(argv) {
 
   if (mode === "verify-generated") {
     // The check that keeps the copies honest: regenerate from the manifest and
-    // compare against what is committed. The rules document lives inside .claude/,
-    // which is itself local-only and therefore not in git, so CI can only verify
-    // the .gitignore block. `npm run local-only:write` keeps the document current
-    // for whoever is at the machine.
+    // Compare against what is committed. The rules document lives inside .claude/,
+    // Which is itself local-only and therefore not in git, so CI can only verify
+    // The .gitignore block. `npm run local-only:write` keeps the document current
+    // For whoever is at the machine.
     const gi = readFileSync(join(repoRoot, ".gitignore"), "utf8");
     const expected = renderGitignoreBlock(manifest);
     const b = gi.indexOf(BEGIN);
@@ -256,7 +259,9 @@ function main(argv) {
     return 0;
   }
 
-  console.error(`unknown mode "${mode}". Use: staged | tracked | classify | write | verify-generated`);
+  console.error(
+    `unknown mode "${mode}". Use: staged | tracked | classify | write | verify-generated`,
+  );
   return 2;
 }
 
