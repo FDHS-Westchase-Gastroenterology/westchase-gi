@@ -60,7 +60,7 @@ export function RecordBookingMain({
         types={month.types}
         typeId={month.typeId}
         draft={draft}
-        availability={month.availability}
+        roster={month.availability ?? month.roster}
         line={booking.strip}
         locked={locked}
         onType={(typeId) => {

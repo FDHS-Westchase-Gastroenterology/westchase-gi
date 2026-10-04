@@ -19,7 +19,7 @@ import { TimePicker } from "./time-picker";
 
 /* The strip under the booking month (issue #344; Figma 09d–09e): the visit
    type at its left and, at its right, what Book sends or why it waits —
-   with the one step that moves it on (Try again, Next month). "Enter a
+   with the one step that moves it on (Try again, Reload, Next month). "Enter a
    time…" opens a second row for a start the month does not offer: a
    provider and office, and the registry time field. The type and the
    provider are native selects, the portal's compact sizing of the
@@ -30,13 +30,14 @@ const ACTION_LABELS = {
   "retry-read": "Try again",
   "next-month": "Next month",
   "retry-book": "Try again",
+  reload: "Reload",
 } satisfies Record<StripAction, string>;
 
 export function BookingStrip({
   types,
   typeId,
   draft,
-  availability,
+  roster,
   line,
   locked,
   onType,
@@ -47,7 +48,8 @@ export function BookingStrip({
   types: readonly CardType[];
   typeId: string | null;
   draft: Readonly<BookingDraft>;
-  availability: MonthAvailability | null;
+  /** Who a squeeze-in can name: the month's read, else the type's last. */
+  roster: MonthAvailability | null;
   line: Readonly<BookingStripLine>;
   locked: boolean;
   onType: (typeId: string) => void;
@@ -56,7 +58,7 @@ export function BookingStrip({
   onSqueezeTime: (time: string) => void;
 }>) {
   const timeId = useId();
-  const options = availability === null ? [] : squeezeOptions(availability);
+  const options = roster === null ? [] : squeezeOptions(roster);
   const picked = draft.providerId === "" ? "" : `${draft.providerId}:${draft.locationId}`;
 
   return (

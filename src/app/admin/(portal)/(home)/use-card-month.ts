@@ -26,6 +26,10 @@ export interface CardMonth {
   readonly typeId: string | null;
   /** The read for the month and type on screen, or null while there is none. */
   readonly availability: MonthAvailability | null;
+  /** The latest read for the type on screen, whatever its month: who can be
+     booked and the type's version, so a squeeze-in still books while the
+     month on screen is loading or failed to load. */
+  readonly roster: MonthAvailability | null;
   readonly reread: () => void;
 }
 
@@ -86,12 +90,14 @@ export function useCardMonth(
     read?.availability.month === month && read.availability.appointmentType.id === shownType
       ? read.availability
       : null;
+  const roster = read?.availability.appointmentType.id === shownType ? read.availability : null;
   const current = landed?.key === key ? landed : null;
   return {
     status: current === null ? "loading" : current.ok ? "ready" : "failed",
     types: read?.types ?? [],
     typeId: shownType,
     availability,
+    roster,
     reread: () => {
       setAttempt((count) => count + 1);
     },

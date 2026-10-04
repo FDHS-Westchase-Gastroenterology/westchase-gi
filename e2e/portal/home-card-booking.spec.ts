@@ -202,3 +202,119 @@ test("Home Book recovers a start taken before it lands and books the nearest one
     await fixture.dispose();
   }
 });
+
+/* A Book the server refuses for good says why on the strip and offers
+   Reload, not a Try again that would be refused the same way. */
+test("Home Book explains a request booked elsewhere and reloads instead of retrying", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  const db = serviceDb();
+  const prefix = `card-refuse-${runId}`;
+  const fixture = await createSchedulingFixture(db, prefix);
+  const requestId = randomUUID();
+  const name = `TEST Card refusal ${runId}`;
+  try {
+    const office = await db
+      .from("scheduling_locations")
+      .update({ request_location: "tampa" })
+      .eq("id", fixture.locationIds[0]);
+    expect(office.error).toBeNull();
+    const staged = await db.from("requests").insert({
+      id: requestId,
+      name,
+      phone: "8135550197",
+      /* The global sweep removes a request a cancelled run leaves behind. */
+      email: `card-refuse-${runId}@example.test`,
+      location: "tampa",
+      preferred_time: "morning",
+      locale: "en",
+      source_path: `/e2e/card-booking/${runId}`,
+    });
+    expect(staged.error).toBeNull();
+    const patient = await db
+      .from("patients")
+      .select("version")
+      .eq("id", fixture.patientIds[0])
+      .single();
+    expect(patient.error).toBeNull();
+    expect(
+      await savePatient(db, fixture.staff.userId, {
+        kind: "link_request",
+        patientId: fixture.patientIds[0],
+        expectedVersion: z.object({ version: z.number() }).parse(patient.data).version,
+        requestId,
+      }),
+    ).toMatchObject({ ok: true });
+
+    await signIn(page, fixture.staff);
+    await page.goto("/admin?status=any");
+    await page.getByRole("button", { name: `Open request for ${name}`, exact: true }).click();
+    const card = page.locator(".wgi-record-card");
+    await card.getByRole("radio", { name: "Appointment scheduled" }).click();
+    await card.getByLabel("Visit type").selectOption(fixture.typeId);
+
+    const today = PRACTICE_DAY.format(new Date());
+    const day = PRACTICE_DAY.format(new Date(Date.now() + 2 * 86_400_000));
+    if (day.slice(0, 7) !== today.slice(0, 7))
+      await card.getByRole("button", { name: /next month/iu }).click();
+    const dayButton = card.getByRole("button", {
+      name: new RegExp(`^${LONG_DAY.format(new Date(`${day}T12:00:00Z`))}, \\d+ open times?$`, "u"),
+    });
+    await expect(dayButton).toBeVisible();
+    const popover = page.locator(".wgi-day-popover");
+    await expect(async () => {
+      await page.mouse.move(0, 0);
+      await dayButton.hover();
+      await expect(popover).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 20_000 });
+    const starts = popover.getByRole("group", {
+      name: `TEST ${prefix} First, TEST ${prefix} First`,
+    });
+    await expect(starts.getByRole("button").nth(1)).toBeVisible();
+    const elsewhere = (await starts.getByRole("button").nth(1).textContent()) ?? "";
+    await starts.getByRole("button").first().click();
+
+    /* Somebody else books the same request at another start. */
+    const request = await db.from("requests").select("version").eq("id", requestId).single();
+    expect(request.error).toBeNull();
+    const other = await fixture.save({
+      action: "command",
+      idempotencyKey: randomUUID(),
+      command: {
+        kind: "book",
+        patientId: fixture.patientIds[0],
+        providerId: fixture.providerIds[0],
+        locationId: fixture.locationIds[0],
+        appointmentTypeId: fixture.typeId,
+        expectedTypeVersion: 1,
+        start: { date: day, time: clockTime(elsewhere) },
+        sourceRequestId: requestId,
+        requestVersion: z.object({ version: z.number() }).parse(request.data).version,
+      },
+    });
+    expect(other.ok).toBe(true);
+
+    await card.getByRole("button", { name: "Book", exact: true }).click();
+    const strip = card.locator(".wgi-record-strip");
+    await expect(strip.locator(".wgi-record-readout-value[data-failed]")).toHaveText(
+      "Already booked",
+    );
+    await expect(strip).toContainText("Someone else just booked this request.");
+    await expect(strip.getByRole("button", { name: "Try again" })).toHaveCount(0);
+    await strip.getByRole("button", { name: "Reload", exact: true }).click();
+    await expect(strip.locator(".wgi-record-readout-value[data-failed]")).toHaveCount(0);
+    const appointments = await db
+      .from("appointments")
+      .select("status")
+      .eq("patient_id", fixture.patientIds[0]);
+    expect(appointments.error).toBeNull();
+    expect(appointments.data).toEqual([{ status: "scheduled" }]);
+  } finally {
+    expect(
+      (await db.from("appointments").delete().eq("created_by", fixture.staff.userId)).error,
+    ).toBeNull();
+    expect((await db.from("requests").delete().eq("id", requestId)).error).toBeNull();
+    await fixture.dispose();
+  }
+});

@@ -239,6 +239,25 @@ const FAILURE_COPY = new Map<SchedulingFailureCode, string>([
   ["not_found", "This appointment is no longer on the schedule."],
   ["forbidden", "Your role can't make that change."],
   ["undo_unavailable", "That can no longer be undone: it changed again or 15 minutes passed."],
+  [
+    "request_undo_unavailable",
+    "The request behind this appointment changed again, so that can't be undone.",
+  ],
+  ["request_not_actionable", "That request is no longer open. Close the card and open it again."],
+  ["request_already_booked", "Someone else just booked that request."],
+  ["request_link_conflict", "That request is now linked to a different patient."],
+  ["request_version_required", "The request needs reloading. Close the card and open it again."],
+  [
+    "request_transition_rejected",
+    "The request's status changed, so that action no longer applies.",
+  ],
+  ["provider_not_bookable", "That provider is off booking in Settings."],
+  ["provider_not_eligible", "That provider doesn't see this visit type."],
+  ["provider_unavailable", "That provider is no longer on the schedule."],
+  ["location_closed", "The office is closed that day."],
+  ["location_unavailable", "That office is no longer on the schedule."],
+  ["outside_office_hours", "That time is outside office hours."],
+  ["type_unavailable", "That visit type can't be booked now."],
 ]);
 
 export function failureMessage(code: SchedulingFailureCode): string {

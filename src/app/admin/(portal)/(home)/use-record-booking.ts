@@ -72,7 +72,11 @@ export function useRecordBooking(
     popover.openNow(day);
   }, [book.pending, popover]);
 
-  const command = bookCommandFor({ ...draft, typeId: month.typeId }, month.availability, subject);
+  /* The month's read, or while it loads or failed, the last read of the
+     type: a squeeze-in names its provider and time itself (issue #344:
+     the disc is a hint, never a gate). */
+  const known = month.availability ?? month.roster;
+  const command = bookCommandFor({ ...draft, typeId: month.typeId }, known, subject);
 
   return {
     draft,
@@ -83,8 +87,10 @@ export function useRecordBooking(
     strip: bookingStripLine({
       draft,
       availability: month.availability,
+      roster: known,
       status: month.status,
       bookFailed: book.failure === "failed",
+      refusal: book.failure === "refused" ? book.refusal : null,
     }),
     /** A new pick is a new attempt: a failed Book's key goes with it. */
     pick: (event: Readonly<BookingEvent>) => {
@@ -96,7 +102,10 @@ export function useRecordBooking(
     },
     onStripAction: (action: StripAction) => {
       if (action === "retry-book") book.retry();
-      else if (action === "retry-read") month.reread();
+      else if (action === "reload") {
+        book.reload();
+        month.reread();
+      } else if (action === "retry-read") month.reread();
       else dispatch({ type: "month", month: addMonths(draft.month, 1) });
     },
   };

@@ -17,12 +17,15 @@ import type { HistoryEntry } from "@/lib/portal/workflow/contracts";
    leads with its outcome and says the next call in short, and a note
    shows its own text. */
 
+/** The origin a website submission reads as. */
+export const WEBSITE_ORIGIN = "Website form";
+
 /** Where the request came from is the `created` entry of its history. */
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the request record carries workflow history entries whose types cannot be made readonly
 export function originLabel(record: FullRecord): string {
   for (const entry of record.history) {
     if (entry.kind === "created") {
-      return entry.origin === "staff" ? "Added by staff" : "Website form";
+      return entry.origin === "staff" ? "Added by staff" : WEBSITE_ORIGIN;
     }
   }
   return "Not recorded";

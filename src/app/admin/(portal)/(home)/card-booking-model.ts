@@ -209,9 +209,54 @@ export function bookCommandFor(
 }
 
 /** A refusal that means the start itself went: re-read and offer the
-   nearest. Anything else is retried as the same command. */
+   nearest. */
 export function startWasTaken(code: SchedulingFailureCode): boolean {
   return code === "time_unavailable" || code === "provider_conflict";
+}
+
+/** Why the server refused a Book that sending again would not change: the
+   strip's value, its detail, and whether reloading the card can help. */
+export interface BookRefusal {
+  readonly value: string;
+  readonly detail: string;
+  readonly reload: boolean;
+}
+
+const REFUSALS = new Map<SchedulingFailureCode, BookRefusal>([
+  ["request_stale_version", refusal("Request changed", "Someone else just changed this request.")],
+  ["request_version_required", refusal("Request changed", "Reload the request to book it.")],
+  ["request_already_booked", refusal("Already booked", "Someone else just booked this request.")],
+  [
+    "request_link_conflict",
+    refusal("Linked elsewhere", "This request is now linked to a different patient."),
+  ],
+  ["request_not_actionable", refusal("Can't be booked", "This request is no longer open.")],
+  ["type_changed", refusal("Visit type changed", "The visit type just changed.")],
+  ["type_unavailable", refusal("Visit type retired", "That visit type can't be booked now.")],
+  ["appointment_in_past", refusal("Time has passed", "That time has already passed.")],
+  [
+    "patient_conflict",
+    refusal("Patient already booked", "This patient has an appointment at that time.", false),
+  ],
+  ["patient_archived", refusal("Patient archived", "That patient's record is archived.", false)],
+  ["patient_not_found", refusal("Patient not found", "That patient's record is gone.", false)],
+  ["provider_not_bookable", refusal("Can't book", "That provider is off booking in Settings.")],
+  ["provider_not_eligible", refusal("Can't book", "That provider doesn't see this visit type.")],
+  ["provider_unavailable", refusal("Can't book", "That provider is no longer on the schedule.")],
+  ["location_closed", refusal("Can't book", "The office is closed that day.")],
+  ["location_unavailable", refusal("Can't book", "That office is no longer on the schedule.")],
+  ["outside_office_hours", refusal("Can't book", "That time is outside office hours.")],
+  ["forbidden", refusal("Can't book", "Your role can't book appointments.", false)],
+]);
+
+function refusal(value: string, detail: string, reload = true): BookRefusal {
+  return { value, detail, reload };
+}
+
+/** The refusal a code means, or null when Try again can still land it:
+   the server was unreachable or failed before it decided. */
+export function bookRefusal(code: SchedulingFailureCode): BookRefusal | null {
+  return REFUSALS.get(code) ?? null;
 }
 
 /* ---- The strip's readout ---- */
@@ -250,7 +295,7 @@ export function bookingReadout(
 
 /* ---- The strip's right: what Book sends, or why it waits ---- */
 
-export type StripAction = "retry-read" | "next-month" | "retry-book";
+export type StripAction = "retry-read" | "next-month" | "retry-book" | "reload";
 
 export interface BookingStripLine {
   readonly label: string;
@@ -265,18 +310,31 @@ function waiting(value: string, label = "Appointment", action: StripAction | nul
   return { label, value, detail: null, tone: "muted" as const, action };
 }
 
-/** The strip's readout in booking mode (Figma 09d–09e): a failed Book
-   first, then a failed read, then the pick Book sends, then what the
+/** The strip's readout in booking mode (Figma 09d–09e): a refused or
+   failed Book first, then a failed read, then the pick Book sends, then what the
    month or the day still asks of staff. */
 export function bookingStripLine(
   input: Readonly<{
     draft: BookingDraft;
     availability: MonthAvailability | null;
+    /** The month's read, else the latest read of the type: what a
+       squeeze-in's provider and office are named from. */
+    roster: MonthAvailability | null;
     status: "loading" | "ready" | "failed";
     bookFailed: boolean;
+    /** A Book the server refused for good. */
+    refusal: BookRefusal | null;
   }>,
 ): BookingStripLine {
   const { draft, availability, status } = input;
+  if (input.refusal !== null)
+    return {
+      label: "Appointment",
+      value: input.refusal.value,
+      detail: input.refusal.detail,
+      tone: "failed",
+      action: input.refusal.reload ? "reload" : null,
+    };
   if (input.bookFailed)
     return {
       label: "Appointment",
@@ -285,7 +343,7 @@ export function bookingStripLine(
       tone: "failed",
       action: "retry-book",
     };
-  const readout = bookingReadout(draft, availability);
+  const readout = bookingReadout(draft, input.roster);
   if (readout !== null) return { label: "Appointment", ...readout, tone: "strong", action: null };
   if (status === "failed" && availability === null)
     return waiting("Couldn't load open times", "Appointment", "retry-read");

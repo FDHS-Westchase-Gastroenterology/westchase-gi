@@ -124,9 +124,9 @@ export interface StaffRequestDraft {
 export type CreateStaffRequestActionState =
   | { status: "idle" }
   /**
-   * The request exists and the caller stays where it was. The full-page route
-   * still redirects to the new record; a dialog on Home asked to remain open
-   * so staff return to the line they were working rather than a new page.
+   * The request exists and the caller stays where it was: the add dialog
+   * remains open so staff return to the line they were working rather than
+   * a new page.
    */
   | { status: "created"; requestId: string; name: string }
   | {

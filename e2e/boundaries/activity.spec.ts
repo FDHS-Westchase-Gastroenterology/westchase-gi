@@ -417,6 +417,7 @@ test("front desk sees appointments, requests, the schedule and only their own si
             row(fixture.staff.email, "auth.sign_in", "staff", fixture.staff.userId),
             row(fixture.staff.email, "staff.role", "staff_profiles", null),
             row(fixture.staff.email, "requests.export", "requests", null),
+            row(fixture.staff.email, "staff.tour_dismiss", "staff_profiles", null),
           ])
       ).error,
     ).toBeNull();
@@ -442,7 +443,7 @@ test("front desk sees appointments, requests, the schedule and only their own si
         .filter((r) => r.category === "settings")
         .map((r) => r.action)
         .toSorted(),
-    ).toEqual(["requests.export", "staff.role"]);
+    ).toEqual(["requests.export", "staff.role", "staff.tour_dismiss"]);
     // Front desk's view is the admin's without the settings and the other person's sign-in.
     expect(ids(deskRows)).toEqual(
       ids(

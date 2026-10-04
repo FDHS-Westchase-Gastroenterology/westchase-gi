@@ -309,7 +309,8 @@ export function TimeOff({
           inverse: {
             ...command,
             kind: "add_time_off",
-            startsOn: first,
+            // Days already past cannot be added back; an absence under way resumes today.
+            startsOn: first < today ? today : first,
             endsOn: last,
             allDay: entry.allDay,
             startMinute: entry.allDay ? null : practiceMinute(entry.startsAt),

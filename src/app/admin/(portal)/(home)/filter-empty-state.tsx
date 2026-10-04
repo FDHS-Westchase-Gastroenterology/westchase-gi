@@ -79,12 +79,13 @@ export function FilterEmptyState({
 
 /** Said under a list that asks for Closed when the closed tail was cut at
     its fetch window (`closedTailCut`): Home's list and the Print sheet's
-    table hold only the latest closed requests. */
+    table hold only the latest closed requests. The Schedule finds open
+    requests only, so older closed ones are reached from the Activity log. */
 export function ClosedTailNote() {
   return (
     <span className="wgi-list-note">
       Showing the latest closed requests —{" "}
-      <Link href="/admin/schedule">search the Schedule for older ones</Link>.
+      <Link href="/admin/audit?category=requests">older ones are in the Activity log</Link>.
     </span>
   );
 }

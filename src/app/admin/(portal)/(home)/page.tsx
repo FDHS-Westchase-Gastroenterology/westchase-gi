@@ -1,7 +1,14 @@
 import { randomUUID } from "node:crypto";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { z } from "zod";
+
 import { PortalReleaseHomeAnnouncement } from "@/app/admin/(portal)/portal-release-briefing";
-import { fetchAttentiveOpenRows, fetchClosedRows } from "@/app/admin/(portal)/requests/queue";
+import {
+  fetchAttentiveOpenRows,
+  fetchClosedRows,
+  fetchWorkedRow,
+} from "@/app/admin/(portal)/requests/queue";
 import type { QueueRow, WorkedQueueRow } from "@/app/admin/(portal)/requests/queue";
 import { requireRole } from "@/lib/portal/auth";
 import { availableQueueCount } from "@/lib/portal/request-query";
@@ -62,7 +69,31 @@ function closedAsWorked(row: Readonly<QueueRow>): WorkedQueueRow {
   return { ...row, bucket: "closed", lastActivityAt: null, lastActivityBy: null };
 }
 
-export default async function AdminHomePage() {
+/* An address naming a request Home did not load, a closed one past the window that an
+   Activity row or an older link points at, still opens its record: that one request is read
+   and rides along. Null when it is already here, does not exist, or the read fails. */
+async function linkedRequest(
+  db: SupabaseClient,
+  param: string | readonly string[] | undefined,
+  loaded: readonly Readonly<QueueRow>[],
+  now: Date,
+): Promise<WorkedQueueRow | null> {
+  const id = z.uuid().safeParse(param);
+  if (!id.success || loaded.some((row) => row.id === id.data)) return null;
+  try {
+    const row = await fetchWorkedRow(db, id.data, now);
+    if (row === null) return null;
+    return row.status === "closed" ? closedAsWorked(row) : row;
+  } catch {
+    return null;
+  }
+}
+
+export default async function AdminHomePage({
+  searchParams,
+}: Readonly<{
+  searchParams: Promise<{ request?: string | string[] }>;
+}>) {
   const session = await requireRole("staff");
   const now = new Date();
   const [hour, minute] = NY_CLOCK.format(now).split(":").map(Number);
@@ -94,11 +125,18 @@ export default async function AdminHomePage() {
   /* Open rows are the page; the closed window rides behind them. A failed
      closed read narrows the list rather than blanking it. */
   const closedRows = closedRead.status === "fulfilled" ? closedRead.value : [];
+  const linked = await linkedRequest(
+    db,
+    (await searchParams).request,
+    [...(openRead.status === "fulfilled" ? openRead.value : []), ...closedRows],
+    now,
+  );
   const lines: HomeLine[] | null =
     openRead.status === "fulfilled"
       ? [
           ...openRead.value.map((row) => lineFor(row, now, nameMap)),
           ...closedRows.map((row) => lineFor(closedAsWorked(row), now, nameMap)),
+          ...(linked === null ? [] : [lineFor(linked, now, nameMap)]),
         ]
       : null;
 

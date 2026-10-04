@@ -223,6 +223,8 @@ async function completePasswordChange(
       : { error: SET_PASSWORD_ERROR, changeCommitted: false };
   }
 
+  // Setting a password signs the account in, so the Activity log records the sign-in.
+  await recordSignIn(staff);
   return null;
 }
 
@@ -232,7 +234,9 @@ async function completePasswordChange(
  */
 /** The Activity log's sign-in row. Written only after a sign-in succeeds; a failed write is
     logged without the address and never fails the sign-in. */
-async function recordSignIn(user: Readonly<PortalSessionUser>): Promise<void> {
+async function recordSignIn(
+  user: Readonly<Pick<PortalSessionUser, "id" | "email">>,
+): Promise<void> {
   try {
     await recordAudit(serviceClient(), {
       actorEmail: user.email,
