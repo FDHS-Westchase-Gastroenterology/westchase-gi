@@ -38,6 +38,91 @@ function clockTime(label: string): string {
   return `${String(hour).padStart(2, "0")}:${match[2]}`;
 }
 
+test("an unlinked Home request shows live openings and books its chosen time", async ({ page }) => {
+  test.setTimeout(120_000);
+  const db = serviceDb();
+  const prefix = `card-unlinked-${runId}`;
+  const fixture = await createSchedulingFixture(db, prefix);
+  const requestId = randomUUID();
+  const name = `TEST Unlinked booking ${runId}`;
+  try {
+    expect(
+      (
+        await db
+          .from("scheduling_locations")
+          .update({ request_location: "tampa" })
+          .eq("id", fixture.locationIds[0])
+      ).error,
+    ).toBeNull();
+    expect(
+      (
+        await db.from("requests").insert({
+          id: requestId,
+          name,
+          phone: "8135550196",
+          email: `${prefix}@example.test`,
+          location: "tampa",
+          preferred_time: "morning",
+          locale: "en",
+          source_path: `/e2e/card-booking/${runId}`,
+        })
+      ).error,
+    ).toBeNull();
+
+    await signIn(page, fixture.staff);
+    await page.goto("/admin?status=any");
+    await page.getByRole("button", { name: `Open request for ${name}`, exact: true }).click();
+    const card = page.locator(".wgi-record-card");
+    await card.getByRole("radio", { name: "Appointment scheduled" }).click();
+    await expect(card.getByLabel("Visit type")).toBeVisible();
+    await card.getByLabel("Visit type").selectOption(fixture.typeId);
+    const day = PRACTICE_DAY.format(new Date(Date.now() + 2 * 86_400_000));
+    if (day.slice(0, 7) !== PRACTICE_DAY.format(new Date()).slice(0, 7))
+      await card.getByRole("button", { name: /next month/iu }).click();
+    const dayButton = card.getByRole("button", {
+      name: new RegExp(`^${LONG_DAY.format(new Date(`${day}T12:00:00Z`))}, \\d+ open times?$`, "u"),
+    });
+    await expect(dayButton).toBeVisible();
+    // Availability is visible as a disc and also included in the day's accessible name.
+    await expect(dayButton).toHaveCSS("font-weight", "700");
+    await dayButton.focus();
+    await dayButton.press("Enter");
+    const starts = page.locator(".wgi-day-popover").getByRole("group", {
+      name: `TEST ${prefix} First, TEST ${prefix} First`,
+    });
+    await starts.getByRole("button").first().click();
+    await card.getByRole("button", { name: "Book", exact: true }).click();
+    await expect(card).toHaveCount(0);
+    const visits = await db
+      .from("appointments")
+      .select("source_request_id,location_id")
+      .eq("source_request_id", requestId);
+    expect(visits.error).toBeNull();
+    expect(visits.data).toEqual([
+      { source_request_id: requestId, location_id: fixture.locationIds[0] },
+    ]);
+    const request = await db.from("requests").select("status").eq("id", requestId).single();
+    expect(request.data).toEqual({ status: "booked" });
+  } finally {
+    const links = await db
+      .from("patient_request_links")
+      .select("patient_id")
+      .eq("request_id", requestId);
+    expect(links.error).toBeNull();
+    fixture.patientIds.push(
+      ...z
+        .array(z.object({ patient_id: z.uuid() }))
+        .parse(links.data)
+        .map((link) => link.patient_id),
+    );
+    expect(
+      (await db.from("appointments").delete().eq("created_by", fixture.staff.userId)).error,
+    ).toBeNull();
+    expect((await db.from("requests").delete().eq("id", requestId)).error).toBeNull();
+    await fixture.dispose();
+  }
+});
+
 test("Home Book recovers a start taken before it lands and books the nearest one", async ({
   page,
 }) => {

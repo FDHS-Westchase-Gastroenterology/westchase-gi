@@ -21,9 +21,12 @@ What must the reader do with this surface?
 **Every modal is one modal.** A staff-portal modal is a native `<dialog>` opened with `showModal()`
 and dressed in the `.portal-confirm-dialog` parts of `portal-workbench.css`. The top layer supplies
 the backdrop, inertness and Escape's `cancel` event; CSS animates it with `transition-behavior:
-allow-discrete`. There are three: `RemoveRecipientDialog`, and the staff home's glass sheets
-(`.wgi-glass-sheet`, [inks](tokens.md#recorded-exceptions)) `AddAppointmentDialog` (hosting
-`StaffRequestForm`) and `PrintRequestsSheet`. The shadcn Dialog stays unadopted ([a standing
+allow-discrete`. Settings confirmations keep the paper treatment. The shared glass sheets
+(`.wgi-glass-sheet` in `portal-workbench.css`, [inks](tokens.md#recorded-exceptions)) include
+`AddAppointmentDialog` (hosting `StaffRequestForm`), `PrintRequestsSheet` and the appointment
+type editor. They share the same header, inset scrolling well and footer. The type editor uses
+Cancel and Save, matching the [HIG Sheets](https://developer.apple.com/design/human-interface-guidelines/sheets)
+pattern; its Length field uses a [pop-up choice](https://developer.apple.com/design/human-interface-guidelines/pop-up-buttons). The shadcn Dialog stays unadopted ([a standing
 finding](adoption.md#standing-findings)); a wrapper is [item
 9](roadmap.md#9-a-native-dialog-component).
 

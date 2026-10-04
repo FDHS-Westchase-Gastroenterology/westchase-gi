@@ -268,7 +268,6 @@ function RequestRecordFoot({
               key={`${shownCard.answer ?? "call"}:${line.version}`}
               line={line}
               answer={shownCard.answer}
-              booksRequester
               onClose={() => {
                 /* The card's own close hands focus back to the button that
                    opened it before the card leaves: once Book and Log a call

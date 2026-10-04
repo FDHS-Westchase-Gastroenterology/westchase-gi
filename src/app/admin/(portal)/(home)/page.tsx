@@ -104,14 +104,10 @@ export default async function AdminHomePage({
   /* A failed read is never an empty day. The open-set read settles
      independently of the counts, so one unavailable number suppresses
      itself instead of blanking the work. */
-  const [openRead, closedRead, staffRead, recipientsRead, outboxRead] = await Promise.allSettled([
+  const [openRead, closedRead, staffRead, outboxRead] = await Promise.allSettled([
     fetchAttentiveOpenRows(db, { actorId: session.id, now }),
     fetchClosedRows(db, { from: 0, limit: CLOSED_WINDOW }),
     fetchStaffNameMap(db),
-    db
-      .from("notification_recipients")
-      .select("id", { count: "exact", head: true })
-      .eq("active", true),
     db
       .from("notification_outbox")
       .select("id", { count: "exact", head: true })
@@ -140,9 +136,6 @@ export default async function AdminHomePage({
         ]
       : null;
 
-  /* Zero recipients is a real state worth flagging; a failed recipients read
-     is not evidence of it, so the warning stays silent then. */
-  const recipientCount = countOf(recipientsRead);
   const outboxTrouble = countOf(outboxRead);
 
   return (
@@ -154,7 +147,6 @@ export default async function AdminHomePage({
       closedCapped={closedRows.length === CLOSED_WINDOW}
       addRequestKey={randomUUID()}
       printedBy={session.displayName === "" ? session.email : session.displayName}
-      noActiveRecipients={recipientCount === 0}
       deliveryFailureCount={outboxTrouble !== null && outboxTrouble > 0 ? outboxTrouble : null}
       announcements={<PortalReleaseHomeAnnouncement />}
     />

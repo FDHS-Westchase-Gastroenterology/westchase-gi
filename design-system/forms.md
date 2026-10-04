@@ -36,20 +36,23 @@ aria-invalid={error === null ? undefined : true}
 | --- | --- | --- |
 | `Input` | Single-line text, email, phone, search | `staff-request-fields.tsx`, `recipient-row.tsx` |
 | `Textarea` | Multi-line text | `staff-request-fields.tsx`, `AppointmentForm.tsx` |
-| `NativeSelect` | Choosing one of a longer fixed list | `staff-manager.tsx`, `AppointmentForm.tsx` |
+| `Select` | Appointment type Length: the shadcn Base UI listbox | `type-editor-dialog.tsx` |
+| `NativeSelect` | Other fixed lists, including patient-facing controls | `staff-manager.tsx`, `AppointmentForm.tsx` |
 | `SegmentedControl` | Choosing one of two to four short options, all visible at once, one always chosen | `staff-request-fields.tsx` (preferred office and time) |
 | `Checkbox` | An independent yes or no, including each row of a multi-select list | `print-sheet-body.tsx` |
 
-The four controls share one `motion` axis. `wgi` (default) has consumers on all four. `none` has
+These controls share one `motion` axis. `wgi` is the default. `none` has
 one: the Schedule's view switch wears it while a move chosen from the keyboard is on its way, so
 its thumb jumps. `shadcn` has no consumer today. `Input`, `Textarea` and `NativeSelect` fade their
 border and ring over 200ms `ease`, a recorded literal ([item 16](roadmap.md#16-motion-literals)). `Checkbox` draws a 4px
 corner off the radius steps ([item 8](roadmap.md#8-the-radius-ramp)).
 
-Selects stay native. A native `<select>` opens the platform picker on phones, speaks every
-locale the site serves and needs no portal layer, so `NativeSelect` is the only select until a
-surface needs search inside the list. When the list is two to four short options that fit side by
-side, show them all with `SegmentedControl` (`ui/segmented-control.tsx`) instead: it is Base UI's
+Patient-facing selects stay native: the platform picker speaks every locale the site serves
+and needs no portal layer. Appointment type Length uses `ui/select.tsx`, adopted from the
+shadcn registry on Base UI, with a selected-item check, typeahead and arrow-key selection. Its
+portal stays inside the native dialog, and Escape closes the list before the dialog. The popup
+opens instantly; the trigger uses the registry micro duration for border and focus feedback.
+When the list is two to four short options that fit side by side, show them all with `SegmentedControl` (`ui/segmented-control.tsx`) instead: it is Base UI's
 radio group underneath (one tab stop, arrow keys choose, a hidden native radio posts `name=value`
 as the select did), and the thumb slides on the staff home's fast beat.
 
@@ -59,7 +62,8 @@ Which control?
 ├── One of a fixed list
 │   ├── A request's outcome, a follow-up or a reason → a choice list (below)
 │   ├── Two to four short options that fit side by side → SegmentedControl
-│   └── Anything else → NativeSelect
+│   ├── Appointment type Length → Select
+│   └── Other fixed lists → NativeSelect
 ├── An independent yes or no → Checkbox
 ├── A date → a date input (dates-and-times.md)
 └── A time of day → TimePicker (dates-and-times.md)

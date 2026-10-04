@@ -654,12 +654,10 @@ button.settings-hours-chip:active {
   }
 }
 
-/* The type editor holds five fields, so it is the modal grammar's wider,
-   taller sheet: the icon choices sit in one row and the actions stay in
-   view at 1440×900. */
+/* The type editor shares the Home glass sheet. Its listbox stays in the
+   dialog's top layer and may extend beyond the rim; only the well scrolls. */
 .portal-confirm-dialog.settings-type-editor {
-  width: min(92vw, 34rem);
-  max-height: min(92dvh, 46rem);
+  overflow: visible;
 }
 
 /* ---- Locations ---- */

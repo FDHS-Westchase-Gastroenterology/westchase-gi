@@ -33,7 +33,6 @@ export function HomeWorkbench({
   nowMs,
   closedCapped,
   printedBy,
-  noActiveRecipients,
   deliveryFailureCount,
   announcements,
   addRequestKey,
@@ -49,7 +48,6 @@ export function HomeWorkbench({
   closedCapped: boolean;
   /** The signed-in staff member, printed on each page's footer. */
   printedBy: string | null;
-  noActiveRecipients: boolean;
   deliveryFailureCount: number | null;
   announcements?: ReactNode;
 }>) {
@@ -96,13 +94,6 @@ export function HomeWorkbench({
       ) : (
         <HomeDashboard lines={lines} nowMs={nowMs} closedCapped={closedCapped} />
       )}
-      {noActiveRecipients ? (
-        <p data-testid="no-recipients-warning" className="portal-sheet-alert">
-          <strong>Notification emails are paused.</strong> Requests still land here, but no email
-          goes out when one arrives.{" "}
-          <Link href="/admin/settings/notifications">Manage recipients</Link>
-        </p>
-      ) : null}
       {deliveryFailureCount !== null ? (
         <p data-testid="delivery-failure-warning" className="portal-sheet-alert">
           <strong>

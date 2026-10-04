@@ -275,7 +275,6 @@ export function RecordCard({
   fullOpen = false,
   dragHandleProps,
   answer: firstAnswer = null,
-  booksRequester = false,
   onClose,
   onOpenFull,
   onSettled,
@@ -287,10 +286,6 @@ export function RecordCard({
   dragHandleProps?: Pick<ComponentProps<"div">, "onPointerDown">;
   /** The answer the card opens on; Book appointment opens it booking. */
   answer?: CardAnswer | null;
-  /** Books a requester no patient is linked to yet, as the Schedule's
-      request record does (issue #356): the server registers them from the
-      request as Book lands. Home hands an unlinked booking off instead. */
-  booksRequester?: boolean;
   onClose: () => void;
   /** Toggles the full record — opens it, or hides it when it already shows
       this record. `instant` when the press came from the keyboard: the
@@ -311,10 +306,9 @@ export function RecordCard({
   });
   const answer = draft.answer;
 
-  /* A request linked to a patient books straight into the schedule
-     (issue #344): its month shows the open starts, and Book replaces Save.
-     An unlinked request keeps the day and time Save hands to scheduling. */
-  const booking = (line.patientId !== null || booksRequester) && needsTime(answer);
+  /* Every request books against live openings. When no patient is linked
+     yet, the existing booking action registers the requester on Book. */
+  const booking = needsTime(answer);
   const plan = useRecordBooking(
     {
       name: line.name,

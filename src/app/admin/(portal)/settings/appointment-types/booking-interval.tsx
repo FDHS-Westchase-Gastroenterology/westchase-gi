@@ -80,14 +80,14 @@ export function BookingIntervalBand({
     <section aria-labelledby="booking-interval-title" className="settings-interval">
       <div className="min-w-0">
         <h2 id="booking-interval-title" className="settings-section-title">
-          Openings start
+          Appointment start times
         </h2>
         <p
           id="booking-interval-line"
           className="text-[0.8125rem] leading-[1.125rem] text-(--wgi-muted-ink)"
         >
-          One opening per provider {intervalEvery(saved)}, {clockMarks(saved)}. A visit that runs
-          past a mark moves the next opening to the mark after it.
+          Suggest available starts {clockMarks(saved)} ({intervalEvery(saved)}). Visit length is set
+          separately below. Existing bookings stay as they are.
         </p>
       </div>
       <div className="settings-interval-form">

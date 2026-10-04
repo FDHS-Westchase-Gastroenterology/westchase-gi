@@ -69,8 +69,8 @@ Both products meet these. A change that breaks one is not finished.
   sends it to the problem.
 - Every animation has a reduced-motion answer, and nothing autoplays.
 - Platform semantics first: a native select, a date input, a native dialog. Replacing one means
-  re-earning its keyboard, locale and assistive behavior; the staff home's time wheel is the one
-  replacement, and its open gap is [roadmap item 18](design-system/roadmap.md#18-time-picker-name).
+  re-earning its keyboard, locale and assistive behavior; the staff home's time wheel and
+  appointment type Length ([forms](design-system/forms.md)) are the replacements. The time wheel's open gap is [roadmap item 18](design-system/roadmap.md#18-time-picker-name).
 
 ## Motion
 

@@ -98,16 +98,8 @@ test.describe("portal home", () => {
       ),
     );
 
-    // The zero-recipients safety net appears exactly when no active
-    // Notification recipient exists.
-    const { count: activeRecipients, error: recipientsError } = await db
-      .from("notification_recipients")
-      .select("id", { count: "exact", head: true })
-      .eq("active", true);
-    expect(recipientsError).toBeNull();
-    await expect(page.getByTestId("no-recipients-warning")).toHaveCount(
-      (activeRecipients ?? 0) === 0 ? 1 : 0,
-    );
+    // Notification configuration belongs in Settings, even when emails are paused.
+    await expect(page.getByTestId("no-recipients-warning")).toHaveCount(0);
     // The staged request is a line on the day sheet, marked New.
     const stagedLine = page
       .getByTestId("home-line-list")

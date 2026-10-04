@@ -15,8 +15,8 @@ import { useCardBooking } from "./use-card-booking";
 import { useCardMonth } from "./use-card-month";
 
 /* The record card's booking (issue #344): a request linked to a patient
-   books straight into the schedule. The Schedule's request record (issue
-   #356) books a requester no patient is linked to yet; the server
+   books straight into the schedule. Home and the Schedule's request record
+   also book a requester no patient is linked to yet; the server
    registers them from the request as Book lands (booking-actions.ts). Its
    patient record books a patient another visit with no request at all.
    This holds what the card's booking
@@ -34,7 +34,7 @@ export function useRecordBooking(
     }
   >,
   options: Readonly<{
-    /** The card is booking a linked patient: read the month. */
+    /** The card is booking an appointment: read the month. */
     active: boolean;
     /** Practice-local today. */
     today: string;

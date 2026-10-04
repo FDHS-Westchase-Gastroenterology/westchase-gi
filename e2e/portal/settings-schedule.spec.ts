@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import type { Locator } from "@playwright/test";
+import { z } from "zod";
 
 import { runId, serviceDb } from "../harness/env";
 import {
@@ -13,7 +14,7 @@ import { createStaffFixture, signIn } from "../harness/session";
 /* Issue #352: the Settings window's Schedule group as staff use it. Time off
    warns about the bookings it covers before it is added and lists them to
    rebook after; a type turns off and back on with Undo, and moves in the
-   booking order from the keyboard; the booking interval is typed, saved and undone;
+   booking order from the keyboard; the practice clock saves a choice and undoes it;
    an office closes a day the same way time
    off does. Staff read every pane with no edit controls. The shared Preview
    database has other providers, types and offices, so every check is scoped
@@ -149,6 +150,58 @@ test("a type turns off and back on with Undo, and moves in the booking order fro
   }
 });
 
+test("the type editor selects a duration by keyboard and saves it, while Cancel leaves it unchanged", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const db = serviceDb();
+  const fixture = await createSchedulingFixture(db, `settings-length-${runId}`);
+  try {
+    await signIn(page, fixture.staff);
+    const address = `/admin/settings/appointment-types?type=${fixture.typeId}&field=details`;
+    await page.goto(address);
+    const dialog = page.getByTestId("type-editor-dialog");
+    const length = dialog.getByRole("combobox", { name: "Length", exact: true });
+    await expect(length).toBeFocused();
+    await length.press("Enter");
+    await expect(page.getByRole("listbox")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("listbox")).toBeHidden();
+    await expect(dialog).toBeVisible();
+    await expect(length).toBeFocused();
+    await length.press("Enter");
+    await page.keyboard.press("Home");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await expect(length).toHaveText("15 min");
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect
+      .poll(async () => {
+        const result = await db
+          .from("appointment_types")
+          .select("duration_minutes")
+          .eq("id", fixture.typeId)
+          .single();
+        expect(result.error).toBeNull();
+        return z.object({ duration_minutes: z.number() }).parse(result.data).duration_minutes;
+      })
+      .toBe(15);
+
+    await page.goto(address);
+    await length.click();
+    await page.getByRole("option", { name: "60 min", exact: true }).click();
+    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await page.goto(address);
+    await expect(length).toHaveText("15 min");
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+  } finally {
+    await fixture.dispose();
+  }
+});
+
 test("an admin types the booking interval, saves it, and Undo puts it back", async ({ page }) => {
   test.setTimeout(90_000);
   const db = serviceDb();
@@ -163,14 +216,16 @@ test("an admin types the booking interval, saves it, and Undo puts it back", asy
     await restoreBookingInterval(db, actor);
     await signIn(page, fixture.staff);
     await page.goto("/admin/settings/appointment-types");
-    const clock = page.getByRole("radiogroup", { name: "Openings start" });
+    const clock = page.getByRole("radiogroup", { name: "Appointment start times" });
     await expect(clock.getByRole("radio", { name: "On the hour" })).toBeChecked();
 
     // A choice saves at once, and the line names the marks.
     await clock.getByRole("radio", { name: "Half hour" }).click();
     await expect(page.getByText("Openings start at :00 and :30")).toBeVisible();
     await expect.poll(interval).toBe(30);
-    await expect(page.getByText(/every 30 minutes, at :00 and :30\./u)).toBeVisible();
+    await expect(
+      page.getByText(/Suggest available starts at :00 and :30 \(every 30 minutes\)\./u),
+    ).toBeVisible();
 
     await page.getByRole("button", { name: "Undo" }).click();
     await expect(page.getByText("Undone.")).toBeVisible();
@@ -254,7 +309,7 @@ test("staff read the Schedule group with no edit controls", async ({ page }) => 
     await expect(page.getByRole("button", { name: `Move ${name}` })).toHaveCount(0);
     await expect(page.getByRole("button", { name: `More for ${name}` })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Add type" })).toHaveCount(0);
-    const clock = page.getByRole("radiogroup", { name: "Openings start" });
+    const clock = page.getByRole("radiogroup", { name: "Appointment start times" });
     await clock.getByRole("radio", { name: "Quarter hour" }).click();
     await expect(clock.getByRole("radio", { name: "On the hour" })).toBeChecked();
 

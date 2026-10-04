@@ -20,7 +20,7 @@ import type { CardBookCommand, CardType } from "./card-booking-model";
    return outcomes rather than throwing, so a throw on the client is only
    ever the transport.
 
-   The Schedule's request record (issue #356) books a person known only by
+   Home and the Schedule's request record book a person known only by
    their request: its month is read with no patient, and its Book sends no
    patient either. The server then books the patient linked to the request,
    registering the requester from the request row first when there is none

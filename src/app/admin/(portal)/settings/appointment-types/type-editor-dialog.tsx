@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 
 import { showModalWithInitialFocus } from "@/app/admin/(portal)/settings/open-dialog";
@@ -11,7 +11,14 @@ import { TypeIcon } from "@/components/patterns/type-icon";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/native-select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { APPOINTMENT_TYPE_ICONS } from "@/lib/portal/scheduling/contracts";
@@ -46,10 +53,10 @@ function isIcon(value: string | undefined): value is AppointmentTypeIcon {
 }
 
 function keepFocusInDialog(event: ReactKeyboardEvent<HTMLDialogElement>) {
-  if (event.key !== "Tab") return;
+  if (event.key !== "Tab" || event.defaultPrevented) return;
   const controls = Array.from(
     event.currentTarget.querySelectorAll<HTMLElement>(
-      "button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])",
+      'button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled])',
     ),
   );
   const first = controls.at(0);
@@ -76,6 +83,8 @@ export function TypeEditorDialog({
   send: SettingsSend;
 }>) {
   const router = useRouter();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [lengthOpen, setLengthOpen] = useState(false);
   const [name, setName] = useState(() => type?.name ?? "");
   const [icon, setIcon] = useState<AppointmentTypeIcon>(() => type?.icon ?? "stethoscope");
   const [length, setLength] = useState(() => type?.durationMinutes ?? 30);
@@ -89,6 +98,10 @@ export function TypeEditorDialog({
   const lengths = LENGTHS.some((minutes) => minutes === length)
     ? LENGTHS
     : [...LENGTHS, length].toSorted((a, b) => a - b);
+  const lengthItems = lengths.map((minutes) => ({
+    value: minutes,
+    label: `${String(minutes)} min`,
+  }));
   const valid = name.trim() !== "";
   const title = type === null ? "Add type" : `Edit ${type.name}`;
 
@@ -157,19 +170,33 @@ export function TypeEditorDialog({
   return (
     <dialog
       ref={(dialog) => {
-        if (dialog !== null && !dialog.open) showModalWithInitialFocus(dialog);
+        dialogRef.current = dialog;
+        if (dialog !== null && !dialog.open) {
+          dialog.toggleAttribute(
+            "data-instant",
+            document.activeElement?.matches(":focus-visible") === true,
+          );
+          showModalWithInitialFocus(dialog);
+        }
       }}
       aria-modal="true"
       aria-labelledby="type-editor-title"
       data-testid="type-editor-dialog"
-      className="portal-confirm-dialog settings-type-editor"
+      className="portal-confirm-dialog wgi-glass-sheet settings-type-editor"
       onKeyDown={keepFocusInDialog}
-      onClickCapture={(event) => {
-        event.currentTarget.toggleAttribute("data-instant", event.detail === 0);
+      onPointerDownCapture={(event) => {
+        event.currentTarget.toggleAttribute("data-instant", false);
+      }}
+      onKeyDownCapture={(event) => {
+        event.currentTarget.toggleAttribute("data-instant", true);
       }}
       onCancel={(event) => {
         event.preventDefault();
         event.currentTarget.toggleAttribute("data-instant", true);
+        if (lengthOpen) {
+          setLengthOpen(false);
+          return;
+        }
         if (!pending) leave();
       }}
     >
@@ -180,20 +207,10 @@ export function TypeEditorDialog({
           void save();
         }}
       >
-        <div className="portal-confirm-dialog-body">
-          <div className="portal-confirm-dialog-heading">
-            <h2 id="type-editor-title" className="portal-confirm-dialog-title">
-              {title}
-            </h2>
-            <button
-              type="button"
-              disabled={pending}
-              className="portal-confirm-dialog-close"
-              onClick={leave}
-            >
-              Close
-            </button>
-          </div>
+        <header className="wgi-glass-sheet-header">
+          <h2 id="type-editor-title">{title}</h2>
+        </header>
+        <div className="wgi-glass-well">
           <FieldGroup className="wgi-settings">
             <Field>
               <FieldLabel htmlFor="type-name-input">Name</FieldLabel>
@@ -235,21 +252,35 @@ export function TypeEditorDialog({
             </Field>
             <Field>
               <FieldLabel htmlFor="type-length-input">Length</FieldLabel>
-              <NativeSelect
-                id="type-length-input"
-                data-initial-focus={field === "details" || undefined}
-                value={String(length)}
-                onChange={(event) => {
-                  setLength(Number(event.target.value));
+              <Select
+                items={lengthItems}
+                value={length}
+                open={lengthOpen}
+                onOpenChange={setLengthOpen}
+                onValueChange={(value) => {
+                  if (value !== null) setLength(value);
                 }}
               >
-                {lengths.map((minutes) => (
-                  <option key={minutes} value={minutes}>
-                    {minutes} min
-                  </option>
-                ))}
-              </NativeSelect>
-              <FieldDescription>How much of the day a booking of this type takes.</FieldDescription>
+                <SelectTrigger
+                  id="type-length-input"
+                  data-initial-focus={field === "details" || undefined}
+                  aria-describedby="type-length-description"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent container={dialogRef}>
+                  <SelectGroup>
+                    {lengthItems.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <FieldDescription id="type-length-description">
+                How long this visit lasts.
+              </FieldDescription>
             </Field>
             <Field>
               <FieldLabel htmlFor="type-description-input">What it is for</FieldLabel>
@@ -290,11 +321,17 @@ export function TypeEditorDialog({
             </Field>
           </FieldGroup>
         </div>
-        <div className="portal-confirm-dialog-actions">
-          <Button type="button" variant="outline" disabled={pending} onClick={leave}>
+        <div className="portal-confirm-dialog-actions wgi-glass-footer">
+          <Button
+            type="button"
+            variant="outline"
+            data-glass="secondary"
+            disabled={pending}
+            onClick={leave}
+          >
             Cancel
           </Button>
-          <Button type="submit" disabled={!valid || pending}>
+          <Button type="submit" data-glass="primary" disabled={!valid || pending}>
             {pending ? "Saving…" : type === null ? "Add type" : "Save"}
           </Button>
         </div>
