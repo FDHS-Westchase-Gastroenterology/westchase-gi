@@ -225,6 +225,30 @@ migration-changing, or otherwise untrusted PRs are rejected before review. Execu
    Inspect provider/Auth evidence without copying recipient addresses, email bodies, or
    bearer links. A code deploy does not prove these hosted settings.
 
+### Beta
+
+`beta` is a long-lived branch for trying features on the Production database before they
+reach `main`. Vercel deploys each push to `beta` as a Preview at the branch URL
+`westchase-gi-git-beta-<team>.vercel.app`. Preview variables scoped to the `beta` branch point it
+at Production: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
+`NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_SECRET_KEY`,
+`RESEND_API_KEY`, `RESEND_FROM` and `PORTAL_BASE_URL`, copied from the Production target.
+
+- Beta is Production data. Staff sign in with their own accounts, notifications go to the real
+  recipients, and every write is a real record. The shared preview sign-in is off for `beta`
+  (`previewAliasEnabled` in `src/lib/portal/server.ts`).
+- Beta runs on the Production schema. A feature whose migration Production lacks is promoted
+  to Production first (step 2 above), then merged into `beta`.
+- Feature branches merge into `beta` for testing; the same feature branch opens its PR to
+  `main`. Never open a PR from `beta`: the Supabase integration would create a Preview database
+  for it and write that database's keys over the `beta`-scoped variables. Reset `beta` to
+  `main` with a fast-forward or a merge, never a force push.
+- No CI runs on pushes to `beta`; the gates run on each feature's PR to `main`.
+- The GitHub App variables stay Production-only, so the Website panel on `beta` shows Not
+  configured.
+- Rotating a copied credential (step 4) updates the `beta`-scoped copy too:
+  `printf '%s' "$NEW_VALUE" | vercel env add NAME preview --git-branch beta --force`.
+
 ## Operating the system
 
 Day-to-day incident basics (the portal's Help page covers the front-desk view):
