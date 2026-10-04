@@ -310,7 +310,10 @@ export function checkDemoData(data) {
   integrity(data, problem);
   settings(data, problem);
   quality(data, problem);
-  dayView(data, problem);
-  activity(data, problem);
+  // The intake profile has an empty schedule, so the day view and appointment history are bare.
+  if (data.meta.profile !== "intake") {
+    dayView(data, problem);
+    activity(data, problem);
+  }
   return problems;
 }

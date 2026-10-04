@@ -21,9 +21,15 @@ import { createSchedule } from "./schedule.mjs";
 
 const ts = (v) => (v == null ? null : iso(v));
 
+/* `full` is the worked practice; `intake` is a fresh start with only new requests and nothing
+   on the schedule. */
+export const PROFILES = ["full", "intake"];
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-export function generateDemoData({ seed, now, staff: identities }) {
+export function generateDemoData({ seed, now, staff: identities, profile = "full" }) {
+  if (!PROFILES.includes(profile)) throw new Error(`Unknown profile ${profile}`);
+  const intake = profile === "intake";
   const NOW = Math.floor(now / 1000) * 1000;
   const random = createRandom(seed);
   const roster = clinicianRoster();
@@ -58,8 +64,8 @@ export function generateDemoData({ seed, now, staff: identities }) {
   );
 
   const people = createPeople(g);
-  const appts = createSchedule(g, people);
-  const { requests, transitions, events, links } = createRequests(g, people, appts);
+  const appts = intake ? [] : createSchedule(g, people);
+  const { requests, transitions, events, links } = createRequests(g, people, appts, { intake });
   const { records, entries, accounts } = createCharts(g, appts);
   addAppointmentActivity(g, appts);
 
@@ -336,7 +342,7 @@ export function generateDemoData({ seed, now, staff: identities }) {
   };
 
   return {
-    meta: { seed: String(seed), now: iso(NOW), today: TODAY, start: g.START, end: g.END },
+    meta: { seed: String(seed), profile, now: iso(NOW), today: TODAY, start: g.START, end: g.END },
     staff: { operator, clinicians: roster.map((c) => staff[c.key]) },
     rows,
     history,

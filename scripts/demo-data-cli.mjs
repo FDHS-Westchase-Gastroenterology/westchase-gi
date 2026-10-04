@@ -32,6 +32,7 @@ npm run demo:data -- reset [options]   Replace the branch's portal data with a g
 
 Options:
   --seed TEXT              Repeatable content; default westchase-demo-v1
+  --profile NAME           full (default): a worked practice. intake: only new requests, no appointments
   --now ISO_TIMESTAMP      Reference clock; default the current time
   --operator EMAIL         Front-desk actor; an active admin profile. Default PORTAL_SEED_ADMIN_EMAIL
   --env-file PATH          Default .env.local in this checkout; process wins
@@ -75,6 +76,7 @@ async function main() {
     options: {
       help: { type: "boolean" },
       seed: { type: "string", default: "westchase-demo-v1" },
+      profile: { type: "string", default: "full" },
       now: { type: "string" },
       operator: { type: "string" },
       "env-file": { type: "string" },
@@ -93,7 +95,12 @@ async function main() {
   if (Number.isNaN(now)) throw new Error("--now must be an ISO timestamp");
 
   if (command === "plan" || command === "check") {
-    const data = generateDemoData({ seed: values.seed, now, staff: fakeStaff() });
+    const data = generateDemoData({
+      seed: values.seed,
+      now,
+      staff: fakeStaff(),
+      profile: values.profile,
+    });
     const problems = checkDemoData(data);
     console.log(JSON.stringify(summarize(data), null, 2));
     report("bar", problems);
@@ -143,7 +150,12 @@ async function main() {
   const roster = clinicianRoster();
   const accounts = await planAccounts(target, roster);
   const clinicians = await ensureAccounts(target, roster);
-  const data = generateDemoData({ seed: values.seed, now, staff: { operator, clinicians } });
+  const data = generateDemoData({
+    seed: values.seed,
+    now,
+    staff: { operator, clinicians },
+    profile: values.profile,
+  });
   const problems = checkDemoData(data);
   if (problems.length) {
     report("bar", problems);

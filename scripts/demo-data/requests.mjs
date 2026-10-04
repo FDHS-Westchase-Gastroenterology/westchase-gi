@@ -86,7 +86,7 @@ const CLOSED = [
   },
 ];
 
-export function createRequests(g, people, appts) {
+export function createRequests(g, people, appts, { intake = false } = {}) {
   const { ri, pick, chance, weighted, shuffle, uuid } = g.random;
   const { NOW, TODAY, TYPES, staff } = g;
   const requests = [];
@@ -283,7 +283,7 @@ export function createRequests(g, people, appts) {
     );
   }
 
-  // New: arrived over the last sixty hours.
+  // New: arrived over the last sixty hours (five days in the intake profile).
   const fresh = [
     ...NEW_REQUEST_MESSAGES.en.slice(0, 7).map((m) => ({ m, locale: "en" })),
     { m: NEW_REQUEST_MESSAGES.es[0], locale: "es", cluster: "hispanic" },
@@ -291,8 +291,18 @@ export function createRequests(g, people, appts) {
     { m: NEW_REQUEST_MESSAGES.vi[0], locale: "vi", cluster: "vietnamese" },
     { m: STAFF_REQUEST_MESSAGES[0], locale: "en", staff: true },
   ];
+  // The intake profile has nothing worked yet: every request is new, spread over five days.
+  if (intake)
+    fresh.push(
+      ...NEW_REQUEST_MESSAGES.en.slice(7).map((m) => ({ m, locale: "en" })),
+      { m: NEW_REQUEST_MESSAGES.es[1], locale: "es", cluster: "hispanic" },
+      { m: STAFF_REQUEST_MESSAGES[1], locale: "en", staff: true },
+      { m: CONDITIONS.screening.message[1], locale: "en" },
+      { m: CONDITIONS.dysphagia.message[0], locale: "en" },
+    );
+  const window = (intake ? 120 : 60) * HOUR;
   fresh.forEach((s, i) => {
-    const at = NOW - Math.round(((i + 0.5) / fresh.length) * 60 * HOUR) - ri(0, 50) * MIN;
+    const at = NOW - Math.round(((i + 0.5) / fresh.length) * window) - ri(0, 50) * MIN;
     const r = newRequest({
       who: people.person(s.cluster),
       at,
@@ -304,6 +314,8 @@ export function createRequests(g, people, appts) {
     if (s.m.includes("mañana")) r.preferred_time = "morning";
     if (s.m.includes("Lutz")) r.location = "lutz";
   });
+
+  if (intake) return { requests, transitions, events, links };
 
   // Contacted: one to three attempts; call-backs due today, overdue, upcoming, and one gone stale.
   const contacted = [
