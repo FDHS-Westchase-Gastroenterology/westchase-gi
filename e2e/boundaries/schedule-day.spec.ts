@@ -75,7 +75,7 @@ test("the day read gives every working provider a column and names who is off", 
     const date = schedulingFixtureDate(14);
     const weekday = weekdayOf(date);
     // A 30-minute visit with 5-minute buffers reserves 40 minutes.
-    // The hourly booking interval holds the provider for the hour.
+    // The hourly booking interval starts openings on the hour.
     // So 08:55-10:20 offers one opening (09:00) and 11:55-13:20 one more (12:00).
     // A 10:00 or 13:00 start would run past the close.
     const row = (locationId: string, day: number, openMinute: number, closeMinute: number) => ({

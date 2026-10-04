@@ -13,7 +13,7 @@ import {
   weekHref,
   weekStartOf,
 } from "./week-calendar";
-import { hourBounds, hourLabel, place, shadesFor } from "./week-hours";
+import { hourBounds, hourLabel, openUntil, place, shadesFor } from "./week-hours";
 import type { WeekSpan } from "./week-hours";
 
 /* The Schedule's day view (issue #351; Figma Ypf9ohpRcGWF5C9T9bSvWW, page
@@ -219,11 +219,12 @@ export function scheduleDayFor(schedule: Readonly<DaySchedule>): ScheduleDay {
     }
     for (const open of provider.open) {
       const time = practiceTime(open.startsAt);
-      const length = openLength(minutesOf(open.startsAt, open.endsAt));
+      const until = openUntil(open, provider);
+      const length = openLength(minutesOf(open.startsAt, until));
       cells.push({
         kind: "open",
         key: `${provider.id}:${open.startsAt}`,
-        ...place(open.startsAt, open.endsAt, start, end),
+        ...place(open.startsAt, until, start, end),
         lane,
         providerId: provider.id,
         providerName: provider.name,

@@ -323,7 +323,7 @@ function OpenBody({ cell }: Readonly<{ cell: WeekOpenCell }>) {
   return (
     <>
       <span className="wgi-week-open-disc" aria-hidden="true" />
-      <span className="wgi-week-open-word">Open</span>
+      <span className="wgi-week-open-word">Open {cell.time.replace(/\s?[AP]M$/u, "")}</span>
       <span className="wgi-week-open-book">Book {cell.time}</span>
     </>
   );
