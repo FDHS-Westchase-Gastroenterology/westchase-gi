@@ -174,8 +174,26 @@ jobs:
 
       - name: Load Production records into beta
         run: |
+          # Some migrations write rows as they replay. Empty the app tables first so
+          # beta holds exactly Production's rows.
+          cat > "$DUMP_DIR/clear.sql" <<'SQL'
+          set session_replication_role = replica;
+          do $$
+          declare
+            tables text;
+          begin
+            select string_agg(format('%I.%I', schemaname, tablename), ', ')
+              into tables
+              from pg_tables
+             where schemaname in ('public', 'private');
+            if tables is not null then
+              execute 'truncate ' || tables;
+            end if;
+          end
+          $$;
+          SQL
           psql "$TARGET_URL" -q -v ON_ERROR_STOP=1 --single-transaction \
-            -c "set session_replication_role = replica" \
+            -f "$DUMP_DIR/clear.sql" \
             -f "$DUMP_DIR/auth.sql" \
             -f "$DUMP_DIR/app.sql"
 
