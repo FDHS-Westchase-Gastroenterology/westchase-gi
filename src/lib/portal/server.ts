@@ -30,6 +30,19 @@ export function serviceRoleKey(): string {
   return requiredEnv(["SUPABASE_SERVICE_ROLE_KEY"]);
 }
 
+/** Git branches whose deployments read and write the Production database. */
+const PRODUCTION_DATA_BRANCHES: ReadonlySet<string> = new Set(["main", "beta"]);
+
+/** The shared preview sign-in maps to the seed admin account. It exists only on
+ * Preview deployments of branches that run against a Preview Branch database,
+ * never on `beta`, whose Preview deployments use the Production database. */
+export function previewAliasEnabled(): boolean {
+  return (
+    process.env.VERCEL_ENV === "preview" &&
+    !PRODUCTION_DATA_BRANCHES.has(process.env.VERCEL_GIT_COMMIT_REF ?? "")
+  );
+}
+
 /** Build an application-owned URL without accepting an absolute/open-redirect
  * target. HTTP remains valid for local Playwright; production supplies HTTPS. */
 export function portalUrl(path: string): string | null {
