@@ -94,6 +94,28 @@ jobs:
           VERSION: ${{ steps.head.outputs.version }}
         run: supabase db reset --db-url "$TARGET_URL" --version "$VERSION" --no-seed --yes
 
+      - name: Mirror Production's automatic RLS on new tables
+        run: |
+          # Production's dashboard setting enables RLS on each new public table through
+          # the ensure_rls event trigger, which no migration creates.
+          enabled="$(psql "$SOURCE_URL" -At -c \
+            "select count(*) from pg_event_trigger where evtname = 'ensure_rls'")"
+          if [ "$enabled" = 1 ]; then
+            {
+              psql "$SOURCE_URL" -At -v ON_ERROR_STOP=1 -c \
+                "select pg_get_functiondef(evtfoid) from pg_event_trigger where evtname = 'ensure_rls'"
+              cat <<'SQL'
+          ;
+          revoke all on function public.rls_auto_enable() from public, anon, authenticated;
+          grant execute on function public.rls_auto_enable() to service_role;
+          drop event trigger if exists ensure_rls;
+          create event trigger ensure_rls on ddl_command_end
+            when tag in ('CREATE TABLE', 'CREATE TABLE AS', 'SELECT INTO')
+            execute function public.rls_auto_enable();
+          SQL
+            } | psql "$TARGET_URL" -q -v ON_ERROR_STOP=1 --single-transaction
+          fi
+
       - name: Compare beta's schema with Production's
         run: |
           fingerprint() {
@@ -101,7 +123,7 @@ jobs:
           with app as (
             select oid from pg_namespace where nspname in ('public', 'private')
           )
-          select 'column', c.relnamespace::regnamespace, c.relname, a.attname,
+          select 'column', c.relnamespace::regnamespace::text, c.relname::text, a.attname::text,
                  format_type(a.atttypid, a.atttypmod), a.attnotnull::text,
                  coalesce(pg_get_expr(d.adbin, d.adrelid), '')
             from pg_attribute a
@@ -110,28 +132,32 @@ jobs:
            where c.relnamespace in (select oid from app) and c.relkind in ('r', 'p', 'v')
              and a.attnum > 0 and not a.attisdropped
           union all
-          select 'constraint', connamespace::regnamespace, conrelid::regclass::text, conname,
+          select 'constraint', connamespace::regnamespace::text, conrelid::regclass::text, conname::text,
                  pg_get_constraintdef(oid), '', ''
             from pg_constraint where connamespace in (select oid from app)
           union all
-          select 'index', schemaname, tablename, indexname, indexdef, '', ''
+          select 'index', schemaname::text, tablename::text, indexname::text, indexdef, '', ''
             from pg_indexes where schemaname in ('public', 'private')
           union all
-          select 'policy', schemaname, tablename, policyname, cmd,
+          select 'policy', schemaname::text, tablename::text, policyname::text, cmd,
                  coalesce(qual, ''), coalesce(with_check, '')
             from pg_policies where schemaname in ('public', 'private')
           union all
-          select 'function', pronamespace::regnamespace, proname,
+          select 'function', pronamespace::regnamespace::text, proname::text,
                  pg_get_function_identity_arguments(oid), md5(pg_get_functiondef(oid)),
                  coalesce(proacl::text, ''), ''
             from pg_proc where pronamespace in (select oid from app) and prokind in ('f', 'p')
           union all
-          select 'grant', c.relnamespace::regnamespace, c.relname,
+          select 'grant', c.relnamespace::regnamespace::text, c.relname::text,
                  coalesce(nullif(g.grantee, 0)::regrole::text, 'PUBLIC'), g.privilege_type, '', ''
             from pg_class c cross join lateral aclexplode(c.relacl) g
            where c.relnamespace in (select oid from app)
           union all
-          select 'rls', relnamespace::regnamespace, relname,
+          select 'event trigger', evtname::text, evtevent::text, evtfoid::regproc::text,
+                 evtenabled::text, evtowner::regrole::text, coalesce(evttags::text, '')
+            from pg_event_trigger
+          union all
+          select 'rls', relnamespace::regnamespace::text, relname::text,
                  relrowsecurity::text, relforcerowsecurity::text, '', ''
             from pg_class where relnamespace in (select oid from app) and relkind in ('r', 'p')
           order by 1, 2, 3, 4, 5;
