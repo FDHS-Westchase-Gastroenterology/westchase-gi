@@ -2,16 +2,11 @@ name: Beta Refresh
 
 # Rebuilds the beta database (Supabase branch `beta`) from Production each night:
 # reset to Production's migration head, load Production's records, then apply the
-# migrations `beta` adds. A push to `beta` that changes its migrations refreshes it too.
-# Writes made on beta do not survive a refresh. CONTRIBUTING.md "Beta" describes the model.
+# migrations `beta` adds. Writes made on beta do not survive a refresh.
+# CONTRIBUTING.md "Beta" describes the model.
 on:
   schedule:
     - cron: "0 8 * * *"
-  push:
-    branches: ["beta"]
-    paths:
-      - "supabase/migrations/**"
-      - ".github/workflows/beta-refresh.yml"
   workflow_dispatch:
 
 permissions:

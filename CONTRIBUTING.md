@@ -227,27 +227,45 @@ migration-changing, or otherwise untrusted PRs are rejected before review. Execu
 
 ### Beta
 
-`beta` is a long-lived branch for trying features on the Production database before they
-reach `main`. Vercel deploys each push to `beta` as a Preview at the branch URL
-`westchase-gi-git-beta-jasongitdev-1290s-projects.vercel.app`. Preview variables scoped to the `beta` branch point it
-at Production: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
-`NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_SECRET_KEY`,
-`RESEND_API_KEY`, `RESEND_FROM` and `PORTAL_BASE_URL`, copied from the Production target.
+`beta` is a long-lived branch for trying features on a copy of Production before they reach
+`main`. Vercel deploys each push to `beta` as a Preview at
+`westchase-gi-git-beta-jasongitdev-1290s-projects.vercel.app`, on its own database: the
+persistent Supabase branch `beta` (`jzvlkdohxycbortwrklc`), linked to the `beta` Git branch.
 
-- Beta is Production data. Staff sign in with their own accounts, notifications go to the real
-  recipients, and every write is a real record. The shared preview sign-in is off for `beta`
-  (`previewAliasEnabled` in `src/lib/portal/server.ts`).
-- Beta runs on the Production schema. A feature whose migration Production lacks is promoted
-  to Production first (step 2 above), then merged into `beta`.
-- Feature branches merge into `beta` for testing; the same feature branch opens its PR to
-  `main`. Never open a PR from `beta`: the Supabase integration would create a Preview database
-  for it and write that database's keys over the `beta`-scoped variables. Reset `beta` to
-  `main` with a fast-forward or a merge, never a force push.
-- No CI runs on pushes to `beta`; the gates run on each feature's PR to `main`.
-- The GitHub App variables stay Production-only, so the Website panel on `beta` shows Not
-  configured.
-- Rotating a copied credential (step 4) updates the `beta`-scoped copy too:
-  `printf '%s' "$NEW_VALUE" | vercel env add NAME preview --git-branch beta --force`.
+- **The data is a nightly copy of Production.** `.github/workflows/beta-refresh.yml` runs at
+  08:00 UTC and on demand (`gh workflow run beta-refresh.yml`). It resets beta to
+  Production's migration head, fails if that schema differs from Production's, loads
+  Production's `public`, `private`, `auth.users` and `auth.identities` rows, applies the
+  migrations `beta` adds, and reports row counts. Writes made on beta are erased by the next
+  refresh; Production never sees them. Production's `ensure_rls` event trigger, a dashboard
+  setting no migration creates, is mirrored onto beta each run.
+- **The copy is real patient and staff data.** Staff sign in with their own Production
+  accounts. The shared preview sign-in is off for `beta` (`previewAliasEnabled` in
+  `src/lib/portal/server.ts`), and the alias variables scoped to `beta` are blank. The dump
+  passes through a GitHub-hosted runner and is deleted when the job ends.
+- **Nothing leaves beta.** Preview has no `RESEND_*` variables, so beta sends no email, and
+  no GitHub App variables, so the Website panel shows Not configured. There are no pg_cron
+  jobs or Vercel crons.
+- **Credentials.** The refresh reads Production as `beta_refresh_reader`: login, read-only by
+  default, `pg_read_all_data`, `BYPASSRLS`, three connections, 15-minute statement timeout.
+  Its URL is the repository secret `BETA_REFRESH_SOURCE_DATABASE_URL`; beta's postgres URL is
+  `BETA_REFRESH_TARGET_DATABASE_URL`. The job refuses any source but that role and any target
+  but beta. To rotate the reader's password, run `alter role beta_refresh_reader password
+  '…'` on Production, then `gh secret set BETA_REFRESH_SOURCE_DATABASE_URL` with the new
+  session-pooler URL (`aws-1-us-east-2.pooler.supabase.com:5432`, user
+  `beta_refresh_reader.gfvrjaoxamvshzplxmep`).
+- **Variables.** Preview variables scoped to `beta` point the app at the beta database:
+  `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
+  `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_SECRET_KEY`,
+  `SUPABASE_PROJECT_REF`, `SUPABASE_BRANCH_PROJECT_REF` and `PORTAL_BASE_URL`. The refresh keeps
+  beta's project reference and keys, so they are set once.
+- **Migrations.** Beta's migrations apply on each push through the Supabase integration and
+  again after every refresh. Production's applied set must match `beta`'s migration files up to
+  Production's head, or the refresh fails.
+- **Promotion is one pull request from `beta` to `main`.** Feature branches merge into `beta`;
+  when beta is ready, open the PR, pass the gates, and merge. Merging does not apply migrations
+  to Production; that follows step 2 above and needs its own authorization. Afterwards merge
+  `main` back into `beta`. Never force-push `beta`.
 
 ## Operating the system
 
