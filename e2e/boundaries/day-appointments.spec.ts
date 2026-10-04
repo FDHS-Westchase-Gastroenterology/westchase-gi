@@ -11,6 +11,7 @@ import {
   createSchedulingFixture,
   saveSettings,
   schedulingFixtureDate,
+  setProviderTypes,
 } from "../harness/scheduling";
 
 /* The Day view's appointment actions (issue #354): where a dragged card may land, the move
@@ -159,14 +160,7 @@ test("can_place answers each refusal a dropped card can meet, and a move lands a
     expect(back.data?.provider_id).toBe(chang);
 
     // A provider who doesn't see the type: refused while dragging, and on the drop.
-    expect(
-      await saveSettings(db, actor, {
-        kind: "set_provider_types",
-        id: awad,
-        expectedVersion: 1,
-        typeIds: [],
-      }),
-    ).toMatchObject({ ok: true });
+    expect(await setProviderTypes(db, actor, awad, [])).toMatchObject({ ok: true });
     expect(await canPlace(awad, tampa, at(date, "15:00"))).toMatchObject({
       placeable: false,
       refusal: "type_not_offered",
