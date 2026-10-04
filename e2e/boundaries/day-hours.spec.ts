@@ -6,6 +6,7 @@ import {
   readDayHours,
   saveSettings,
   schedulingFixtureDate,
+  setProviderWeek,
   setDayHours,
   undoDayHours,
 } from "../harness/scheduling";
@@ -40,22 +41,15 @@ async function dayFixture(prefix: string) {
   const everyDay = [0, 1, 2, 3, 4, 5, 6];
   try {
     // First works the fixture's weekday at one office; Second is off that weekday.
+    expect(await setProviderWeek(db, actor, firstId, week(everyDay))).toMatchObject({ ok: true });
     expect(
-      await saveSettings(db, actor, {
-        kind: "set_provider_weekly_hours",
-        id: firstId,
-        expectedVersion: 1,
-        hours: week(everyDay),
-      }),
-    ).toMatchObject({ ok: true, version: 2 });
-    expect(
-      await saveSettings(db, actor, {
-        kind: "set_provider_weekly_hours",
-        id: secondId,
-        expectedVersion: 1,
-        hours: week(everyDay.filter((weekday) => weekday !== WEEKDAY)),
-      }),
-    ).toMatchObject({ ok: true, version: 2 });
+      await setProviderWeek(
+        db,
+        actor,
+        secondId,
+        week(everyDay.filter((weekday) => weekday !== WEEKDAY)),
+      ),
+    ).toMatchObject({ ok: true });
     // The office keeps 8 to 6 every day, so a window can reach past the week but not the office.
     expect(
       await saveSettings(db, actor, {
@@ -69,6 +63,8 @@ async function dayFixture(prefix: string) {
         postal: "33626",
         mapsQuery: "1 Test Way Tampa FL 33626",
         hours: everyDay.map((weekday) => ({ weekday, openMinute: 480, closeMinute: 1080 })),
+        keepBooked: false,
+        dryRun: false,
       }),
     ).toMatchObject({ ok: true, entity: "location" });
   } catch (error) {

@@ -29,7 +29,6 @@ import {
   MenuItem,
   MenuRadioGroup,
   MenuRadioItem,
-  MenuSeparator,
   MenuTrigger,
 } from "@/components/ui/menu";
 import { showUndoToast } from "@/components/ui/undo-toast";
@@ -93,9 +92,6 @@ export function StaffView({
      cancelled invite doesn't come back. */
   const arriving = sent.filter((invite) => !known.has(invite.email.toLowerCase()));
   if (arriving.length !== sent.length) setSent(arriving);
-  const adminCount = staff.filter(
-    (person) => person.role === "admin" && person.onboarded_at !== null,
-  ).length;
 
   function leaveInvite() {
     const address = new URL(window.location.href);
@@ -219,7 +215,6 @@ export function StaffView({
               person={person}
               isSelf={person.user_id === selfUserId}
               canEdit={canEdit}
-              adminCount={adminCount}
               signInReadFailed={signInReadFailed}
               now={now}
               onRole={async (role) => changeRole(person, role)}
@@ -309,7 +304,6 @@ function StaffRowView({
   person,
   isSelf,
   canEdit,
-  adminCount,
   signInReadFailed,
   now,
   onRole,
@@ -319,7 +313,6 @@ function StaffRowView({
   person: StaffMember;
   isSelf: boolean;
   canEdit: boolean;
-  adminCount: number;
   signInReadFailed: boolean;
   now: string;
   onRole: (role: StaffRole) => Promise<void>;
@@ -341,14 +334,7 @@ function StaffRowView({
         name={name}
         line={pending ? invitedLabel(person.created_at, now) : person.email}
       />
-      <RoleCell
-        person={person}
-        name={name}
-        isSelf={isSelf}
-        canEdit={canEdit}
-        adminCount={adminCount}
-        onRole={onRole}
-      />
+      <RoleCell person={person} name={name} isSelf={isSelf} canEdit={canEdit} onRole={onRole} />
       <SignInCell person={person} canEdit={canEdit} signedIn={signedIn} onResend={onResend} />
       <span className="flex items-center justify-center">
         {canEdit && !isSelf ? (
@@ -380,14 +366,12 @@ function RoleCell({
   name,
   isSelf,
   canEdit,
-  adminCount,
   onRole,
 }: Readonly<{
   person: StaffMember;
   name: string;
   isSelf: boolean;
   canEdit: boolean;
-  adminCount: number;
   onRole: (role: StaffRole) => Promise<void>;
 }>) {
   /* The pill shows the new role at once; the server's answer settles it. */
@@ -426,33 +410,6 @@ function RoleCell({
                 </MenuRadioItem>
               ))}
             </MenuRadioGroup>
-          </MenuContent>
-        </Menu>
-      ) : canEdit && person.role === "admin" ? (
-        <Menu>
-          <MenuTrigger
-            className="settings-role-pill is-menu"
-            aria-label={`Your role: ${ROLE_NAMES.admin}`}
-          >
-            {ROLE_NAMES.admin}
-            <ChevronDown aria-hidden="true" className="size-3.5" />
-          </MenuTrigger>
-          <MenuContent align="start" className="min-w-48">
-            <MenuRadioGroup value="admin">
-              {ROLES.map((each) => (
-                <MenuRadioItem key={each} value={each} disabled={each !== "admin"}>
-                  {ROLE_NAMES[each]}
-                </MenuRadioItem>
-              ))}
-            </MenuRadioGroup>
-            <MenuSeparator />
-            <MenuGroup>
-              <MenuItem disabled className="max-w-64 whitespace-normal">
-                {adminCount <= 1
-                  ? "You're the only admin. Make someone else an admin first."
-                  : "You can't remove your own admin role. Another admin can change it."}
-              </MenuItem>
-            </MenuGroup>
           </MenuContent>
         </Menu>
       ) : (

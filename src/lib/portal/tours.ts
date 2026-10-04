@@ -92,7 +92,7 @@ export const TOUR_STEPS = {
       align: "center",
       icon: "clock",
       title: "Set each provider’s weekly hours",
-      body: "The schedule offers only these hours for booking. Drag the ends of a bar; a change for a single day is made on the schedule.",
+      body: "The schedule offers only these hours for booking. Choose Edit hours to change them from today or from a later date; a change for a single day is made on the schedule.",
     },
     {
       id: "appointment-types",

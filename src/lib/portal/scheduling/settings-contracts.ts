@@ -74,6 +74,9 @@ const bookingIntervalSchema = quarterSchema.pipe(
   z.number().min(BOOKING_INTERVAL_MINUTES.min).max(BOOKING_INTERVAL_MINUTES.max),
 );
 
+/* `expectedVersion` is the version of the part a command changes: a provider's profile, hours or
+   types, an office's details, a type, or the practice. Time off and closed days are rows of
+   their own and carry none. */
 const existing = { id: z.uuid(), expectedVersion: schedulingVersionSchema };
 export const settingsCommandSchema = z
   .discriminatedUnion("kind", [
@@ -89,17 +92,21 @@ export const settingsCommandSchema = z
       name: nameSchema,
       credentials: credentialsSchema,
       bookable: z.boolean(),
-      active: z.boolean(),
     }),
+    z.strictObject({ kind: z.literal("retire_provider"), ...existing }),
+    z.strictObject({ kind: z.literal("restore_provider"), ...existing }),
     z.strictObject({
       kind: z.literal("set_provider_weekly_hours"),
       ...existing,
+      startsOn: dateSchema,
       hours: weeklyHoursSchema,
+      keepBooked: z.boolean(),
+      dryRun: z.boolean(),
     }),
     z
       .strictObject({
         kind: z.literal("add_time_off"),
-        ...existing,
+        id: z.uuid(),
         startsOn: dateSchema,
         endsOn: dateSchema,
         allDay: z.boolean(),
@@ -117,7 +124,7 @@ export const settingsCommandSchema = z
             command.endMinute > command.startMinute,
       )
       .refine((command) => command.endsOn >= command.startsOn),
-    z.strictObject({ kind: z.literal("remove_time_off"), ...existing, timeOffId: z.uuid() }),
+    z.strictObject({ kind: z.literal("remove_time_off"), id: z.uuid(), timeOffId: z.uuid() }),
     z.strictObject({
       kind: z.literal("set_provider_types"),
       ...existing,
@@ -163,18 +170,25 @@ export const settingsCommandSchema = z
         .max(7)
         .refine((hours) => new Set(hours.map((day) => day.weekday)).size === hours.length)
         .readonly(),
-    }),
-    z.strictObject({
-      kind: z.literal("add_location_closure"),
-      ...existing,
-      closedOn: dateSchema,
-      note: z.string().trim().min(1).max(120).nullable(),
+      keepBooked: z.boolean(),
       dryRun: z.boolean(),
     }),
+    z.strictObject({ kind: z.literal("retire_location"), ...existing }),
+    z.strictObject({ kind: z.literal("restore_location"), ...existing }),
+    z
+      .strictObject({
+        kind: z.literal("add_location_closure"),
+        id: z.uuid(),
+        closedOn: dateSchema,
+        closedThrough: dateSchema,
+        note: z.string().trim().min(1).max(120).nullable(),
+        dryRun: z.boolean(),
+      })
+      .refine((command) => command.closedThrough >= command.closedOn),
     z.strictObject({
       kind: z.literal("remove_location_closure"),
-      ...existing,
-      closureId: z.uuid(),
+      id: z.uuid(),
+      closureIds: z.array(z.uuid()).min(1).max(61).readonly(),
     }),
     z.strictObject({
       kind: z.literal("set_booking_interval"),
@@ -191,24 +205,52 @@ export const schedulingSettingsCommandInputSchema = z.strictObject({
 });
 export type SchedulingSettingsCommandInput = z.input<typeof schedulingSettingsCommandInputSchema>;
 
-/* An appointment time off or a closed day would cover. Neither cancels it: the window lists
-   them so staff can choose new times. */
-export const settingsConflictSchema = z
+/* A booked appointment a change would leave outside its provider's hours, on a closed day or in
+   time off. No change cancels one: it stays booked until staff choose a new time. */
+const conflictFields = {
+  id: z.uuid(),
+  version: schedulingVersionSchema,
+  startsAt: schedulingTimestampSchema,
+  endsAt: schedulingTimestampSchema,
+  date: dateSchema,
+  appointmentType: z.string(),
+  appointmentTypeIcon: appointmentTypeIconSchema,
+  locationName: z.string().optional(),
+  providerName: z.string().optional(),
+  patientName: z.string(),
+  patientListName: z.string(),
+};
+export const settingsConflictSchema = z.object(conflictFields).readonly();
+export type SettingsConflict = z.output<typeof settingsConflictSchema>;
+
+/* Why an upcoming appointment needs a new time. */
+export const NEW_TIME_REASONS = ["outside_hours", "time_off", "office_closed"] as const;
+export type NewTimeReason = (typeof NEW_TIME_REASONS)[number];
+export const needsNewTimeSchema = z
   .object({
-    id: z.uuid(),
-    version: schedulingVersionSchema,
-    startsAt: schedulingTimestampSchema,
-    endsAt: schedulingTimestampSchema,
-    date: dateSchema,
-    appointmentType: z.string(),
-    appointmentTypeIcon: appointmentTypeIconSchema,
-    locationName: z.string().optional(),
-    providerName: z.string().optional(),
-    patientName: z.string(),
-    patientListName: z.string(),
+    ...conflictFields,
+    providerId: z.uuid(),
+    providerName: z.string(),
+    locationId: z.uuid(),
+    locationName: z.string(),
+    reason: z.enum(NEW_TIME_REASONS),
   })
   .readonly();
-export type SettingsConflict = z.output<typeof settingsConflictSchema>;
+export type NeedsNewTime = z.output<typeof needsNewTimeSchema>;
+
+/* The providers whose hours an office change moved, and on which weekdays. */
+const adjustedSchema = z
+  .array(
+    z
+      .object({
+        providerId: z.uuid(),
+        providerName: z.string(),
+        weekdays: z.array(weekdaySchema).readonly(),
+      })
+      .readonly(),
+  )
+  .readonly();
+export type SettingsAdjusted = z.output<typeof adjustedSchema>;
 
 export const settingsCommandOutcomeSchema = z.union([
   z
@@ -219,9 +261,15 @@ export const settingsCommandOutcomeSchema = z.union([
       version: schedulingVersionSchema,
       dryRun: z.literal(true).optional(),
       conflicts: z.array(settingsConflictSchema).readonly().optional(),
+      adjusted: adjustedSchema.optional(),
     })
     .readonly(),
-  schedulingFailureSchema,
+  schedulingFailureSchema
+    .extend({
+      conflicts: z.array(settingsConflictSchema).readonly().optional(),
+      adjusted: adjustedSchema.optional(),
+    })
+    .readonly(),
 ]);
 export type SettingsCommandOutcome = z.output<typeof settingsCommandOutcomeSchema>;
 
@@ -233,6 +281,9 @@ export const settingsProviderSchema = z
     credentials: z.string().nullable(),
     bookable: z.boolean(),
     version: schedulingVersionSchema,
+    profileVersion: schedulingVersionSchema,
+    hoursVersion: schedulingVersionSchema,
+    typesVersion: schedulingVersionSchema,
     sortOrder: z.number().int(),
     hours: z
       .array(
@@ -287,6 +338,7 @@ export const settingsLocationSchema = z
     id: z.uuid(),
     name: z.string(),
     version: schedulingVersionSchema,
+    detailsVersion: schedulingVersionSchema,
     street: z.string().nullable(),
     city: z.string().nullable(),
     region: z.string().nullable(),
@@ -324,8 +376,28 @@ export const schedulingSettingsOutcomeSchema = z.union([
         })
         .readonly(),
       providers: z.array(settingsProviderSchema).readonly(),
+      retiredProviders: z
+        .array(
+          z
+            .object({
+              id: z.uuid(),
+              name: z.string(),
+              credentials: z.string().nullable(),
+              profileVersion: schedulingVersionSchema,
+            })
+            .readonly(),
+        )
+        .readonly(),
       types: z.array(settingsTypeSchema).readonly(),
       locations: z.array(settingsLocationSchema).readonly(),
+      retiredLocations: z
+        .array(
+          z
+            .object({ id: z.uuid(), name: z.string(), detailsVersion: schedulingVersionSchema })
+            .readonly(),
+        )
+        .readonly(),
+      needsNewTime: z.array(needsNewTimeSchema).readonly(),
     })
     .readonly(),
   schedulingFailureSchema,

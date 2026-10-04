@@ -75,8 +75,20 @@ function reportAdded(email: string, delivery: DeliveryOutcome) {
     toast.success(`${email} added`, { description: "A confirmation email is on its way." });
   } else {
     toast.warning(`${email} added`, {
-      description: "The confirmation email didn't send. Send a test email to check the address.",
+      description: "The confirmation email didn't send. Check the address with a test email.",
     });
+  }
+}
+
+/* A test to one address, from its ••• menu. */
+async function testOne(recipient: Readonly<Recipient>) {
+  try {
+    const result = await sendTestNotification({ recipientId: recipient.id });
+    if (!result.ok) toast.error(result.error);
+    else if (result.accepted === 1) toast.success(`Test email sent to ${recipient.email}`);
+    else toast.error(`The test email to ${recipient.email} couldn't be sent. Check the address.`);
+  } catch {
+    toast.error("The test email couldn't be sent. Try again.");
   }
 }
 
@@ -398,6 +410,14 @@ function RecipientRowView({
             </MenuTrigger>
             <MenuContent align="end" className="min-w-44">
               <MenuGroup>
+                <MenuItem
+                  data-action="test-one"
+                  onClick={() => {
+                    void testOne(recipient);
+                  }}
+                >
+                  Send a test email
+                </MenuItem>
                 <MenuItem data-action="edit-label" onClick={onEdit}>
                   Edit label
                 </MenuItem>

@@ -105,8 +105,8 @@ test("can_place answers each refusal a dropped card can meet, and a move lands a
     const closed = await saveSettings(db, actor, {
       kind: "add_location_closure",
       id: lutz,
-      expectedVersion: 1,
       closedOn: shift(date, 1),
+      closedThrough: shift(date, 1),
       note: "TEST holiday",
       dryRun: false,
     });

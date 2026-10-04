@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
-import type { EditorField } from "@/app/admin/(portal)/settings/appointment-types/type-editor-dialog";
 import { TypesView } from "@/app/admin/(portal)/settings/appointment-types/types-view";
 import { Plus } from "@/components/icons";
 import { requireRole } from "@/lib/portal/auth";
@@ -11,13 +10,13 @@ import { serviceClient } from "@/lib/portal/server";
 import "@/app/admin/(portal)/settings/settings.css";
 
 /* Settings › Appointment types (issue #352, Figma St3): what staff book,
-   in the order they choose from, each type's length, icon and the
-   providers who see it. Staff read it; admins change it, each change
-   applied as it is made. */
+   in the order they choose from, each type's length, the time it holds
+   before and after, its icon and the providers who see it. Staff read it;
+   admins change it, each change applied as it is made. */
 export default async function SettingsAppointmentTypesPage({
   searchParams,
 }: Readonly<{
-  searchParams: Promise<{ add?: string; type?: string; field?: string }>;
+  searchParams: Promise<{ add?: string; type?: string }>;
 }>) {
   const session = await requireRole("staff");
   const [settings, params] = await Promise.all([
@@ -25,13 +24,7 @@ export default async function SettingsAppointmentTypesPage({
     searchParams,
   ]);
   if (!settings.ok) throw new Error(`Settings read failed: ${settings.code}`);
-  const field: EditorField = params.field === "details" ? "details" : "name";
-  const editing =
-    params.add === "1"
-      ? { typeId: null, field }
-      : params.type === undefined
-        ? null
-        : { typeId: params.type, field };
+  const editing = params.add === "1" ? "new" : (params.type ?? null);
 
   return (
     <>

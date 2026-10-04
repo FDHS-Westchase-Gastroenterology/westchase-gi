@@ -371,30 +371,39 @@ async function testSendAllowed(db: ServiceClient, userId: string): Promise<boole
   return result.error === null && parsed.success ? parsed.data : null;
 }
 
+const testNotificationSchema = z.strictObject({ recipientId: z.uuid() }).nullable();
+
 /**
- * Sends the new-request email, marked as a test, to every address that is on. It carries no
- * request and no patient data. It refuses when nothing is on, a few sends per admin per window
- * are allowed, and the audit row is written before anything is sent.
+ * Sends the new-request email, marked as a test, to one address (on or paused) when the input
+ * names it, else to every address that is on. It carries no request and no patient data. It
+ * refuses when nothing is on, a few sends per admin per window are allowed, and the audit row
+ * is written before anything is sent.
  */
-export async function sendTestNotificationMutation(): Promise<TestNotificationResult> {
+export async function sendTestNotificationMutation(
+  input: Json = null,
+): Promise<TestNotificationResult> {
   const session = await requireRole("admin");
+  const parsed = testNotificationSchema.safeParse(input);
+  if (!parsed.success) {
+    return failure("invalid", "That address isn't on the list anymore.");
+  }
   const db = serviceClient();
   const link = portalUrl("/admin");
   if (link === null) {
     return failure("unavailable", "The portal link isn't set up, so there is nothing to send.");
   }
 
-  const { data: recipients, error } = await db
-    .from("notification_recipients")
-    .select("id, email")
-    .eq("active", true)
-    .order("email")
-    .overrideTypes<{ id: string; email: string }[], { merge: false }>();
+  const query = db.from("notification_recipients").select("id, email").order("email");
+  const { data: recipients, error } = await (
+    parsed.data === null ? query.eq("active", true) : query.eq("id", parsed.data.recipientId)
+  ).overrideTypes<{ id: string; email: string }[], { merge: false }>();
   if (error !== null) {
     return failure("unavailable", "The notification list couldn't be read.");
   }
   if (recipients.length === 0) {
-    return failure("none_on", "No address is on, so there is nobody to send a test to.");
+    return parsed.data === null
+      ? failure("none_on", "No address is on, so there is nobody to send a test to.")
+      : failure("not_found", "That address isn't on the list anymore.");
   }
 
   const allowed = await testSendAllowed(db, session.id);

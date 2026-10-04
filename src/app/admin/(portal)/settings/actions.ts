@@ -43,9 +43,9 @@ export async function removeNotificationRecipient(input: Json) {
   return removeNotificationRecipientMutation(input);
 }
 
-export async function sendTestNotification() {
+export async function sendTestNotification(input: Json = null) {
   await requireRole("admin", { unauthenticated: "throw" });
-  return sendTestNotificationMutation();
+  return sendTestNotificationMutation(input);
 }
 
 export async function inviteStaff(input: Json) {

@@ -2,23 +2,18 @@
 
 import { useState } from "react";
 import type { CSSProperties } from "react";
+import { toast } from "sonner";
 
+import { addDays } from "@/app/admin/(portal)/schedule/week-calendar";
+import { HoursEditorDialog } from "@/app/admin/(portal)/settings/providers/hours-editor-dialog";
 import {
-  addDay,
-  canSplit,
-  dayDescription,
+  dayLine,
   dayWindows,
-  joinDay,
-  moveDay,
-  officeDay,
-  officeFor,
+  plannedWeeks,
   restDays,
   rulerAt,
   rulerSpan,
-  splitDay,
-  weekOf,
-  windowBounds,
-  withDay,
+  weekOn,
   workingDays,
 } from "@/app/admin/(portal)/settings/providers/providers-model";
 import type {
@@ -26,196 +21,76 @@ import type {
   WeekWindow,
 } from "@/app/admin/(portal)/settings/providers/providers-model";
 import {
-  QUARTER_HOUR,
-  clockOf,
-  currentHours,
+  appointmentCount,
   dayRuns,
-  longDay,
-  placeName,
-  rulerLabels,
+  settingsFailureMessage,
+  shortDate,
   shortDay,
 } from "@/app/admin/(portal)/settings/settings-model";
 import type { SettingsSend } from "@/app/admin/(portal)/settings/use-settings-command";
-import { ChevronDown, MapPin, Plus } from "@/components/icons";
-import {
-  Menu,
-  MenuContent,
-  MenuGroup,
-  MenuItem,
-  MenuRadioGroup,
-  MenuRadioItem,
-  MenuSeparator,
-  MenuTrigger,
-} from "@/components/ui/menu";
-import { Slider } from "@/components/ui/slider";
+import { Ellipsis } from "@/components/icons";
+import { Button } from "@/components/ui/button";
+import { Menu, MenuContent, MenuGroup, MenuItem, MenuTrigger } from "@/components/ui/menu";
 import type {
   SchedulingSettings,
   SettingsLocation,
   SettingsProvider,
 } from "@/lib/portal/scheduling/settings-contracts";
 
-/* A provider's weekly hours (issue #352, Figma St1): one row per working
-   day, its office in a chip and each working window a bar on an hour ruler
-   whose ends drag in quarter hours. The bar follows the pointer; the week is
-   sent when the drag ends, and a run of edits keeps one Undo toast, its Undo
-   the week before the last edit. Office hours bound every bar, and a bar
-   cannot cross its neighbor. */
-
-interface DayRowProps {
-  readonly weekday: number;
-  readonly week: readonly WeekWindow[];
-  readonly span: MinuteSpan;
-  readonly locations: readonly SettingsLocation[];
-  readonly canEdit: boolean;
-  readonly onDrag: (week: readonly WeekWindow[]) => void;
-  readonly onCommit: (week: readonly WeekWindow[], weekday: number) => void;
-}
+/* A provider's weekly hours (issue #352, Figma St1): each working day with
+   its office and its hours in words, beside a bar on the day's span; then
+   any change already planned from a later day, which can be edited or
+   cancelled. Edit hours opens the sheet that sets the whole week from a
+   start date. */
 
 function barStyle(span: Readonly<MinuteSpan>, open: number, close: number): CSSProperties {
   const left = rulerAt(span, open);
   return { left: `${String(left)}%`, width: `${String(rulerAt(span, close) - left)}%` };
 }
 
-/** The hour track's faint lines, one an hour across the ruler's span. */
-function hourLines(span: Readonly<MinuteSpan>): CSSProperties {
-  return { backgroundSize: `${String(6000 / (span.close - span.open))}% 100%` };
+function WeekTable({
+  week,
+  locations,
+  span,
+}: Readonly<{
+  week: readonly WeekWindow[];
+  locations: readonly SettingsLocation[];
+  span: MinuteSpan;
+}>) {
+  const rest = restDays(week);
+  return (
+    <dl className="settings-week">
+      {workingDays(week).map((weekday) => {
+        const windows = dayWindows(week, weekday);
+        return (
+          <div key={weekday} className="settings-week-row">
+            <dt className="settings-week-day">{shortDay(weekday)}</dt>
+            <dd className="settings-week-hours">{dayLine(windows, locations)}</dd>
+            <dd aria-hidden="true" className="settings-week-track">
+              {windows.map((window) => (
+                <span
+                  key={`${window.locationId}-${String(window.openMinute)}`}
+                  className="settings-week-bar"
+                  style={barStyle(span, window.openMinute, window.closeMinute)}
+                />
+              ))}
+            </dd>
+          </div>
+        );
+      })}
+      {rest.length === 0 ? null : (
+        <div className="settings-week-row is-rest">
+          <dt className="settings-week-day">{dayRuns(rest)}</dt>
+          <dd className="settings-week-hours">Not working</dd>
+        </div>
+      )}
+    </dl>
+  );
 }
 
-function DayRow({ weekday, week, span, locations, canEdit, onDrag, onCommit }: DayRowProps) {
-  const windows = dayWindows(week, weekday);
-  const place = locations.find((location) => location.id === windows[0]?.locationId);
-  const office = officeDay(place, weekday) ?? { open: 0, close: 24 * 60 };
-  const day = longDay(weekday);
-
-  return (
-    <div className="settings-hours-row">
-      <span className="settings-hours-day">{shortDay(weekday)}</span>
-      {canEdit ? (
-        <Menu>
-          <MenuTrigger
-            className="settings-hours-chip"
-            aria-label={`${day} office: ${place === undefined ? "none" : placeName(place)}`}
-          >
-            <MapPin aria-hidden="true" className="size-3.5 shrink-0" />
-            <span className="truncate">{place === undefined ? "Office" : placeName(place)}</span>
-            <ChevronDown aria-hidden="true" className="size-3 shrink-0 text-(--wgi-icon-ink)" />
-          </MenuTrigger>
-          <MenuContent className="min-w-52">
-            <MenuRadioGroup
-              value={place?.id ?? ""}
-              onValueChange={(id: string) => {
-                const next = locations.find((location) => location.id === id);
-                if (next !== undefined) onCommit(moveDay(week, weekday, next), weekday);
-              }}
-            >
-              {locations.map((location) => (
-                <MenuRadioItem
-                  key={location.id}
-                  value={location.id}
-                  closeOnClick
-                  disabled={officeDay(location, weekday) === null}
-                >
-                  <span className="truncate">{placeName(location)}</span>
-                </MenuRadioItem>
-              ))}
-            </MenuRadioGroup>
-            <MenuSeparator />
-            <MenuGroup>
-              {canSplit(windows) ? (
-                <MenuItem
-                  onClick={() => {
-                    onCommit(splitDay(week, weekday), weekday);
-                  }}
-                >
-                  Split around lunch
-                </MenuItem>
-              ) : null}
-              {windows.length > 1 ? (
-                <MenuItem
-                  onClick={() => {
-                    onCommit(joinDay(week, weekday), weekday);
-                  }}
-                >
-                  Join into one
-                </MenuItem>
-              ) : null}
-              <MenuItem
-                onClick={() => {
-                  onCommit(withDay(week, weekday, []), weekday);
-                }}
-              >
-                Not working
-              </MenuItem>
-            </MenuGroup>
-          </MenuContent>
-        </Menu>
-      ) : (
-        <span className="settings-hours-chip">
-          <MapPin aria-hidden="true" className="size-3.5 shrink-0" />
-          <span className="truncate">{place === undefined ? "Office" : placeName(place)}</span>
-        </span>
-      )}
-      <span className="settings-hours-track" style={hourLines(span)}>
-        {windows.map((window, index) => {
-          const label = windows.length > 1 ? `${day} window ${String(index + 1)}` : day;
-          if (!canEdit)
-            return (
-              <span
-                key={`${String(window.openMinute)}-${String(index)}`}
-                className="settings-hours-bar"
-                style={barStyle(span, window.openMinute, window.closeMinute)}
-                aria-label={`${label}: ${clockOf(window.openMinute)} to ${clockOf(window.closeMinute)}`}
-              />
-            );
-          const bounds = windowBounds(windows, index, office);
-          const min = Math.min(Math.max(bounds.open, span.open), window.openMinute);
-          const max = Math.max(Math.min(bounds.close, span.close), window.closeMinute);
-          return (
-            <Slider
-              // react-doctor-disable-next-line react-doctor/no-array-index-as-key -- a day's windows are positional: the first stays the first while its ends are dragged, and keying by its minutes would remount the slider under the pointer
-              key={index}
-              tone="hours"
-              className="settings-hours-slider"
-              style={barStyle(span, min, max)}
-              min={min}
-              max={max}
-              step={QUARTER_HOUR}
-              largeStep={60}
-              minStepsBetweenValues={1}
-              value={[window.openMinute, window.closeMinute]}
-              thumbLabel={(thumb) => `${label} ${thumb === 0 ? "start" : "end"}`}
-              thumbValueText={(minute) => clockOf(minute)}
-              onValueChange={(value: readonly number[]) => {
-                const [open = window.openMinute, close = window.closeMinute] = value;
-                onDrag(
-                  withDay(
-                    week,
-                    weekday,
-                    windows.map((other, at) =>
-                      at === index ? { ...other, openMinute: open, closeMinute: close } : other,
-                    ),
-                  ),
-                );
-              }}
-              onValueCommitted={(value: readonly number[]) => {
-                const [open = window.openMinute, close = window.closeMinute] = value;
-                onCommit(
-                  withDay(
-                    week,
-                    weekday,
-                    windows.map((other, at) =>
-                      at === index ? { ...other, openMinute: open, closeMinute: close } : other,
-                    ),
-                  ),
-                  weekday,
-                );
-              }}
-            />
-          );
-        })}
-      </span>
-    </div>
-  );
+interface Editing {
+  readonly startsOn: string;
+  readonly week: readonly WeekWindow[];
 }
 
 export function WeeklyHours({
@@ -228,116 +103,124 @@ export function WeeklyHours({
   send: SettingsSend;
 }>) {
   const { locations, today, canEdit } = settings;
+  const [editing, setEditing] = useState<Editing | null>(null);
   const span = rulerSpan(locations);
-  /* `sent` is the last week this page sent, shown until the server's next
-     read lands; `live` is the week under a drag, before it is sent. */
-  const [seenVersion, setSeenVersion] = useState(provider.version);
-  const [sent, setSent] = useState<readonly WeekWindow[] | null>(null);
-  const [live, setLive] = useState<readonly WeekWindow[] | null>(null);
-  if (seenVersion !== provider.version) {
-    setSeenVersion(provider.version);
-    setSent(null);
-  }
-  const base = sent ?? weekOf(currentHours(provider, today));
-  const week = live ?? base;
-  const rest = restDays(week);
-  const addable = rest.filter((day) => officeFor(week, day, locations) !== null);
+  const current = weekOn(provider.hours, today);
+  const planned = plannedWeeks(provider.hours, today);
 
-  function commit(next: readonly WeekWindow[], weekday: number) {
-    const previous = base;
-    setLive(null);
-    setSent(next);
+  /* Cancelling a planned change sets that day's week back to the one before it, which the
+     server then joins to it. */
+  function cancelPlanned(from: string) {
+    const before = weekOn(provider.hours, addDays(from, -1));
     const command = {
       kind: "set_provider_weekly_hours",
       id: provider.id,
-      expectedVersion: provider.version,
+      expectedVersion: provider.hoursVersion,
+      startsOn: from,
+      keepBooked: false,
+      dryRun: false,
     } as const;
     void send(
-      { ...command, hours: next },
+      { ...command, hours: before },
       {
+        quiet: true,
         undo: {
-          headline: `${provider.name}'s hours changed`,
-          detail: dayDescription(dayWindows(next, weekday), weekday, locations),
-          inverse: { ...command, hours: previous },
+          headline: `The change from ${shortDate(from)} is cancelled`,
+          detail: null,
+          inverse: {
+            ...command,
+            keepBooked: true,
+            hours: planned.find((plan) => plan.from === from)?.week ?? before,
+          },
           slot: `hours:${provider.id}`,
         },
       },
     ).then((outcome) => {
-      if (!outcome.ok) setSent(null);
+      if (outcome.ok) return;
+      if (outcome.code === "schedule_in_use" && outcome.conflicts !== undefined)
+        toast.error(
+          `${appointmentCount(outcome.conflicts.length)} booked under the planned hours would be left outside them. Edit the change instead.`,
+        );
+      else toast.error(settingsFailureMessage(outcome.code));
     });
   }
-
-  const hours = (span.close - span.open) / 60;
-  /* An hour on the ruler is at least 36px wide. */
-  const grid = { gridTemplateColumns: `3.5rem 8.5rem minmax(${String(hours * 2.25)}rem, 1fr)` };
 
   return (
     <section
       aria-labelledby="weekly-hours"
-      className="flex flex-col gap-1"
+      className="flex flex-col gap-2"
       data-tour="weekly-hours"
     >
-      <h3 id="weekly-hours" className="settings-section-title">
-        Weekly hours
-      </h3>
-      <p className="text-[0.75rem] leading-4 text-(--wgi-muted-ink)">
-        Every week unless a day is changed on the schedule.
-        {canEdit ? " Drag the ends of a bar." : null}
-      </p>
-      <div className="settings-hours" style={grid}>
-        <div aria-hidden="true" className="settings-hours-ruler">
-          {rulerLabels(span.open + 60, span.close).map(({ minute, label }) => (
-            <span key={minute} style={{ left: `${String(rulerAt(span, minute))}%` }}>
-              {label}
-            </span>
-          ))}
-        </div>
-        {workingDays(week).map((weekday) => (
-          <DayRow
-            key={weekday}
-            weekday={weekday}
-            week={week}
-            span={span}
-            locations={locations}
-            canEdit={canEdit}
-            onDrag={setLive}
-            onCommit={commit}
-          />
-        ))}
-        {rest.length === 0 ? null : (
-          <div className="settings-hours-row is-rest">
-            <span className="settings-hours-day">{dayRuns(rest)}</span>
-            <span className="settings-hours-track" style={hourLines(span)}>
-              <span className="settings-hours-rest">
-                Not working
-                {canEdit && addable.length > 0 ? (
-                  <Menu>
-                    <MenuTrigger className="settings-text-command">
-                      <Plus aria-hidden="true" className="size-3.5 shrink-0" />
-                      Add day
-                    </MenuTrigger>
-                    <MenuContent className="min-w-44">
-                      <MenuGroup>
-                        {addable.map((day) => (
-                          <MenuItem
-                            key={day}
-                            onClick={() => {
-                              const office = officeFor(week, day, locations);
-                              if (office !== null) commit(addDay(week, day, office), day);
-                            }}
-                          >
-                            {longDay(day)}
-                          </MenuItem>
-                        ))}
-                      </MenuGroup>
-                    </MenuContent>
-                  </Menu>
-                ) : null}
-              </span>
-            </span>
-          </div>
-        )}
+      <div className="flex min-h-9 items-center justify-between gap-3">
+        <h3 id="weekly-hours" className="settings-section-title">
+          Weekly hours
+        </h3>
+        {canEdit ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setEditing({ startsOn: today, week: current });
+            }}
+          >
+            Edit hours
+          </Button>
+        ) : null}
       </div>
+      <WeekTable week={current} locations={locations} span={span} />
+      {planned.map((plan) => (
+        <section
+          key={plan.from}
+          aria-label={`Hours from ${shortDate(plan.from)}`}
+          className="settings-planned"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <h4 className="settings-planned-title">Changes on {shortDate(plan.from)}</h4>
+            {canEdit ? (
+              <Menu>
+                <MenuTrigger
+                  className="settings-row-more"
+                  aria-label={`More for the change on ${shortDate(plan.from)}`}
+                >
+                  <Ellipsis aria-hidden="true" width={15} height={15} />
+                </MenuTrigger>
+                <MenuContent align="end" className="min-w-48">
+                  <MenuGroup>
+                    <MenuItem
+                      onClick={() => {
+                        setEditing({ startsOn: plan.from, week: plan.week });
+                      }}
+                    >
+                      Edit this change
+                    </MenuItem>
+                    <MenuItem
+                      onClick={() => {
+                        cancelPlanned(plan.from);
+                      }}
+                    >
+                      Cancel this change
+                    </MenuItem>
+                  </MenuGroup>
+                </MenuContent>
+              </Menu>
+            ) : null}
+          </div>
+          <WeekTable week={plan.week} locations={locations} span={span} />
+        </section>
+      ))}
+      {editing === null ? null : (
+        <HoursEditorDialog
+          provider={provider}
+          settings={settings}
+          startsOn={editing.startsOn}
+          week={editing.week}
+          send={send}
+          onClose={() => {
+            setEditing(null);
+          }}
+        />
+      )}
     </section>
   );
 }
