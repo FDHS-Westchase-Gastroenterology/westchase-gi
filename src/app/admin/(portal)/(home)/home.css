@@ -2093,6 +2093,13 @@ a.appt-phone {
   white-space: nowrap;
 }
 
+/* A refusal's reason is the message, so it wraps rather than ending in an
+   ellipsis. */
+.wgi-record-readout-value[data-failed] + .wgi-booking-detail {
+  white-space: normal;
+  text-wrap: balance;
+}
+
 .wgi-record-readout-value[data-failed] {
   color: var(--color-coral-700);
 }

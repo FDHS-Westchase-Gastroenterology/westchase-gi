@@ -152,9 +152,9 @@ async function main() {
   execute(dbUrl, resetSql(data));
   const expected = summarize(data);
   const counts = query(dbUrl, COUNTS_SQL)[0].counts;
-  // Kept admin profiles sit beside the clinicians the reset inserts.
+  // Kept admin profiles, and the tours they finished, sit beside the clinicians the reset inserts.
   const mismatched = Object.entries(expected.tables).filter(([table, n]) =>
-    table === "staff_profiles" ? counts[table] < n : counts[table] !== n,
+    table === "staff_profiles" || table === "staff_tours" ? counts[table] < n : counts[table] !== n,
   );
   console.log(
     JSON.stringify(
