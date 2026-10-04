@@ -45,7 +45,6 @@ export interface HomeLine {
   readonly actorInitials: string | null;
   readonly lastActivityRel: string | null;
   readonly followUpSet: boolean;
-  readonly detailHref: string;
 }
 
 /* The row the front desk tour starts on (issue #358, FD1): the first new

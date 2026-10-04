@@ -399,10 +399,7 @@ function ReleaseSummary({
             "Say what happened.",
             "Pick the call's real outcome — the portal sets the status itself.",
           ],
-          [
-            "Save once, undo for 15 minutes.",
-            "Outcome, call-again timing, and note save together. Undo restores everything.",
-          ],
+          ["Save once.", "Outcome, call-again timing, and note save together."],
           [
             "Work from the top.",
             "New requests and due call-agains rise. Scheduled requests stay visible.",
@@ -438,12 +435,8 @@ function ReleaseSummary({
       ) : null}
 
       <div className="mt-5 flex flex-wrap items-center gap-2.5">
-        <Link
-          href="/admin/requests"
-          data-slot="button"
-          className={buttonVariants({ variant: "amber" })}
-        >
-          Open requests
+        <Link href="/admin" data-slot="button" className={buttonVariants({ variant: "amber" })}>
+          Open Home
           <ArrowRight className="h-4 w-4" />
         </Link>
         <Button

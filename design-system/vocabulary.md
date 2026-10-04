@@ -47,15 +47,14 @@ is given where one exists. When a guide and this list disagree, fix the guide.
   its reason in the guide that owns the rule. A departure that no guide records is drift.
 - **Drift** — code that breaks a rule without a recorded exception. Drift is fixed or added to the
   [roadmap](roadmap.md), and it is not copied, with one exception: a guide may name a drifting
-  pattern as the one to copy until its roadmap item lands, because nothing better exists yet. Three
-  do — the request detail's date input ([dates-and-times.md](dates-and-times.md#dates), item 3),
-  `PrintChooser` ([overlays.md](overlays.md#modal-dialogs), item 9) and `.portal-panel` for a
-  settings section ([modules.md](modules.md#a-settings-page), item 1). A copy joins that item.
+  pattern as the one to copy until its roadmap item lands, because nothing better exists yet. Two
+  do — `PrintRequestsSheet` ([overlays.md](overlays.md#modal-dialogs), item 9) and `.portal-panel`
+  for a settings section ([modules.md](modules.md#a-settings-page), item 1). A copy joins that item.
 
 ## Product terms
 
-- **Stamp** — a status badge: `Badge` in `ui/`, worn by `StatusBadge` on the requests pages, and
-  `LineStatusBadge` on the staff home. A stamp always carries words beside its color.
+- **Stamp** — a status badge: `Badge` in `ui/`, worn by the Schedule's appointment statuses, and
+  `LineStatusBadge` for a request's status. A stamp always carries words beside its color.
 - **The Line** — the staff portal's world: one patient's request is one line on a sheet.
 - **Staff home** — the portal's first page, `src/app/admin/(portal)/(home)/`. Its section wears
   `.wgi-home` and its scoped stylesheet is `home.css`.

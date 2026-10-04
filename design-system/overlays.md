@@ -18,13 +18,14 @@ What must the reader do with this surface?
 
 ## Modal dialogs
 
-**Every modal is one modal.** A staff-portal modal is a native `<dialog>` opened with
-`showModal()` and dressed in the `.portal-confirm-dialog` parts of `portal-workbench.css`. The top
-layer supplies the backdrop, inertness and Escape's `cancel` event; CSS animates it with
-`transition-behavior: allow-discrete`. There are four: `PrintChooser`, `RemoveRecipientDialog`, and
-the staff home's glass sheets (`.wgi-glass-sheet`, [inks](tokens.md#recorded-exceptions))
-`AddAppointmentDialog` (hosting `StaffRequestForm`) and `PrintRequestsSheet`. The shadcn Dialog stays
-unadopted ([a standing finding](adoption.md#standing-findings)); a wrapper is [item 9](roadmap.md#9-a-native-dialog-component).
+**Every modal is one modal.** A staff-portal modal is a native `<dialog>` opened with `showModal()`
+and dressed in the `.portal-confirm-dialog` parts of `portal-workbench.css`. The top layer supplies
+the backdrop, inertness and Escape's `cancel` event; CSS animates it with `transition-behavior:
+allow-discrete`. There are three: `RemoveRecipientDialog`, and the staff home's glass sheets
+(`.wgi-glass-sheet`, [inks](tokens.md#recorded-exceptions)) `AddAppointmentDialog` (hosting
+`StaffRequestForm`) and `PrintRequestsSheet`. The shadcn Dialog stays unadopted ([a standing
+finding](adoption.md#standing-findings)); a wrapper is [item
+9](roadmap.md#9-a-native-dialog-component).
 
 - **Parts.** `-body` and `-actions` are siblings, never nested. `-body` holds the `-title`, or a
   `-heading` pairing it with a `-close` button, and the copy; `-actions` stacks full-width
@@ -43,7 +44,7 @@ unadopted ([a standing finding](adoption.md#standing-findings)); a wrapper is [i
 `onClick`, the dialog's `onClickCapture` (glass sheets: pointer/key-down capture) and `onCancel`.
 
 **Focus lands inside in the same task as `showModal()`** on the safe next step: Cancel/Keep editing,
-the chooser's primary action or the form name field. Never defer to a frame in a hidden tab. Tab
+the Print sheet's primary action or the form name field. Never defer to a frame in a hidden tab. Tab
 wraps by hand ([accessibility.md](accessibility.md#focus)). On close, focus returns to its trigger or
 the focusable list heading after row removal (`finishRemoveDialog`); failures return focus and report
 inline ([forms.md](forms.md#reporting-a-result)).
@@ -52,18 +53,16 @@ inline ([forms.md](forms.md#reporting-a-result)).
 while a removal is in flight or a draft is dirty; `onCancel` runs its Close path. On a typed draft,
 Escape or Cancel turns the Add sheet's footer into the discard question; Escape again keeps editing.
 
-`PrintChooser` follows every rule above; copy it, except that a dialog built for one chosen target
-opens from an effect keyed on it (`recipients-manager.tsx`). `RemoveRecipientDialog` lacks
-`data-instant` and `AddAppointmentDialog` Tab wrapping (item 9). The first-sign-in tour is not a
-dialog: its tip is a `ui/popover` anchored to the control it explains (`tour-runner.tsx`).
+Copy `PrintRequestsSheet` (`(home)/print-requests-sheet.tsx`) and wrap Tab by hand, which it and
+`AddAppointmentDialog` lack (item 9). The first-sign-in tour's tip is a `ui/popover`, not a dialog.
 
 ```tsx
-// Correct (print-chooser.tsx, shortened): instant from the keyboard, Escape through Close
-<dialog ref={dialogRef} aria-modal="true" aria-labelledby={titleId} className="portal-confirm-dialog portal-print-chooser"
-  onClickCapture={(event) => event.currentTarget.toggleAttribute("data-instant", event.detail === 0)}
-  onCancel={(event) => { event.preventDefault(); event.currentTarget.toggleAttribute("data-instant", true); closeChooser(); }}
-  onClose={() => { setOpen(false); triggerRef.current?.focus(); }}
-  onKeyDown={keepFocusInDialog}>
+// Correct (print-requests-sheet.tsx, shortened): instant from the keyboard, focus back to the trigger
+<dialog ref={dialogRef} aria-modal="true" aria-labelledby={titleId} className="portal-confirm-dialog wgi-glass-sheet wgi-print-sheet"
+  onPointerDownCapture={(event) => event.currentTarget.toggleAttribute("data-instant", false)}
+  onKeyDownCapture={(event) => event.currentTarget.toggleAttribute("data-instant", true)}
+  onCancel={(event) => event.currentTarget.toggleAttribute("data-instant", true)}
+  onClose={() => { setOpen(false); triggerRef.current?.focus(); }}>
 ```
 
 ```tsx incorrect

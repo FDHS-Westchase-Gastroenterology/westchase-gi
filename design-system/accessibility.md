@@ -58,19 +58,15 @@ Focus moves with the work:
   and returns focus to the opener on close, but in Chromium, Tab from the dialog's last control
   leaves the page for one stop before it comes back to the first (measured in Playwright's
   Chromium: Cancel, Remove, `BODY`, Cancel). So a portal dialog wraps Tab by hand:
-  `print-chooser.tsx`, `recipients-manager.tsx` and the request form's discard
-  confirmation do, and no two agree on what counts as focusable. Copy `keepFocusInDialog` from
-  `print-chooser.tsx`: it alone skips Base UI's hidden `tabindex="-1"` input and anything
-  `aria-disabled`. `AddAppointmentDialog` does not wrap; on the patient site `LanguageChooser` and
-  `ProfileCardViewer` rest on inertness alone. Converging them is
+  the Settings dialogs (`recipient-dialog.tsx`, `type-editor-dialog.tsx`,
+  `location-editor-dialog.tsx`) and the request form's discard confirmation do, and no two agree
+  on what counts as focusable. A shared version must skip Base UI's hidden `tabindex="-1"` input
+  and anything `aria-disabled`. `AddAppointmentDialog` and `PrintRequestsSheet` do not wrap; on the
+  patient site `LanguageChooser` and `ProfileCardViewer` rest on inertness alone. Converging them is
   [roadmap item 9](roadmap.md#9-a-native-dialog-component).
-- The day editor in `call-again-fieldset.tsx` is not an overlay and traps nothing. It expands in
-  place, sends focus to the corrected day on open and back to its trigger on close, and lets Tab
-  carry on into the page behind it.
 - A refused submit sends focus to the first invalid control, or to the error summary when the
   failure belongs to the form ([staff-request-form.tsx](../src/app/admin/(portal)/requests/new/staff-request-form.tsx)).
-- A finished inline edit hands focus back to the control that started it, as `request-notes.tsx`
-  returns to its Add button.
+- A finished inline edit hands focus back to the control that started it.
 
 ```tsx
 // Correct (add-appointment-dialog.tsx): the trigger gets focus back when the dialog closes
@@ -84,17 +80,17 @@ setOpen(false);
 
 ## Announcements
 
-- `role="status"` for progress and counts a reader may hear late: the search form's result line,
-  the settings managers' save feedback.
+- `role="status"` for progress and counts a reader may hear late: the Help search's and the
+  Activity log's result lines, the settings managers' save feedback.
 - `role="alert"` for a failure that has to be read now: `staff-request-error.tsx`, the note
-  editor's error, the day editor's correction.
+  composer's error (`record-note-composer.tsx`).
 - `FieldError` for a message that belongs to one control, next to `aria-invalid` on the control
   itself ([forms.md](forms.md#fields)).
 - A save that has no place to report itself uses the one toast ([forms.md](forms.md#saving)).
 
 ```tsx
-// Correct (request-search-form.tsx): the result count is a live status, not a silent repaint
-<p id={REQUEST_SEARCH_STATUS_ID} role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+// Correct (help-content.tsx): the search result is a live status, not a silent repaint
+<p className="sr-only" role="status" aria-live="polite">
 ```
 
 ```tsx incorrect

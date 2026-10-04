@@ -21,8 +21,8 @@ import { failureOf, followSave, saveCardCommand } from "./record-card-save";
    the result outlives this card): "Saving…" while the action runs, the
    saved line once the server confirmed it, the failure otherwise. An
    uncertain failure keeps its toast open with Try again, which re-runs the
-   same attempt under the same idempotency key and updates the same toast,
-   mirroring the request detail panel; closing that toast instead is the
+   same attempt under the same idempotency key and updates the same toast;
+   closing that toast instead is the
    same choice as closing the card: the lock lifts and the next Save is a
    new attempt, which the version check keeps honest. Optimistic
    concurrency rides every attempt. */

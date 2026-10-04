@@ -58,9 +58,9 @@ export function PrintSheetBody({
         <div className="wgi-glass-well wgi-print-unavailable" data-testid="print-unavailable">
           <div className="wgi-empty">
             <h2>Today&rsquo;s calls could not load.</h2>
-            <p>This is not an empty day. Open Requests to print from the live queue.</p>
-            <Link href="/admin/requests" className="wgi-empty-clear">
-              Open Requests
+            <p>This is not an empty day. Reload Home, then print from the live line.</p>
+            <Link href="/admin" className="wgi-empty-clear">
+              Reload Home
             </Link>
           </div>
         </div>

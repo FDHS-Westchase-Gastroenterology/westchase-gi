@@ -1,9 +1,9 @@
-import { historyLine } from "@/app/admin/(portal)/requests/[id]/request-history";
 import {
   CONTACT_OUTCOME_LABELS,
   formatPhoneForDisplay,
   localeLabel,
 } from "@/app/admin/(portal)/requests/format";
+import { historyLine } from "@/app/admin/(portal)/requests/request-history";
 import type { FullRecord } from "@/lib/portal/request-record/contracts";
 import type { HistoryEntry } from "@/lib/portal/workflow/contracts";
 
@@ -12,7 +12,7 @@ import type { HistoryEntry } from "@/lib/portal/workflow/contracts";
    of calls in the header, the latest note, the history as dated one-line
    rows with the detail each row's popover opens, and the one-line summary
    of the request as submitted. Nothing here touches the DOM, React or the
-   server, so the Home sheet and the print route read the same wording. The rows reuse the request page's wording (request-history.ts)
+   server, so the Home sheet and the print route read the same wording. The rows reuse the history wording (request-history.ts)
    for every kind but the two the sheet says differently: a call attempt
    leads with its outcome and says the next call in short, and a note
    shows its own text. */
@@ -30,8 +30,8 @@ export function originLabel(record: FullRecord): string {
 
 /* An actor is a staff email; the record carries the display names of the
    actors in its history, and an actor absent there reads as the email —
-   the rule `displayNameOrEmail` applies on the request page, repeated
-   here because that helper is server-only. The ask is `Object.hasOwn`
+   the rule `displayNameOrEmail` applies on the server, repeated here
+   because that helper is server-only. The ask is `Object.hasOwn`
    rather than a value check, the way the portal's other label maps ask
    it: the contract maps only the actors that appear in the history, so a
    key can be absent even though the Record's type promises a string for

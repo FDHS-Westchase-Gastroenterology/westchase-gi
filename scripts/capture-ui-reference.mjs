@@ -186,18 +186,6 @@ const portalCaptures = [
     ready: ".wgi-dayview-grid",
   },
   {
-    name: "desktop-portal-requests",
-    path: "/admin/requests?q=Sample+patient",
-    viewport: { width: 1440, height: 900 },
-    ready: "main h1",
-  },
-  {
-    name: "desktop-portal-requests-new",
-    path: "/admin/requests/new",
-    viewport: { width: 1440, height: 900 },
-    ready: "main h1",
-  },
-  {
     name: "desktop-portal-review-flyers",
     path: "/admin/review-flyers",
     viewport: { width: 1440, height: 900 },
@@ -262,18 +250,6 @@ const portalCaptures = [
     path: "/admin/schedule",
     viewport: { width: 390, height: 844 },
     ready: '[role="grid"]',
-  },
-  {
-    name: "mobile-portal-requests",
-    path: "/admin/requests?q=Sample+patient",
-    viewport: { width: 390, height: 844 },
-    ready: "main h1",
-  },
-  {
-    name: "mobile-portal-requests-new",
-    path: "/admin/requests/new",
-    viewport: { width: 390, height: 844 },
-    ready: "main h1",
   },
   {
     name: "mobile-portal-review-flyers",
@@ -399,8 +375,6 @@ async function redactPortalData(page) {
       count.textContent = "3";
       queueHeadline.replaceChildren(count, " new appointment requests are waiting.");
     }
-    const printNewCount = document.querySelector('[data-testid="print-new-count"]');
-    if (printNewCount) printNewCount.textContent = "Print all 3";
     const emptyPrint = document.querySelector('[data-testid="print-new-empty"]');
     if (emptyPrint instanceof HTMLElement) {
       emptyPrint.textContent = "Print all 3";
@@ -411,7 +385,6 @@ async function redactPortalData(page) {
         control.classList.add("btn-navy");
       }
     }
-    document.querySelector('[data-testid="nav-waiting-badge"]')?.remove();
     document
       .querySelectorAll(
         '[data-testid="queue-overview-unavailable"] > :not([data-testid="queue-overview-headline"])',

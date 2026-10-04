@@ -142,7 +142,6 @@ utilities and sizes under `src/app/admin` recounted with 174f10e merged. Weight 
 
 | Where | Measured | Consequence |
 | --- | --- | --- |
-| `.portal-queue-title`, the Requests page `h1` | Computed family is the display serif; 880 requested | Trocchi renders at 400, the only face loaded. |
 | `.portal-page-title` | `clamp(1.75rem, 5vw, 2.4rem)`: 38.4px at 1440, 28px at 390; 900 requested | A fluid heading at a weight that renders as 700. |
 | `.portal-auth-title` in `globals.css` | 900 requested | Renders as 700. |
 | 92 weight requests outside 400 to 700 in 13 files | 900 ×41, 800 ×22, 850 ×8, 740 ×5, 780 ×4, and twelve more between 650 and 880 | Each renders as the nearest loaded face, mostly 700. `portal-workbench.css` holds 57 and `help/page.tsx` 14. |

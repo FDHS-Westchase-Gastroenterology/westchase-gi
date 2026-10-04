@@ -83,9 +83,6 @@ export const VIEW_DB_STATUSES = {
   closed: ["closed"],
 } as const satisfies Record<RequestStatus, readonly string[]>;
 
-/** Per-status request counts for a staff surface; null marks a count whose read failed. */
-export type StatusCounts = Readonly<Partial<Record<RequestStatus, number | null>>>;
-
 /** Contact-attempt outcomes (spec §5.1). */
 export const CONTACT_OUTCOMES = ["reached_follow_up", "voicemail", "no_answer"] as const;
 export type ContactOutcome = (typeof CONTACT_OUTCOMES)[number];

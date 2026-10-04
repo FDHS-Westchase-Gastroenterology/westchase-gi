@@ -64,9 +64,9 @@ while `description`, `meta`, `actions` and `back` (`{ href, label }`) each rende
 passed. It is the only file that writes `.portal-page-header`, `.portal-page-title`,
 `.portal-page-description`, `.portal-page-meta` and `.portal-page-actions`, and it marks the back
 link and the action group `print-hide`. Thirteen call sites wear it, `settings/layout.tsx` and
-`audit/page.tsx` among them. Three headings stay route-owned because they are a masthead rather
-than a title over a body: the staff home's `.portal-sheet-title` greeting, the queue's
-`.portal-queue-title`, and `AuthCard`'s `.portal-auth-title` on the signed-out screens.
+`audit/page.tsx` among them. Two headings stay route-owned because they are a masthead rather
+than a title over a body: the staff home's `.portal-sheet-title` greeting and `AuthCard`'s
+`.portal-auth-title` on the signed-out screens.
 
 **The staff home request list is sized to the viewport, not to a row count.** On Home the content
 column fills the viewport, and `line-list.tsx` composes one floating surface: `Card` →
@@ -84,7 +84,7 @@ Print drops the rail and the shadow and lets the viewport grow to every line.
 | Radius | Value | Holds | Worn by |
 | --- | --- | --- | --- |
 | `--radius-sm` (`rounded-sm`) | 0.375rem | A control or a mark inside a surface | `Input`, `Textarea`, `NativeSelect`, `TimePicker`; Home's triggers, answer rows (`.wgi-answer`) and Overdue stamp (`.portal-stamp`); the skip link |
-| `--radius` (`rounded`) | 0.625rem | A button; portal paper, and a portal menu, popover or toast | `Button`, which the portal retunes to 0.5rem through `--btn-radius` ([recorded exception](tokens.md#recorded-exceptions)); `.portal-queue-workbench`, `.portal-request-record`, `.portal-account-menu > div`, `Toaster` |
+| `--radius` (`rounded`) | 0.625rem | A button; portal paper, and a portal menu, popover or toast | `Button`, which the portal retunes to 0.5rem through `--btn-radius` ([recorded exception](tokens.md#recorded-exceptions)); `.portal-account-menu > div`, `Toaster` |
 | `--radius-lg` (`rounded-lg`) | 0.875rem | A card, a choice card, an image, a modal, a patient-site menu | `.card`, `AuthCard`, `Item`, a `FieldLabel` that wraps a `Field`, patient images and tiles, `Header` navigation menus, `.portal-confirm-dialog` |
 | `rounded-full` or 999px | A pill | A badge, a count, a chip, a bullet, a scroll thumb | `Badge`, the `ScrollArea` thumb, `.wgi-pill`, `.portal-nav-count`, list bullets |
 

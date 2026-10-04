@@ -14,10 +14,11 @@ Under `src/app` that is 154 `./` specifiers and 82 `@/app/…` ones against a si
 in a test file. A parent-relative specifier in a component is drift.
 
 ```tsx
-// Correct (requests-output-actions.tsx): sibling relative, everything else aliased
-import { PortalFeedbackMessage, usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
-import { Download } from "@/components/icons";
-import { PrintChooser } from "./print-chooser";
+// Correct (flyer-card.tsx): sibling relative, everything else aliased
+import { Printer } from "@/components/icons";
+import type { ReviewFlyer } from "@/lib/review-flyers";
+
+import { FlyerDownloadMenu } from "./flyer-download-menu";
 ```
 
 ## Patient-site modules
@@ -88,13 +89,12 @@ So a call site passes a predicate — `(result) => result.ok` written as a guard
 rejects with the described failure, which is what `toast.promise` renders
 ([forms.md](forms.md#saving)).
 
-**A status is a key; its words come from `STATUS_LABELS`.** `RequestStatus`
+**A status is a key; its words come from a label table.** `RequestStatus`
 (`src/lib/portal/workflow/contracts.ts`) is the lowercase union the database stores — `new`,
-`contacted`, `scheduled`, `closed`. `STATUS_LABELS` (`src/app/admin/(portal)/requests/format.ts`)
-maps each to its capitalized label, and `StatusBadge` reads it ([stamps.md](stamps.md)).
-A screen that capitalizes a status itself has invented a second label table.
-`src/lib/portal/contracts.ts` also exists and is the intake boundary; it does not hold
-`RequestStatus`.
+`contacted`, `scheduled`, `closed`. `STATUS_LABELS` (`requests/format.ts`) labels each for the
+Activity log; a request's stamp reads `STATUS_WORDS` (`src/lib/portal/filters/status.ts`), where
+Contacted reads "Call again" ([stamps.md](stamps.md)). A screen that capitalizes a status itself has
+invented another label table.
 
 ## The portal route contract
 

@@ -165,7 +165,7 @@ function RequestRecordBody({ outcome, record, sections, onRetry }: RequestRecord
         </h3>
         <p className="wgi-sheet-origin">
           <span>{cameToUs(record)}</span>
-          <Link href={`/admin/requests/${record.id}`} className="wgi-sheet-history-link">
+          <Link href={`/admin?request=${record.id}`} className="wgi-sheet-history-link">
             History · {sections.rowCount}
             <ChevronRight aria-hidden="true" />
           </Link>

@@ -30,11 +30,6 @@ export async function followed<Success, Failure>(
   throw new Rejected(describe(result));
 }
 
-/** The sentence a rejection carries, or the fallback when the attempt threw instead. */
-export function rejectionMessage(cause: unknown, fallback: string): string {
-  return cause instanceof Rejected ? cause.message : fallback;
-}
-
 /** A toast that settles on its own: the toaster's timeout, no close button, no
    action, nothing to hear. Sonner merges an update over the toast it replaces,
    so a consumer that reuses an id spreads this to reset, by name, the

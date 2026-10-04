@@ -5,12 +5,6 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/portal/auth";
 import { serviceClient } from "@/lib/portal/server";
 
-function revalidateRequestViews(requestId: string) {
-  revalidatePath("/admin"); // Home overview counts
-  revalidatePath("/admin/requests");
-  revalidatePath(`/admin/requests/${requestId}`);
-}
-
 export type AddRequestNoteState =
   | { status: "idle" }
   | { status: "success"; message: string }
@@ -50,6 +44,6 @@ export async function addRequestNote(
     return { status: "error", message: NOTE_WRITE_ERROR };
   }
 
-  revalidateRequestViews(requestId);
+  revalidatePath("/admin");
   return { status: "success", message: "Note added." };
 }

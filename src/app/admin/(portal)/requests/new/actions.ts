@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { requireRole } from "@/lib/portal/auth";
@@ -104,11 +103,5 @@ export async function createStaffRequest(
   }
 
   revalidatePath("/admin");
-  revalidatePath("/admin/requests");
-  // A dialog caller has a page worth staying on, so it gets the new id back
-  // Instead of a redirect that would throw its context away.
-  if (formData.get("stayHere") === "1") {
-    return { status: "created", requestId: requestId.data, name: input.data.name };
-  }
-  return redirect(`/admin/requests/${requestId.data}?created=1`);
+  return { status: "created", requestId: requestId.data, name: input.data.name };
 }

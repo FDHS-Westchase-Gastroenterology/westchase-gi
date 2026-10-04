@@ -161,7 +161,7 @@ These people are not software specialists. Portal permissions remain the simpler
 One place where practice staff do their web-adjacent jobs without reasoning about
 software topology (repositories, hosting projects, asset ledgers). The jobs:
 
-- **Manage incoming appointment requests — the portal's central job.** Appointments is
+- **Manage incoming appointment requests — the portal's central job.** The request workflow is
   a state machine staff use to manage, advance, and eventually close
   incoming appointment requests. The machine itself — its states, transitions,
   operations, invariants, and its boundary with the practice's real scheduling
@@ -251,7 +251,7 @@ Durable truths:
   combined action commit atomically. The concrete save choreography is not chartered
   here — see the workflow contract below.
 - **Staff-authored intake joins the same queue.** A call, walk-in, or message can become one
-  `NEW` appointment request from Home or Appointments. This records scheduling intake, not a
+  `NEW` appointment request from Home. This records scheduling intake, not a
   patient chart; it identifies staff provenance, retries idempotently, and creates no
   website-submission notification work.
 - **Paper handoff is an output, never workflow state.** Every active staff member may prepare
@@ -282,7 +282,7 @@ Durable truths:
 - Deliberately not building: generic metric dashboards or vanity counts; kanban or
   bulk mutations; a CMS, flyer editor, or QR generator.
 
-Appointments workflow contract, defined in `src/lib/portal/workflow/contracts.ts`:
+Appointment-request workflow contract, defined in `src/lib/portal/workflow/contracts.ts`:
 
 - The portal resolves appointment requests through NEW, CONTACTED, BOOKED, or CLOSED;
   contact attempts remain append-only evidence; booking handoff ends the portal's ownership
@@ -301,10 +301,10 @@ product may deliver that outcome.
 - **Home** owns today's calls: staff can add an appointment request, read who must be called in
   order, record the common outcome on that line (no answer, contacted, or booked), prepare a
   New-request print packet or a New/Contacted custom list, and reach secondary staff jobs.
-  Opening the request record is for notes, close, Undo, and reopen — not for the ordinary call.
-- **Appointments** owns the complete appointment-request lifecycle and working queue, retaining
-  All, New, Contacted, Scheduled, and Closed as familiar views, with the same staff-authored intake
-  action in context. Close, notes, Undo, reopen, and legacy review live here.
+  Home also owns the rest of the request lifecycle: its status filter keeps New, Contacted,
+  Scheduled, and Closed in view, and the full-record sheet holds a request's notes and history.
+- **Schedule** owns appointments: the month, week, and Day views, booking from a request, and the
+  appointment record.
 - **Settings** owns staff access, notification recipients, and software administration without
   competing with daily appointment work.
 - **Help** owns cross-job guidance, recovery beyond a slice's own path, and transitions to human
@@ -323,7 +323,7 @@ utilities placed where they support an outcome, not automatic candidates for add
 
 ### Product Principles
 
-1. **Work first; administration second.** Home and Appointments carry the portal's center of
+1. **Work first; administration second.** Home and Schedule carry the portal's center of
    gravity. Settings and Help stay easy to reach without turning every capability into an equal
    card on a dashboard.
 2. **Truth before reassurance.** Empty, waiting, unavailable, stale, conflicted, and completed
@@ -332,7 +332,7 @@ utilities placed where they support an outcome, not automatic candidates for add
 3. **Resume without reconstruction.** Staff work between calls and patient arrivals. Location,
    request state, next legal action, recovery, and follow-up remain explicit across page changes,
    interruptions, desktop, and mobile.
-4. **Familiarity carries the workflow.** Preserve the four destinations, five Appointments views,
+4. **Familiarity carries the workflow.** Preserve the four destinations, Home's status views,
    plain staff language, standard controls, and predictable navigation. Personality comes from
    precise hierarchy and the line — one patient, one next action, one time — never from novel
    affordances staff must learn.

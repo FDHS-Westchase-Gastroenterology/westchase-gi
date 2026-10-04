@@ -274,7 +274,7 @@ test.describe("appointment-request print packet", () => {
     await expect(packetButton).not.toHaveAttribute("aria-disabled", "true");
     await expect(page.getByRole("link", { name: "Open New requests" })).toHaveAttribute(
       "href",
-      "/admin/requests?status=new",
+      "/admin?status=new",
     );
 
     expect(await durableRequest(olderId)).toEqual(beforeOlder);
@@ -360,9 +360,9 @@ test.describe("appointment-request print packet", () => {
     });
     await expect(page.getByRole("button", { name: "Print 2 requests" })).toBeVisible();
     await expect(page.locator("html")).not.toHaveAttribute("data-test-packet-print-calls", /.+/);
-    await expect(page.getByRole("link", { name: "Open Requests" }).last()).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "Open Home" }).last()).toHaveAttribute(
       "href",
-      "/admin/requests",
+      "/admin",
     );
 
     expect(await durableRequest(olderId)).toEqual(beforeOlder);

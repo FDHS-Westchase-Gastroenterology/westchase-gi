@@ -25,18 +25,14 @@ export default function PortalError({ retry }: Readonly<{ retry: () => void }>) 
         <h2>Your work is still in the portal</h2>
         <p>
           No appointment request was changed by this failed page load. If retrying does not work,
-          open Requests and confirm the live queue before continuing from paper or email.
+          open Home and confirm the live line before continuing from paper or email.
         </p>
         <div>
           <Button type="button" onClick={retry}>
             Try again
           </Button>
-          <Link
-            href="/admin/requests"
-            data-slot="button"
-            className={buttonVariants({ variant: "outline" })}
-          >
-            Open Requests
+          <Link href="/admin" data-slot="button" className={buttonVariants({ variant: "outline" })}>
+            Open Home
           </Link>
           <Link href="/admin/help#something-wrong" className="portal-inline-link">
             Get help

@@ -1530,8 +1530,8 @@ a.appt-phone {
   padding: 0 0.5rem;
 }
 
-/* One row = one answer: the registry radio inside a whole-row label (the
-   request detail's decision rows, at the card's density). The chosen row
+/* One row = one answer: the registry radio inside a whole-row label, at
+   the card's density. The chosen row
    says so twice without a fill: the radio becomes a navy ring and the
    label turns semibold ink. The registry's own row utilities sit in the
    utilities layer, so these unlayered rules win. */
@@ -2186,8 +2186,8 @@ a.appt-phone {
   width: 100%;
 }
 
-/* Scheduled and closed lines have nothing to answer; the sentence points
-   at the full record, where reopening lives. */
+/* Scheduled and closed lines have nothing to answer; the sentence says
+   so in place of the question. */
 .wgi-record-note {
   margin: 1rem 0.9375rem 0.4rem;
   color: var(--color-body);
@@ -4335,8 +4335,8 @@ a.appt-phone {
    reads closely (fields, rows, alerts) sits on the solid well, so a patient
    name is never on glass; the header and footer sit on the glass, aligned
    with the well's content (12px inset + 16px padding = 28px). Scoped here,
-   not on .portal-confirm-dialog, because the Requests page's print chooser
-   and the recipients manager keep their paper and 48% scrim. The frost is
+   not on .portal-confirm-dialog, because the recipients manager keeps its
+   paper and 48% scrim. The frost is
    one surface, briefly open: never reuse it on a large or long-lived one. */
 /* The glass inks (design-system/tokens.md "Recorded exceptions"): the slab runs top to
    bottom under the frost; solid is its Reduce Transparency stand-in; the
@@ -4496,8 +4496,7 @@ a.appt-phone {
 }
 
 /* Capsules on the glass (section 1, "Buttons"). The footer's buttons name
-   their role and the sheet paints them; the same buttons wear the plain
-   recipe on the standalone route, which has no glass. This file outranks
+   their role and the sheet paints them. This file outranks
    the recipe's utilities, so the lift and hover shadow are off and each
    paint restates the focus ring beside its own shadow. */
 .wgi-glass-sheet [data-glass] {

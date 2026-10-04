@@ -76,11 +76,11 @@ function retryHref(choice: Readonly<PacketChoice>): string {
 function PacketQueueLink({ newOnly }: Readonly<{ newOnly: boolean }>) {
   return (
     <Link
-      href={newOnly ? "/admin/requests?status=new" : "/admin/requests"}
+      href={newOnly ? "/admin?status=new" : "/admin"}
       data-slot="button"
       className={buttonVariants({ variant: "outline" })}
     >
-      {newOnly ? "Open New requests" : "Open Requests"}
+      {newOnly ? "Open New requests" : "Open Home"}
       <ArrowRight className="h-4 w-4" />
     </Link>
   );
@@ -100,7 +100,7 @@ function PrintUnavailable({ retry, newOnly }: Readonly<{ retry?: string; newOnly
         <h2>Try preparing the packet again</h2>
         <p>
           The secure print service did not prepare a packet. Try again once. If it still fails,
-          continue from Requests so work is not blocked, then report the printing problem.
+          continue from Home so work is not blocked, then report the printing problem.
         </p>
         <div>
           {retry === undefined ? (
@@ -131,7 +131,7 @@ function InvalidPrintList() {
       />
       <section className="portal-empty-state" role="alert">
         <h2>Choose what to print again</h2>
-        <p>Use Print on Home or Requests to choose the appointment requests to print.</p>
+        <p>Use Print on Home to choose the appointment requests to print.</p>
         <div>
           <Link href="/admin" data-slot="button" className={buttonVariants()}>
             Back to Home
@@ -154,13 +154,12 @@ function MissingRequest() {
         <h2>Choose the requests again</h2>
         <p>
           At least one request in this list could not be found, so no packet was prepared. Return to
-          Home or Requests and choose the requests to print again.
+          Home and choose the requests to print again.
         </p>
         <div>
           <Link href="/admin" data-slot="button" className={buttonVariants()}>
             Back to Home
           </Link>
-          <PacketQueueLink newOnly={false} />
         </div>
       </section>
     </>
@@ -180,18 +179,11 @@ function EmptyPacket({ statusList }: Readonly<{ statusList: string }>) {
         <h2>There is no {statusList} work to hand off</h2>
         <p>
           The live queue may have changed since you opened this window. Return to Home for the next
-          task, or open Requests to review the current queue.
+          task and the current queue.
         </p>
         <div>
           <Link href="/admin" data-slot="button" className={buttonVariants()}>
             Back to Home
-          </Link>
-          <Link
-            href="/admin/requests"
-            data-slot="button"
-            className={buttonVariants({ variant: "outline" })}
-          >
-            Open Requests
           </Link>
         </div>
       </section>

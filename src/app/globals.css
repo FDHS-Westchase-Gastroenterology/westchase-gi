@@ -2223,25 +2223,15 @@
 
 /* ------------------------------------------------------------------ *
    Appointment-request print: the printed page (requests/print/
-   request-print-page.tsx) on US Letter. The packet and the record's own
-   Print request both print it on this page box; the portal shell recedes.
-   On the record, the screen view is `print-hide` and the paper, hidden on
-   screen, is what prints.
+   request-print-page.tsx) on US Letter. Every packet prints on this page
+   box; the portal shell recedes.
  * ------------------------------------------------------------------ */
 @page request-detail {
   size: letter;
   margin: 0.55in;
 }
 
-.request-detail-paper {
-  display: none;
-}
-
 @media print {
-  .request-detail-paper {
-    display: block;
-  }
-
   body.portal-scope:has(.printed-page) .portal-release-utility {
     display: none !important;
   }

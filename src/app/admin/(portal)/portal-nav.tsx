@@ -3,15 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import {
-  Activity,
-  Calendar,
-  CircleHelp,
-  ClipboardCheck,
-  FileText,
-  Home,
-  Settings,
-} from "@/components/icons";
+import { Activity, Calendar, CircleHelp, FileText, Home, Settings } from "@/components/icons";
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -25,28 +17,26 @@ import { inSettings } from "./settings-panes";
 
 /* One list per layout (issue #327, Figma section 08 option 2; Schedule from
    issue #343; the regroup from issue #357, Figma 516:9469). The desktop rail
-   holds the day's work, Home, Schedule, Requests and Activity log, then the
+   holds the day's work, Home, Schedule and Activity log, then the
    "Patient materials" group with Review flyers, and moves Settings and Help
-   to the account footer; the phone bar keeps Home, Schedule, Requests,
-   Settings and Help, with Activity log in the account menu. The shell
-   renders one PortalNav per layout and hides the inactive one whole, so a
-   link that is not on screen never holds a tab stop. On the compact rail
-   the group heading folds away. The current-location signal and the
-   waiting count never move. */
+   to the account footer; the phone bar keeps Home, Schedule, Settings and
+   Help, with Activity log in the account menu. The shell renders one
+   PortalNav per layout and hides the inactive one whole, so a link that is
+   not on screen never holds a tab stop. On the compact rail the group
+   heading folds away. The current-location signal never moves. */
 
 type NavItem = Readonly<{ href: string; label: string; icon: typeof Home }>;
 
 const HOME = { href: "/admin", label: "Home", icon: Home };
 const SCHEDULE = { href: "/admin/schedule", label: "Schedule", icon: Calendar };
-const REQUESTS = { href: "/admin/requests", label: "Requests", icon: ClipboardCheck };
 const ACTIVITY = { href: "/admin/audit", label: "Activity log", icon: Activity };
 const FLYERS = { href: "/admin/review-flyers", label: "Review flyers", icon: FileText };
 const SETTINGS = { href: "/admin/settings", label: "Settings", icon: Settings };
 const HELP = { href: "/admin/help", label: "Help", icon: CircleHelp };
 
 const NAV_ITEMS = {
-  sidebar: [HOME, SCHEDULE, REQUESTS, ACTIVITY],
-  bar: [HOME, SCHEDULE, REQUESTS, SETTINGS, HELP],
+  sidebar: [HOME, SCHEDULE, ACTIVITY],
+  bar: [HOME, SCHEDULE, SETTINGS, HELP],
 } as const satisfies Record<string, readonly NavItem[]>;
 
 /** The rail's groups below the day's work, each under its heading. */
@@ -59,13 +49,8 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function PortalNavItem({
-  item,
-  pathname,
-  waitingCount,
-}: Readonly<{ item: NavItem; pathname: string; waitingCount: number | null }>) {
+function PortalNavItem({ item, pathname }: Readonly<{ item: NavItem; pathname: string }>) {
   const active = isActive(pathname, item.href);
-  const showBadge = item.href === "/admin/requests" && waitingCount !== null && waitingCount > 0;
   const Icon = item.icon;
 
   return (
@@ -75,25 +60,16 @@ function PortalNavItem({
         tooltip={item.label}
         render={<Link href={item.href} />}
         aria-current={active ? "page" : undefined}
-        aria-label={showBadge ? `${item.label}, ${waitingCount} waiting` : item.label}
         className="portal-nav-link"
       >
         <Icon className="portal-nav-icon" />
         <span className="portal-rail-label">{item.label}</span>
-        {showBadge ? (
-          <span data-testid="nav-waiting-badge" aria-hidden="true" className="portal-nav-count">
-            {waitingCount > 99 ? "99+" : waitingCount}
-          </span>
-        ) : null}
       </SidebarMenuButton>
     </SidebarMenuItem>
   );
 }
 
-export function PortalNav({
-  layout,
-  waitingCount,
-}: Readonly<{ layout: keyof typeof NAV_ITEMS; waitingCount: number | null }>) {
+export function PortalNav({ layout }: Readonly<{ layout: keyof typeof NAV_ITEMS }>) {
   const pathname = usePathname();
   // Inside Settings the sidebar is Settings' own list (issue #352).
   if (layout === "sidebar" && inSettings(pathname)) return <SettingsNav />;
@@ -102,12 +78,7 @@ export function PortalNav({
     <nav aria-label="Portal sections" className="portal-primary-nav" data-layout={layout}>
       <SidebarMenu>
         {NAV_ITEMS[layout].map((item) => (
-          <PortalNavItem
-            key={item.href}
-            item={item}
-            pathname={pathname}
-            waitingCount={waitingCount}
-          />
+          <PortalNavItem key={item.href} item={item} pathname={pathname} />
         ))}
       </SidebarMenu>
       {layout === "sidebar"
@@ -118,12 +89,7 @@ export function PortalNav({
               </SidebarGroupLabel>
               <SidebarMenu aria-labelledby={group.id}>
                 {group.items.map((item) => (
-                  <PortalNavItem
-                    key={item.href}
-                    item={item}
-                    pathname={pathname}
-                    waitingCount={waitingCount}
-                  />
+                  <PortalNavItem key={item.href} item={item} pathname={pathname} />
                 ))}
               </SidebarMenu>
             </SidebarGroup>

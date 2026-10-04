@@ -64,7 +64,7 @@ import type { RecordHint } from "./week-card-parts";
    Request tab is the latest request linked to the patient, as Home's sheet
    reads it: the message, the latest note, and how they came to the
    practice with a link to its history. Clinical and Documents list the
-   patient's records read-only; writing them stays on the request page.
+   patient's records read-only.
 
    The name and phone come from what opened the record (the search row or
    the appointment card) until the read lands, so the header is never
@@ -380,7 +380,7 @@ function RequestTab({ line }: Readonly<{ line: Readonly<HomeLine> }>) {
         </h3>
         <p className="wgi-sheet-origin">
           <span>{cameToUs(record)}</span>
-          <Link href={`/admin/requests/${record.id}`} className="wgi-sheet-history-link">
+          <Link href={`/admin?request=${record.id}`} className="wgi-sheet-history-link">
             History · {sections.rowCount}
             <ChevronRight aria-hidden="true" />
           </Link>

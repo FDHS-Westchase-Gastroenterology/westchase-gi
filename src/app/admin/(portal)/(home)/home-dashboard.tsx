@@ -25,7 +25,7 @@ interface HomeDashboardProps {
   readonly lines: readonly Readonly<HomeLine>[];
   /** One server clock for every relative label, so SSR and hydration agree. */
   readonly nowMs: number;
-  /** True when the closed tail hit its fetch window — older rows live in Appointments. */
+  /** True when the closed tail hit its fetch window — older rows are found through the Schedule search. */
   readonly closedCapped: boolean;
 }
 

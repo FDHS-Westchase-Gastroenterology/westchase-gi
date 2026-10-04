@@ -27,25 +27,21 @@ interface StaffRequestAction {
   readonly pending: boolean;
 }
 
-/** A hosted form tells its dialog about the new request from inside the
-    action, not from an effect watching the result: the host learns at the
-    moment the fact exists, and the toast (created-toast.ts) follows the same
-    attempt. The unhosted route keeps the bare server action for no-JS posts. */
+/** The form tells its dialog about the new request from inside the action,
+    not from an effect watching the result: the host learns at the moment the
+    fact exists, and the toast (created-toast.ts) follows the same attempt. */
 function useStaffRequestAction(
   permalink: string,
-  onCreated: ((requestId: string) => void) | null,
+  onCreated: (requestId: string) => void,
   onCreatedToastLeave: ((requestId: string) => void) | undefined,
 ): StaffRequestAction {
-  const action =
-    onCreated === null
-      ? createStaffRequest
-      : async (previous: Readonly<CreateStaffRequestActionState>, formData: FormData) => {
-          const attempt = createStaffRequest(previous, formData);
-          followCreation(attempt, onCreatedToastLeave);
-          const next = await attempt;
-          if (next.status === "created") onCreated(next.requestId);
-          return next;
-        };
+  const action = async (previous: Readonly<CreateStaffRequestActionState>, formData: FormData) => {
+    const attempt = createStaffRequest(previous, formData);
+    followCreation(attempt, onCreatedToastLeave);
+    const next = await attempt;
+    if (next.status === "created") onCreated(next.requestId);
+    return next;
+  };
   const [state, formAction, pending] = useActionState(action, INITIAL_STATE, permalink);
   return { state, formAction, pending };
 }
@@ -114,8 +110,6 @@ function submitFromChoice(event: KeyboardEvent<HTMLFormElement>, blocked: boolea
 export function StaffRequestForm({
   idempotencyKey,
   permalink,
-  returnHref,
-  returnLabel,
   onCreated,
   onCreatedToastLeave,
   onDismiss,
@@ -124,24 +118,21 @@ export function StaffRequestForm({
 }: Readonly<{
   idempotencyKey: string;
   permalink: string;
-  returnHref: string;
-  returnLabel: string;
-  /** Present when a dialog hosts the form: the caller stays put and closes once the request exists; the toast (created-toast.ts) carries the name. */
-  onCreated?: (requestId: string) => void;
+  /** The dialog stays put and closes once the request exists; the toast (created-toast.ts) carries the name. */
+  onCreated: (requestId: string) => void;
   /** Hears the new request's id when its confirming toast leaves. */
   onCreatedToastLeave?: (requestId: string) => void;
-  /** Present when a dialog hosts the form: cancelling closes it instead of navigating. */
-  onDismiss?: () => void;
+  /** Cancelling closes the dialog. */
+  onDismiss: () => void;
   /** Lets the host route Escape through this form's draft protection. */
   dismissRequestRef?: Ref<StaffRequestFormHandle>;
   /** The name or number a search typed: the form opens with it, the caret after it. */
   prefill?: StaffRequestPrefill;
 }>) {
-  const hosted = onCreated !== undefined && onDismiss !== undefined;
   const [initialIdempotencyKey] = useState(idempotencyKey);
   const { state, formAction, pending } = useStaffRequestAction(
     permalink,
-    hosted ? onCreated : null,
+    onCreated,
     onCreatedToastLeave,
   );
   const [opened] = useState<StaffRequestDraft>(() => ({ ...EMPTY_DRAFT, ...prefill }));
@@ -155,8 +146,7 @@ export function StaffRequestForm({
   const guard = useLeaveGuard({
     dirty: isStaffRequestDraftDirty(draft, opened),
     pending,
-    dismiss: hosted ? onDismiss : null,
-    returnHref,
+    dismiss: onDismiss,
     onDiscard: () => {
       setDraft(opened);
     },
@@ -185,7 +175,6 @@ export function StaffRequestForm({
       aria-label="Add request"
       aria-busy={pending || undefined}
       data-draft-locked={draftLocked || undefined}
-      data-hosted={hosted || undefined}
       onSubmit={checkBeforeSubmit}
       onKeyDown={(event) => {
         submitFromChoice(event, conflicted || pending);
@@ -193,7 +182,6 @@ export function StaffRequestForm({
       className="portal-request-form"
     >
       <input type="hidden" name="idempotencyKey" value={retryKey} />
-      {hosted ? <input type="hidden" name="stayHere" value="1" /> : null}
 
       <div className="portal-request-form-well">
         {failure === null ? null : <StaffRequestError code={failure} alertRef={alertRef} />}
@@ -201,7 +189,7 @@ export function StaffRequestForm({
         <StaffRequestFields
           draft={draft}
           readOnly={readOnly}
-          autoFocus={hosted}
+          autoFocus
           checks={checks}
           onChange={(patch) => {
             setDraft((current) => ({ ...current, ...patch }));
@@ -215,11 +203,9 @@ export function StaffRequestForm({
         <StaffRequestFormFooter
           cancelRef={guard.cancelRef}
           conflicted={conflicted}
-          hosted={hosted}
           pending={pending}
           unavailable={unavailable}
-          returnHref={returnHref}
-          returnLabel={returnLabel}
+          returnHref={permalink}
           onCancelClick={guard.requestLeave}
         />
       )}

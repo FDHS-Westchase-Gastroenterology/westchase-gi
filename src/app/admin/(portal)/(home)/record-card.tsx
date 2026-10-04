@@ -55,9 +55,8 @@ import { useRecordCommit } from "./use-record-commit";
    panel (use-card-detach.ts) — the head is the grab surface, and a panel
    carries its own close button where a popover has none (HIG Panels). */
 
-/* The answers: the registry radio group, one whole-row label per answer
-   (the request detail's decision rows at the card's density), the closing
-   row ruled off beneath the others. */
+/* The answers: the registry radio group, one whole-row label per answer,
+   the closing row ruled off beneath the others. */
 function AnswerRows({
   labelId,
   rows,

@@ -187,7 +187,7 @@ test("the route rejects bad events, raw URLs, and staff templates", async ({ req
   const cases: TelemetryProbe[] = [
     { ...base, event: "page_click" },
     { ...base, event: "page_view", routeTemplate: "/appointment?ref=1" },
-    { ...base, event: "page_view", routeTemplate: "/admin/requests" },
+    { ...base, event: "page_view", routeTemplate: "/admin/schedule" },
     { ...base, event: "page_view", locale: "fr" },
     { ...base, event: "page_view", deviceClass: "watch" },
   ];

@@ -121,8 +121,7 @@ export const buttonVariants = cva(
         ],
         /* Quiet secondary — the widest-worn variant (26 files, and four
            more that switch between default and outline): portal
-           cancels/undo (workflow-panel, request-notes, print-chooser),
-           pagination, error/not-found, patient back-links, Header,
+           cancels, pagination, error/not-found, patient back-links, Header,
            ReviewHub. Full list: design-system/buttons.md "Variants". */
         outline: [
           // Resting paint: transparent, inked, inset hairline

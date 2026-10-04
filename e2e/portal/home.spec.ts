@@ -98,14 +98,6 @@ test.describe("portal home", () => {
       ),
     );
 
-    // The print chooser names the live New count.
-    const { count: newCount, error: countError } = await db
-      .from("requests")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "new");
-    expect(countError).toBeNull();
-    expect(newCount ?? 0).toBeGreaterThanOrEqual(1);
-
     // The zero-recipients safety net appears exactly when no active
     // Notification recipient exists.
     const { count: activeRecipients, error: recipientsError } = await db
@@ -123,11 +115,11 @@ test.describe("portal home", () => {
     await expect(stagedLine).toHaveCount(1);
     await expect(stagedLine.locator("[data-col='status']")).toHaveText("New");
 
-    // The desktop rail gives the four work pages the same row; Settings and
+    // The desktop rail gives the work pages the same row; Settings and
     // Help sit in the account footer. Home carries the current-page marker.
     const nav = page.locator('nav[aria-label="Portal sections"]:visible');
     await expect(nav.locator("a")).toHaveText(
-      [/^Home$/, /^Schedule$/, /^Requests/, /^Activity log$/, /^Review flyers$/],
+      [/^Home$/, /^Schedule$/, /^Activity log$/, /^Review flyers$/],
       { useInnerText: true },
     );
     await expect(nav.locator('a[aria-current="page"]')).toHaveText("Home");
@@ -138,7 +130,6 @@ test.describe("portal home", () => {
     const printSheet = page.getByTestId("print-requests-sheet");
     await expect(printSheet).toBeVisible();
     await expect(printSheet.getByRole("heading", { name: "Print requests" })).toBeVisible();
-    await expect(page.getByTestId("print-chooser")).toHaveCount(0);
     const printRows = page.getByTestId("print-table").locator("tbody tr");
     await expect(printRows.first()).toBeVisible();
     const printSubmit = page.getByTestId("print-requests-submit");
@@ -177,27 +168,6 @@ test.describe("portal home", () => {
     await page.keyboard.press("Escape");
     await expect(printSheet).toBeHidden();
     await expect(page.getByTestId("home-print-requests")).toBeFocused();
-
-    // One noun on the portal nav: Requests (the records are appointment
-    // Requests, the destination under /admin/requests carries the same word).
-    await page
-      .locator('nav[aria-label="Portal sections"]')
-      .getByRole("link", { name: "Requests" })
-      .click();
-    await expect(page).toHaveURL(/\/admin\/requests\/?$/);
-    await expect(page.getByRole("heading", { name: "Requests", exact: true })).toBeVisible();
-    // The waiting-count badge may append a count inside the same link.
-    await expect(
-      page.locator('nav[aria-label="Portal sections"]:visible a[aria-current="page"]'),
-    ).toHaveText(/^Requests/, { useInnerText: true });
-    await page.getByTestId("print-chooser-trigger").click();
-    await expect(
-      page.getByRole("link", {
-        name: `Print all ${newCount} new appointment ${
-          newCount === 1 ? "request" : "requests"
-        }; opens in a new tab`,
-      }),
-    ).toHaveAttribute("target", "_blank");
   });
 
   test("the day sheet lists the newest New requests as lines", async ({ page }) => {

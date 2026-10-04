@@ -8,9 +8,9 @@ its own label stack.
 
 | Component | When | Real uses |
 | --- | --- | --- |
-| `Field` `FieldLabel` | One labeled control. `orientation` is `vertical` (default), `horizontal` or `responsive`. | `staff-request-fields.tsx`, `request-search-form.tsx`, `record-card.tsx` |
+| `Field` `FieldLabel` | One labeled control. `orientation` is `vertical` (default), `horizontal` or `responsive`. | `staff-request-fields.tsx`, `record-card.tsx`, `type-editor-dialog.tsx` |
 | `FieldGroup` | The stack of fields in one form | `login-form.tsx`, `password-form.tsx`, `reset-request-form.tsx` |
-| `FieldSet` `FieldLegend` `FieldTitle` | A named group of related choices | `print-chooser.tsx` |
+| `FieldSet` `FieldLegend` `FieldTitle` | A named group of related choices | `staff-request-fields.tsx` |
 | `FieldDescription` `FieldError` | The hint under a control; the reason it was refused. `size="note"` is the Add request sheet's quieter 13px line, its fix led by an icon | `staff-request-fields.tsx`, `AppointmentForm.tsx` |
 
 - **An invalid control sets `aria-invalid`** and its `FieldError` says what to change, in the
@@ -38,7 +38,7 @@ aria-invalid={error === null ? undefined : true}
 | `Textarea` | Multi-line text | `staff-request-fields.tsx`, `AppointmentForm.tsx` |
 | `NativeSelect` | Choosing one of a longer fixed list | `staff-manager.tsx`, `AppointmentForm.tsx` |
 | `SegmentedControl` | Choosing one of two to four short options, all visible at once, one always chosen | `staff-request-fields.tsx` (preferred office and time) |
-| `Checkbox` | An independent yes or no, including each row of a multi-select list | `print-chooser.tsx` |
+| `Checkbox` | An independent yes or no, including each row of a multi-select list | `print-sheet-body.tsx` |
 
 The four controls share one `motion` axis: `wgi` (default), `shadcn` and `none`, and only `wgi`
 has consumers. `Input`, `Textarea` and `NativeSelect` fade their border and ring over 200ms
@@ -73,15 +73,14 @@ Staff choose outcomes and follow-ups from visible rows, not a menu. A new choice
 `RadioGroup` and `RadioGroupItem` from `ui/radio-group.tsx`, each row a `Label` wrapping its item
 and its words, so the whole row chooses: the Schedule's cancel form does
 (`week-card-faces.tsx`). The record card still renders its rows with `RadioGroup` and
-`ToggleGroup` from `stock/`, a [recorded import](components.md#recorded-stock-imports), and
-`outcome-choice-list.tsx` and `workflow-panel.tsx` hand-roll the same rows in `.portal-choice-*`.
-Those stay as they render until [item 3](roadmap.md#3-choice-lists) moves them onto the recipe.
+`ToggleGroup` from `stock/`, a [recorded import](components.md#recorded-stock-imports). They
+stay as they render until [item 3](roadmap.md#3-choice-lists) moves them onto the recipe.
 
 ## Saving
 
-A save on a request — from the staff home, the queue or a request's page — shows its progress in
-one toast that follows the save's promise: the working verb
-while it runs, the saved sentence only once the server confirmed. `Toaster` (Sonner, from
+A save on a request — from the staff home or the Schedule — shows its progress in one toast that
+follows the save's promise: the working verb while it runs, the saved sentence only once the server
+confirmed. `Toaster` (Sonner, from
 `src/components/ui/toaster.tsx`) is mounted once, in the portal layout, so a result outlives the
 surface that started it; the patient site has none. Toasts sit bottom center, 26rem wide, on
 `--popover` paper with `--shadow-popover` and no `richColors`; they arrive on the spring, leave on
@@ -128,20 +127,17 @@ The portal answers an action in three places, and they are not interchangeable.
 
 | Mechanism | When | Real uses |
 | --- | --- | --- |
-| `toast.promise` | A save with a promise to follow, in the portal's one toast region | `created-toast.ts`, `request-notes.tsx`, `use-workflow-panel.ts` |
-| `PortalFeedbackMessage` | A result with no promise to follow, or one that has to outlive a toast | `requests-output-actions.tsx`, `print-controls.tsx`, `request-current-feedback.tsx` |
+| `toast.promise` | A save with a promise to follow, in the portal's one toast region | `record-card-save.ts`, `created-toast.ts`, `record-note-composer.tsx` |
+| `PortalFeedbackMessage` | A result with no promise to follow, or one that has to outlive a toast | `home-workbench.tsx`, `print-controls.tsx`, `review-flyer-printer.tsx` |
 | An inline `role="status"` or `role="alert"` line | A settings manager's result, beside the list or form it changed. The manager calls `router.refresh()` to reload its rows and mounts no provider | `recipients-manager.tsx`, `staff-manager.tsx`, `software/maintainer-access.tsx` |
 
 `PortalFeedbackProvider` (`portal-feedback.tsx`) holds a single current result per page, so a
-later note, workflow command or output handoff replaces the banner instead of stacking a second
-one. Five surfaces mount it: the staff home, the requests queue, a request's detail page, the
-print packet and the review-flyer printer. An island calls `publish({ source, tone, message })`; a
-`PortalFeedbackMessage`, which takes `source` and an optional `testId` and `className`, renders only
-while the current result carries its own `source`, and
-`dismiss(source)` clears only its own. `tone` is `status` or `alert`, and it is both the element's
+later result replaces the banner instead of stacking a second one. Three surfaces mount it: the
+staff home, the print packet and the review-flyer printer. An island calls
+`publish({ source, tone, message })`; a `PortalFeedbackMessage`, which takes `source` and an
+optional `testId` and `className`, renders only while the current result carries its own `source`,
+and `dismiss(source)` clears only its own. `tone` is `status` or `alert`, and it is both the element's
 `role` and its paint: mint on a teal hairline, or `amber-soft` on amber.
 
-An export, print or other handoff has no promise, so it publishes instead of toasting. A save that
-already toasts still publishes, because the toast leaves and the banner is what staff come back
-to: `request-notes.tsx` and `use-workflow-panel.ts` do both, and clear the banner when the
-composer or the panel reopens.
+A print, download or other handoff has no promise, so it publishes instead of toasting
+(`print-controls.tsx`, `flyer-output.tsx`).

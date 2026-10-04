@@ -1,6 +1,6 @@
 import { requestIdSchema } from "./request-record/contracts";
 import { parseRequestStatus } from "./workflow/contracts";
-import type { RequestStatus, StatusCounts } from "./workflow/contracts";
+import type { RequestStatus } from "./workflow/contracts";
 
 export const NEW_PRINT_PACKET_HREF = "/admin/requests/print";
 
@@ -90,26 +90,4 @@ export function formatStatusList(
   if (names.length === 1) return names[0] ?? "";
   if (names.length === 2) return `${names[0]} and ${names[1]}`;
   return `${names.slice(0, -1).join(", ")}, and ${names.at(-1)}`;
-}
-
-export function knownSelectionCount(
-  statuses: readonly RequestStatus[],
-  counts: StatusCounts,
-): number | null {
-  let total = 0;
-  for (const status of statuses) {
-    const count = counts[status];
-    if (count === undefined || count === null) return null;
-    total += count;
-  }
-  return total;
-}
-
-export function printSelectionIsAvailable(
-  statuses: readonly RequestStatus[],
-  counts: StatusCounts,
-): boolean {
-  if (statuses.length === 0) return false;
-  if (statuses.length === 1 && counts[statuses[0]] === null) return false;
-  return knownSelectionCount(statuses, counts) !== 0;
 }

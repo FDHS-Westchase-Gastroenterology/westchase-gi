@@ -12,8 +12,6 @@ import {
   isPortalReleaseEligible,
   PORTAL_RELEASE_BRIEFING,
 } from "@/lib/portal/release-briefing-content";
-import { availableQueueCount } from "@/lib/portal/request-query";
-import { serviceClient } from "@/lib/portal/server";
 
 import { PortalAccountLinks, PortalNav } from "./portal-nav";
 import { PortalReleaseProvider, PortalReleaseUtility } from "./portal-release-briefing";
@@ -46,21 +44,12 @@ export default async function PortalLayout({
   const session = await getSessionUser();
   if (!session) redirect("/admin/login");
 
-  // The waiting signal travels with the worker: a failed read suppresses the
-  // Badge instead of inventing a reassuring zero.
   // The release briefing waits until no tour is running, so the two never stack.
   const releaseEligible =
     session.pendingTour === null && isPortalReleaseEligible(session.onboardedAt);
-  const [queueResult, releaseState] = await Promise.all([
-    serviceClient()
-      .from("requests")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "new"),
-    releaseEligible
-      ? getPortalReleaseState(session, PORTAL_RELEASE_BRIEFING.id)
-      : Promise.resolve({ status: "hidden" } as const),
-  ]);
-  const waitingCount = availableQueueCount(queueResult.count, queueResult.error !== null);
+  const releaseState = releaseEligible
+    ? await getPortalReleaseState(session, PORTAL_RELEASE_BRIEFING.id)
+    : ({ status: "hidden" } as const);
   // A tour Help started carries its start time, so the runner begins it at the first step.
   const tourStartedAt =
     session.tours.find((record) => record.tour === session.pendingTour)?.recordedAt ?? null;
@@ -93,8 +82,8 @@ export default async function PortalLayout({
                 </span>
               </Link>
 
-              <PortalNav layout="sidebar" waitingCount={waitingCount} />
-              <PortalNav layout="bar" waitingCount={waitingCount} />
+              <PortalNav layout="sidebar" />
+              <PortalNav layout="bar" />
 
               <SidebarToggle />
               <div className="portal-sidebar-account">

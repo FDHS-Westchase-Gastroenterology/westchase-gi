@@ -3,16 +3,10 @@ import type { Locator, Page } from "@playwright/test";
 
 import { signIn } from "../harness/session";
 
-async function openNewRequest(page: Page, from: "home" | "appointments") {
-  if (from === "home") {
-    await page.getByTestId("home-add-patient-request").click();
-    await expect(page).toHaveURL(/\/admin\/?$/);
-    await expect(page.getByTestId("add-appointment-dialog")).toBeVisible();
-  } else {
-    await page.goto("/admin/requests");
-    await page.getByTestId("appointments-add-patient-request").click();
-    await expect(page).toHaveURL(/\/admin\/requests\/new\?from=appointments$/);
-  }
+async function openNewRequest(page: Page) {
+  await page.getByTestId("home-add-patient-request").click();
+  await expect(page).toHaveURL(/\/admin\/?$/);
+  await expect(page.getByTestId("add-appointment-dialog")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Add request" })).toBeVisible();
 }
 
@@ -33,24 +27,16 @@ test.describe("staff-authored intake data-entry protection", () => {
 
   test("untouched Cancel from Home returns immediately", async ({ page }) => {
     await signIn(page);
-    await openNewRequest(page, "home");
+    await openNewRequest(page);
     await page.getByTestId("cancel-staff-request").click();
     await expect(page).toHaveURL(/\/admin\/?$/);
     await expect(page.getByTestId("add-appointment-dialog")).toBeHidden();
     await expect(page.getByTestId("discard-staff-request-prompt")).toHaveCount(0);
   });
 
-  test("untouched Cancel from Requests returns immediately", async ({ page }) => {
-    await signIn(page);
-    await openNewRequest(page, "appointments");
-    await page.getByTestId("cancel-staff-request").click();
-    await expect(page).toHaveURL(/\/admin\/requests\/?$/);
-    await expect(page.getByTestId("discard-staff-request-prompt")).toHaveCount(0);
-  });
-
   test("dirty Cancel asks in place, and Keep editing returns to the draft", async ({ page }) => {
     await signIn(page);
-    await openNewRequest(page, "home");
+    await openNewRequest(page);
 
     const name = page.locator("#staff-request-name");
     await name.fill("UX Audit Draft");
@@ -79,7 +65,7 @@ test.describe("staff-authored intake data-entry protection", () => {
     page,
   }) => {
     await signIn(page);
-    await openNewRequest(page, "home");
+    await openNewRequest(page);
 
     const name = page.locator("#staff-request-name");
     const addDialog = page.getByTestId("add-appointment-dialog");
@@ -112,7 +98,7 @@ test.describe("staff-authored intake data-entry protection", () => {
 
   test("Discard from Home clears the draft and returns Home", async ({ page }) => {
     await signIn(page);
-    await openNewRequest(page, "home");
+    await openNewRequest(page);
     await page.locator("#staff-request-name").fill("UX Audit Draft");
     await page.getByTestId("cancel-staff-request").click();
 
@@ -121,24 +107,9 @@ test.describe("staff-authored intake data-entry protection", () => {
     await expect(page).toHaveURL(/\/admin\/?$/);
     await expect(page.getByTestId("add-appointment-dialog")).toBeHidden();
 
-    await openNewRequest(page, "home");
+    await openNewRequest(page);
     await expect(page.locator("#staff-request-name")).toHaveValue("");
     await expect(page.locator("#staff-request-phone")).toHaveValue("");
     await expect(page.getByTestId("discard-staff-request-prompt")).toHaveCount(0);
-  });
-
-  test("Discard from Requests returns to Requests", async ({ page }) => {
-    await signIn(page);
-    await openNewRequest(page, "appointments");
-    await page.locator("#staff-request-phone").fill("8135550199");
-    await page.getByTestId("cancel-staff-request").click();
-
-    await expectAsking(page, page.getByTestId("discard-staff-request-prompt"));
-    await page.getByTestId("discard-staff-request").click();
-    await expect(page).toHaveURL(/\/admin\/requests\/?$/);
-
-    await page.getByTestId("appointments-add-patient-request").click();
-    await expect(page).toHaveURL(/\/admin\/requests\/new\?from=appointments$/);
-    await expect(page.locator("#staff-request-phone")).toHaveValue("");
   });
 });

@@ -14,7 +14,6 @@ import type {
   CommandOutcome,
   ContactOutcome,
 } from "@/lib/portal/workflow/contracts";
-import type { WorkflowCommand } from "@/lib/portal/workflow/machine";
 
 interface Common {
   readonly requestId: string;
@@ -22,18 +21,11 @@ interface Common {
   readonly idempotencyKey: string;
 }
 
-function refresh(id: string) {
-  revalidatePath("/admin");
-  revalidatePath("/admin/requests");
-  revalidatePath(`/admin/requests/${id}`);
-}
-
 async function run(
   input: Readonly<
     Common & {
       command: RequestCommandInput;
       note?: string;
-      transitionId?: string;
     }
   >,
 ): Promise<CommandOutcome> {
@@ -42,7 +34,7 @@ async function run(
     ...input,
     actorEmail: session.email,
   });
-  if (result.ok) refresh(input.requestId);
+  if (result.ok) revalidatePath("/admin");
   return result;
 }
 
@@ -100,43 +92,5 @@ export async function closeRequest(
     ...input,
     command: { kind: "close_request", reason: input.reason },
     note: input.note,
-  });
-}
-
-export async function reopenRequest(
-  input: Readonly<Common & { callAgain: Readonly<FollowUpChoice> }>,
-): Promise<CommandOutcome> {
-  return run({ ...input, command: { kind: "reopen_request", callAgain: input.callAgain } });
-}
-
-export async function setCallAgain(
-  input: Readonly<Common & { callAgain: Readonly<FollowUpChoice> }>,
-): Promise<CommandOutcome> {
-  return run({ ...input, command: { kind: "set_call_again", callAgain: input.callAgain } });
-}
-
-function undoFingerprintCommand(): WorkflowCommand {
-  // SAFETY: The command shell replaces restore from the stored transition
-  // Before decide() runs. Null is the idempotency fingerprint the shell hashes.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Undo restore is resolved from the stored transition; null is the hashed placeholder.
-  return { kind: "undo_latest_transition", restore: null as never };
-}
-
-export async function undoLatestTransition(
-  input: Readonly<Common & { transitionId: string }>,
-): Promise<CommandOutcome> {
-  return run({
-    ...input,
-    command: undoFingerprintCommand(),
-    transitionId: input.transitionId,
-  });
-}
-
-export async function classifyLegacyClosure(
-  input: Readonly<Common & { resolution: "booked" | Readonly<{ reason: ManualClosureReason }> }>,
-): Promise<CommandOutcome> {
-  return run({
-    ...input,
-    command: { kind: "classify_legacy_closure", resolution: input.resolution },
   });
 }

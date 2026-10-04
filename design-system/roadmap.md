@@ -23,13 +23,10 @@ literal `text-[…rem]` sizes in `src/app/admin` route files
 
 ## 3. Choice lists
 
-**Ready.** `outcome-choice-list.tsx` and `workflow-panel.tsx` hand-roll radio rows in 30
-`.portal-choice-*` rules with a 180ms reveal. `RadioGroup` is in `ui/radio-group.tsx` (the
-Schedule's cancel form, issue #354); move these rows and the record card's
-[`stock/` import](components.md#recorded-stock-imports) onto it, adding a variant per paint, and
-adopt `ToggleGroup` the same way; unifying the three looks is Jason's. Their date inputs (`outcome-choice-list.tsx#L84`,
-`call-again-fieldset.tsx#L114`) hand-write the `Input` geometry and join as they look, their invalid
-red moving onto `--destructive` ([color.md](color.md#recorded-drift)).
+**Ready.** The record card renders its choice rows with `RadioGroup` and `ToggleGroup` from
+`stock/`. `RadioGroup` is in `ui/radio-group.tsx` (the Schedule's cancel form, issue #354); move the
+record card's [`stock/` import](components.md#recorded-stock-imports) onto it, adding a variant per
+paint, and adopt `ToggleGroup` the same way; unifying the two looks is Jason's.
 
 ## 4. The task index
 
@@ -40,11 +37,10 @@ stays `nav` with `aria-current` ([standing finding](adoption.md#standing-finding
 
 ## 5. Empty states, callouts and pagers
 
-**Ready.** Three hand-built families have registry components. `Empty` (`stock/empty.tsx`) takes
-`.portal-empty-state`, `.portal-queue-empty` and the request history and notes
-empties; `Alert` (`stock/alert.tsx`) takes `.portal-sheet-notice`, `.portal-sheet-alert` and
-`.portal-request-form-alert`; `Pagination` (`stock/pagination.tsx`) takes
-`.portal-queue-pagination`. Adopt each into `ui/` with its current paint and every `role="alert"`.
+**Ready.** Two hand-built families have registry components. `Empty` (`stock/empty.tsx`) takes
+`.portal-empty-state`; `Alert` (`stock/alert.tsx`) takes `.portal-sheet-notice`,
+`.portal-sheet-alert` and `.portal-request-form-alert`. Adopt each into `ui/` with its current paint
+and every `role="alert"`. No hand-built pager remains for `Pagination` (`stock/pagination.tsx`).
 
 ## 6. The calendar
 
@@ -71,11 +67,11 @@ outline. Bring them as rendered, not a new ramp; the brand `@theme` is hands-off
 
 ## 9. A native dialog component
 
-**Ready.** The [four portal dialogs](overlays.md#modal-dialogs) wire `<dialog>` by hand and drifted:
-two set `data-instant`, one lets Tab escape, first focus is `autoFocus`, a ref or both, one has no
-`onCancel`. A component built from `PrintChooser` owns open, close, `data-instant`, Tab, first
+**Ready.** The [three portal dialogs](overlays.md#modal-dialogs) wire `<dialog>` by hand and
+drifted: `AddAppointmentDialog` and `PrintRequestsSheet` let Tab escape, and each sends first
+focus its own way. A component built from `PrintRequestsSheet` owns open, close, `data-instant`, Tab, first
 focus, Escape and focus return; consumers keep their body, actions and close path. Until then, copy
-`PrintChooser`. Whether it serves the patient site's `LanguageChooser` and `ProfileCardViewer`,
+`PrintRequestsSheet` and wrap Tab by hand. Whether it serves the patient site's `LanguageChooser` and `ProfileCardViewer`,
 which let Tab escape too ([accessibility.md](accessibility.md#focus)), is Jason's.
 
 ## 10. Portal surface tints
@@ -99,8 +95,8 @@ a recorded exception. Its icons are part of it: the recipe asks 14px but they re
 
 **Jason decides.** The portal loads Lato 400 to 700 and Trocchi 400 (`src/lib/portal-fonts.ts`) with
 synthesis off, so 92 weight requests outside 400–700 in 13 files render at the nearest loaded
-weight, mostly 700: `.portal-page-title` and `.portal-auth-title` ask for 900, the Requests title
-for the serif at 880, which renders Trocchi 400 ([typography.md](typography.md#recorded-drift)).
+weight, mostly 700: `.portal-page-title` and `.portal-auth-title` ask for 900
+([typography.md](typography.md#recorded-drift)).
 Thirteen older rules also track -0.005em to -0.025em, eleven of them among those weights, where the
 Home frame tightens only its date, card name and empty heading
 ([typography.md](typography.md#numerals-and-tracking)). The approved Lato weights stay; bring
@@ -110,9 +106,8 @@ rendered comparisons.
 
 **Jason decides.** Focus is teal ([color.md](color.md#focus)), and the staff home draws a teal ring,
 but the rest of the portal draws an `amber-deep` outline from `.portal-scope` and three workbench
-rules, and `call-again-fieldset.tsx` draws `amber`, beside teal recipe rings. Contrast cannot
-decide: against 3:1, `amber-deep` measures 3.3–3.7, `teal` 3.4–3.9 and `amber` 1.8–2.0. Bring
-screens of both.
+rules, beside teal recipe rings. Contrast cannot decide: against 3:1, `amber-deep` measures
+3.3–3.7 and `teal` 3.4–3.9. Bring screens of both.
 
 ## 15. The patient-site shared layer
 
@@ -143,6 +138,5 @@ a `buttonVariants()` link. Bring each as rendered: an option, a knob, or gone.
 **Measure first.** Inside the staff home's trigger-anchored start-time panel, `TimePicker`'s root is
 a role-less `div` named with `aria-label`, which ARIA prohibits on the `generic` role. Headless
 Chromium's Playwright snapshot drops the name and the CDP tree keeps it, so run VoiceOver on the
-staff home's time field before choosing a fix, likely `role="group"`. The request detail's
-`type="time"` input (`outcome-choice-list.tsx#L125`) stays until this lands, and a second consumer
-moves the picker's model into `src/lib/portal/`.
+staff home's time field before choosing a fix, likely `role="group"`. A second consumer moves the
+picker's model into `src/lib/portal/`.

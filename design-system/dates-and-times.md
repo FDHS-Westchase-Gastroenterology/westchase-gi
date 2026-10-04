@@ -7,15 +7,13 @@ owns labels, errors and saving.
 ## Dates
 
 A date is a raw `<input type="date">`, not the `Input` recipe, practice-local, in the
-`YYYY-MM-DD` strings the portal passes around: the record's call-again day, an outcome's day, the
-Received editor's custom range. Each call site styles its own. The request detail's date fields
-write the `Input` geometry by hand (`fieldClass` in `outcome-choice-list.tsx#L84`, and
-`call-again-fieldset.tsx#L114`), and the Received editor's wear `.wgi-editor-range-fields` in
-`home.css`. `practiceLocalDay(offsetDays)` (`requests/appointment-input.ts`) gives a practice-local
+`YYYY-MM-DD` strings the portal passes around: the Received editor's custom range
+(`filter-bar.tsx`), whose inputs wear `.wgi-editor-range-fields` in `home.css`.
+`practiceLocalDay(offsetDays)` (`requests/appointment-input.ts`) gives a practice-local
 `min` or `max`. The Received editor pairs its Start and End inputs with a month grid; the staff
 home's grids are `HomeRangeCalendar` and `HomeDayCalendar` on the stock
 `Calendar` ([item 6](roadmap.md#6-the-calendar)). A new date control is a date input that copies the
-request detail's, and the copy joins [item 3](roadmap.md#3-choice-lists) with them.
+Received editor's.
 
 An instant — when a request arrived, when a follow-up is due — formats in `PRACTICE_TIME_ZONE`
 (`America/New_York`, `src/lib/portal/scheduling/time.ts`); `requests/format.ts` writes the same zone
@@ -57,6 +55,5 @@ model and the wrapper both belong to the staff home. A second time field compose
 `ui/` the same way, and first moves the model into `src/lib/portal/`, so one route never imports
 another's.
 
-Two gaps wait on [item 18](roadmap.md#18-time-picker-name): whether the frame's `aria-label` reaches
-a screen reader, and the request detail's outcome time, still a native `<input type="time">`
-(`outcome-choice-list.tsx#L125`) against the control tree in [forms.md](forms.md#controls).
+One gap waits on [item 18](roadmap.md#18-time-picker-name): whether the frame's `aria-label` reaches
+a screen reader.

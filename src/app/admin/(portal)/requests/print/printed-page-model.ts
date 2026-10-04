@@ -1,4 +1,3 @@
-import { historyLine } from "@/app/admin/(portal)/requests/[id]/request-history";
 import {
   CLOSURE_REASON_LABELS,
   CONTACT_OUTCOME_LABELS,
@@ -16,6 +15,7 @@ import {
   recordSections,
   undoneAttemptIds,
 } from "@/app/admin/(portal)/requests/record-sections";
+import { historyLine } from "@/app/admin/(portal)/requests/request-history";
 import { STATUS_WORDS } from "@/lib/portal/filters/status";
 import type { FullRecord } from "@/lib/portal/request-record/contracts";
 import { presentationStatus } from "@/lib/portal/workflow/contracts";

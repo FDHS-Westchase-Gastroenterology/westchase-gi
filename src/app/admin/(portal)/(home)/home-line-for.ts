@@ -142,6 +142,5 @@ export function lineFor(
     lastActivityRel:
       row.lastActivityAt === null ? null : rel(Date.parse(row.lastActivityAt), nowMs),
     followUpSet: row.follow_up_at !== null,
-    detailHref: `/admin/requests/${row.id}`,
   };
 }
