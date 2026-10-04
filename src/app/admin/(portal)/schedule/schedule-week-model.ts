@@ -13,7 +13,7 @@ import {
   weekHref,
   weekRange,
 } from "./week-calendar";
-import { hourBounds, hourLabel, place, shadesFor } from "./week-hours";
+import { hourBounds, hourLabel, openUntil, place, shadesFor } from "./week-hours";
 import type { WeekSpan } from "./week-hours";
 
 /* The Schedule's week view (issue #345; Figma Ypf9ohpRcGWF5C9T9bSvWW,
@@ -305,7 +305,7 @@ export function scheduleWeekFor(schedule: Readonly<WeekSchedule>): ScheduleWeek 
         cells.push({
           kind: "open",
           key: `${provider.id}:${open.startsAt}`,
-          ...place(open.startsAt, open.endsAt, start, end),
+          ...place(open.startsAt, openUntil(open, day), start, end),
           lane,
           providerId: provider.id,
           providerName: provider.name,

@@ -193,6 +193,21 @@ test("the booking interval spaces each provider's openings, and only admins chan
   function gaps(starts: readonly number[]) {
     return starts.slice(1).map((start, index) => (start - starts[index]) / 60_000);
   }
+  const clock = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    hour: "numeric",
+    minute: "numeric",
+    hourCycle: "h23",
+  });
+  // Whether every start sits on a mark of the practice clock, counted from midnight.
+  function onMarks(starts: readonly number[], every: number) {
+    return starts.every((start) => {
+      const parts = clock.formatToParts(start);
+      const hour = Number(parts.find((part) => part.type === "hour")?.value);
+      const minute = Number(parts.find((part) => part.type === "minute")?.value);
+      return (hour * 60 + minute) % every === 0;
+    });
+  }
   try {
     await restoreBookingInterval(db, actor);
     // Any whole quarter hour from 15 minutes to 8 hours; nothing between the quarters.
@@ -226,6 +241,8 @@ test("the booking interval spaces each provider's openings, and only admins chan
     const hourly = await opens();
     expect(hourly.length).toBeGreaterThan(0);
     expect(gaps(hourly).every((gap) => gap >= 60)).toBe(true);
+    // Openings start on the hour, whatever was booked before them.
+    expect(onMarks(hourly, 60)).toBe(true);
 
     // The RPC refuses an interval the contract does not offer, and replays a repeated key.
     const fingerprint = createHmac("sha256", "TEST scheduling acceptance fixture")
@@ -280,6 +297,7 @@ test("the booking interval spaces each provider's openings, and only admins chan
     const quarterly = await opens();
     expect(quarterly.length).toBeGreaterThan(hourly.length);
     expect(gaps(quarterly).some((gap) => gap < 60)).toBe(true);
+    expect(onMarks(quarterly, 15)).toBe(true);
 
     const changes = await db
       .from("scheduling_changes")

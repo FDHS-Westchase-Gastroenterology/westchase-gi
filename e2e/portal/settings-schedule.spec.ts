@@ -163,27 +163,19 @@ test("an admin types the booking interval, saves it, and Undo puts it back", asy
     await restoreBookingInterval(db, actor);
     await signIn(page, fixture.staff);
     await page.goto("/admin/settings/appointment-types");
-    const field = page.getByRole("spinbutton", { name: "Booking interval minutes" });
-    const save = page.getByRole("button", { name: "Save" });
-    await expect(field).toHaveValue("60");
-    await expect(save).toBeDisabled();
+    const clock = page.getByRole("radiogroup", { name: "Openings start" });
+    await expect(clock.getByRole("radio", { name: "On the hour" })).toBeChecked();
 
-    // Between the quarter hours: the fix shows and nothing saves.
-    await field.fill("50");
-    await expect(page.getByText("Use a multiple of 15 minutes, from 15 to 480.")).toBeVisible();
-    await expect(field).toHaveAttribute("aria-invalid", "true");
-    await expect(save).toBeDisabled();
-
-    await field.fill("90");
-    await field.press("Enter");
-    await expect(page.getByText("Openings every 1 hour 30 minutes")).toBeVisible();
-    await expect.poll(interval).toBe(90);
-    await expect(page.getByText(/one opening every 1 hour 30 minutes\./u)).toBeVisible();
+    // A choice saves at once, and the line names the marks.
+    await clock.getByRole("radio", { name: "Half hour" }).click();
+    await expect(page.getByText("Openings start at :00 and :30")).toBeVisible();
+    await expect.poll(interval).toBe(30);
+    await expect(page.getByText(/every 30 minutes, at :00 and :30\./u)).toBeVisible();
 
     await page.getByRole("button", { name: "Undo" }).click();
     await expect(page.getByText("Undone.")).toBeVisible();
     await expect.poll(interval).toBe(60);
-    await expect(field).toHaveValue("60");
+    await expect(clock.getByRole("radio", { name: "On the hour" })).toBeChecked();
   } finally {
     await restoreBookingInterval(db, actor);
     await fixture.dispose();
@@ -262,8 +254,9 @@ test("staff read the Schedule group with no edit controls", async ({ page }) => 
     await expect(page.getByRole("button", { name: `Move ${name}` })).toHaveCount(0);
     await expect(page.getByRole("button", { name: `More for ${name}` })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Add type" })).toHaveCount(0);
-    await expect(page.getByRole("spinbutton", { name: "Booking interval minutes" })).toBeDisabled();
-    await expect(page.getByRole("button", { name: "Save" })).toHaveCount(0);
+    const clock = page.getByRole("radiogroup", { name: "Openings start" });
+    await clock.getByRole("radio", { name: "Quarter hour" }).click();
+    await expect(clock.getByRole("radio", { name: "On the hour" })).toBeChecked();
 
     await page.goto("/admin/settings/locations");
     const office = `TEST ${prefix} First`;

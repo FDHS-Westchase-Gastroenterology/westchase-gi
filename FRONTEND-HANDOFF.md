@@ -167,10 +167,13 @@ available exceptions less unavailable exceptions; a date with none is closed. A 
 `seen` (checked in or completed). Today and later dates carry `open`, `booked`, `capacity`
 (`booked + open`), `bookedShare` (`booked` over `booked + open`, 1 when no opening is left: the share the month cell's tint and its "N of M booked" both read), and `providers`, each with
 location names, its own `open` count, and up to two `firstOpen` starts. `open` places the
-shortest active appointment type under the availability rules, including buffers, one opening per
-practice booking interval (Settings › Appointment types; one hour by default): the next opening
-starts one interval later, or after the type's time when that is longer, and a booked appointment
-holds its provider the same way, so booking an opening leaves the later openings in place. The week and Day views
+shortest active appointment type under the availability rules, including buffers, on the practice
+clock (Settings › Appointment types › Openings start; on the hour by default): an opening starts
+only on a mark of the booking interval counted from midnight, at most one per provider per
+interval, and a booked appointment holds only its own time, so a visit that runs past a mark moves
+the next opening to the mark after it and booking an opening leaves the later openings in place.
+The week and Day grids draw each opening from its start to the next opening, visit or end of
+hours, so a free stretch reads as a run of tiles on the hour lines. The week and Day views
 and `month_availability` offer the same openings. The provider counts sum to the day's count. Only starts after `observedAt` count, so today reads
 `full` with zero capacity once its hours have passed. The summary is a planning signal; booking
 still reads `availability`.

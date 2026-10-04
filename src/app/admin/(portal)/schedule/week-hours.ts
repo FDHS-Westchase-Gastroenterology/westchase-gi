@@ -74,6 +74,39 @@ export function place(startsAt: string, endsAt: string, start: number, end: numb
   return { top: from - start, height: Math.max(until - from, 15) };
 }
 
+interface OpeningContext {
+  readonly working: readonly Readonly<{ from: string; until: string }>[];
+  readonly appointments: readonly Readonly<{ startsAt: string }>[];
+  readonly open: readonly Readonly<{ startsAt: string; endsAt: string }>[];
+}
+
+/* Where an opening's tile ends: at the next opening, the next visit, or the
+   end of the hours it starts in, whichever comes first. Openings start on
+   the practice clock, so a free afternoon reads as one run of hour tiles
+   on the hour lines rather than short chips with gaps between them. */
+export function openUntil(
+  opening: Readonly<{ startsAt: string; endsAt: string }>,
+  day: Readonly<OpeningContext>,
+): string {
+  const from = Date.parse(opening.startsAt);
+  let until = Infinity;
+  for (const other of day.open) {
+    const at = Date.parse(other.startsAt);
+    if (at > from) until = Math.min(until, at);
+  }
+  for (const appointment of day.appointments) {
+    const at = Date.parse(appointment.startsAt);
+    if (at > from) until = Math.min(until, at);
+  }
+  for (const range of day.working) {
+    const end = Date.parse(range.until);
+    if (Date.parse(range.from) <= from && end > from) until = Math.min(until, end);
+  }
+  return Number.isFinite(until) && until > Date.parse(opening.endsAt)
+    ? new Date(until).toISOString()
+    : opening.endsAt;
+}
+
 /** Minutes from the grid's top to now on `date`, or null off that day or the grid. */
 export function nowOffset(now: number, date: string, start: number, end: number): number | null {
   const instant = new Date(now);
