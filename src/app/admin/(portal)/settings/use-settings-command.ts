@@ -13,12 +13,13 @@ import type {
 } from "@/lib/portal/scheduling/settings-contracts";
 
 /* Settings applies each change as it is made (issue #352), so a quick run of
-   edits — two ends of a bar, then the day's location — must land in order on
-   the versions they build on. Every command goes through one queue: it waits
-   for the one before it, and its expected version is the newest this page has
-   seen for that row, from the server's last answer or the props, whichever is
-   later. A change that can be reversed confirms in the shared Undo toast,
-   whose Undo is the inverse command sent through the same queue. */
+   edits must land in order on the versions they build on. Every command goes
+   through one queue: it waits for the one before it, and its expected version
+   is the newest this page has seen for the part it changes (a provider's
+   profile, hours or types, an office's details, a type, the practice), from
+   the server's last answer or the props, whichever is later. A change that
+   can be reversed confirms in the shared Undo toast, whose Undo is the inverse
+   command sent through the same queue. */
 
 export interface SettingsUndo {
   /** "Infusion therapy is turned off". */
@@ -40,10 +41,41 @@ export interface SendOptions {
 
 const UNREACHABLE = "Settings couldn't be reached. Try again.";
 
+/** The part of an entity each command checks the version of. A new provider has no version
+    yet; time off and closed days are rows of their own and check none. */
+const PART = {
+  add_provider: null,
+  set_provider_profile: "profile",
+  retire_provider: "profile",
+  restore_provider: "profile",
+  set_provider_weekly_hours: "hours",
+  add_time_off: null,
+  remove_time_off: null,
+  set_provider_types: "types",
+  save_appointment_type: "type",
+  reorder_appointment_types: "type",
+  set_appointment_type_active: "type",
+  delete_appointment_type: "type",
+  save_location_details: "details",
+  retire_location: "details",
+  restore_location: "details",
+  add_location_closure: null,
+  remove_location_closure: null,
+  set_booking_interval: "practice",
+} as const satisfies Record<SettingsCommand["kind"], string | null>;
+
+function keyOf(command: SettingsCommand): string | null {
+  const part = PART[command.kind];
+  return part === null || !("id" in command) || command.id === null
+    ? null
+    : `${command.id}:${part}`;
+}
+
 function withVersion(command: SettingsCommand, known: ReadonlyMap<string, number>) {
-  if (!("expectedVersion" in command) || command.id === null || command.expectedVersion === null)
+  const key = keyOf(command);
+  if (key === null || !("expectedVersion" in command) || command.expectedVersion === null)
     return command;
-  const latest = known.get(command.id);
+  const latest = known.get(key);
   return latest !== undefined && latest > command.expectedVersion
     ? { ...command, expectedVersion: latest }
     : command;
@@ -65,7 +97,9 @@ export function useSettingsCommand() {
             idempotencyKey: crypto.randomUUID(),
             command: withVersion(command, known),
           });
-          if (outcome.ok) known.set(outcome.id, outcome.version);
+          const key = keyOf(command);
+          if (outcome.ok && outcome.dryRun !== true && key !== null)
+            known.set(key, outcome.version);
           return outcome;
         } catch {
           return { ok: false, code: "unavailable" };

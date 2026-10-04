@@ -3,6 +3,7 @@ import type { SchedulingFailureCode } from "@/lib/portal/scheduling/contracts";
 import type {
   SettingsLocation,
   SettingsProvider,
+  SettingsType,
   TimeOffReason,
 } from "@/lib/portal/scheduling/settings-contracts";
 
@@ -14,14 +15,12 @@ import type {
 
 const FAILURE_COPY = new Map<SchedulingFailureCode, string>([
   ["stale_version", "Someone else just changed this. The page has the latest; try again."],
-  [
-    "schedule_in_use",
-    "Upcoming appointments fall outside that. Move them first, then change this.",
-  ],
+  ["schedule_in_use", "Booked appointments are in the way."],
   ["outside_office_hours", "Those hours run past the office's hours for that day."],
   ["type_in_use", "Appointments have used this type, so it can only be turned off."],
-  ["already_closed", "The office is already closed that day."],
-  ["location_unavailable", "That office isn't taking appointments."],
+  ["already_closed", "The office is already closed those days."],
+  ["location_unavailable", "That office is retired."],
+  ["last_location", "The practice needs at least one open office."],
   ["not_found", "That was just removed. The page has the latest."],
   ["forbidden", "Only an administrator can change Settings."],
   ["invalid_command", "That change isn't valid. Check the values and try again."],
@@ -156,6 +155,22 @@ export function shortName(name: string): string {
   return /^dr\.?$/iu.test(words[0] ?? "") && words.length > 1 ? `Dr. ${surname}` : surname;
 }
 
+/* ---- Appointment types ---- */
+
+/** "30 min", "30 min + 10 after", "30 min + 5 before, 10 after". */
+export function visitLength(
+  type: Readonly<
+    Pick<SettingsType, "durationMinutes" | "bufferBeforeMinutes" | "bufferAfterMinutes">
+  >,
+): string {
+  const extras = [
+    type.bufferBeforeMinutes > 0 ? `${String(type.bufferBeforeMinutes)} before` : null,
+    type.bufferAfterMinutes > 0 ? `${String(type.bufferAfterMinutes)} after` : null,
+  ].filter((part) => part !== null);
+  const length = `${String(type.durationMinutes)} min`;
+  return extras.length === 0 ? length : `${length} + ${extras.join(", ")}`;
+}
+
 /* ---- Time off ---- */
 
 const REASON_LABEL = {
@@ -206,4 +221,20 @@ export function bookedCount(count: number, span: "these days" | "this day"): str
   return count === 1
     ? `1 appointment is booked on ${span}.`
     : `${String(count)} appointments are booked on ${span}.`;
+}
+
+/** "1 appointment", "3 appointments". */
+export function appointmentCount(count: number): string {
+  return count === 1 ? "1 appointment" : `${String(count)} appointments`;
+}
+
+/** "Mondays", or "Mondays and Fridays", or "Mon, Wed and Fri". */
+export function weekdayList(weekdays: readonly number[]): string {
+  const ordered = WEEK_ORDER.filter((day) => weekdays.includes(day));
+  const names =
+    ordered.length > 2
+      ? ordered.map((day) => shortDay(day))
+      : ordered.map((day) => `${longDay(day)}s`);
+  if (names.length <= 1) return names.join("");
+  return `${names.slice(0, -1).join(", ")} and ${names.at(-1) ?? ""}`;
 }

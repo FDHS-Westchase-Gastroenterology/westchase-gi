@@ -115,6 +115,50 @@ export async function readSettings(db: SupabaseClient, actorId: string) {
   return schedulingSettingsOutcomeSchema.parse(result.data);
 }
 
+/** Sets the appointment types a provider sees, at the types version they have now. */
+export async function setProviderTypes(
+  db: SupabaseClient,
+  actorId: string,
+  providerId: string,
+  typeIds: readonly string[],
+) {
+  const read = await readSettings(db, actorId);
+  if (!read.ok) throw new Error("Settings read failed");
+  const provider = read.providers.find((entry) => entry.id === providerId);
+  if (provider === undefined) throw new Error("No such provider in the Settings read");
+  return saveSettings(db, actorId, {
+    kind: "set_provider_types",
+    id: providerId,
+    expectedVersion: provider.typesVersion,
+    typeIds,
+  });
+}
+
+type WeekHours = Extract<SettingsCommand, { kind: "set_provider_weekly_hours" }>["hours"];
+
+/** Sets a provider's whole week from today (or `startsOn`), at the hours version it has now. */
+export async function setProviderWeek(
+  db: SupabaseClient,
+  actorId: string,
+  providerId: string,
+  hours: WeekHours,
+  options: Readonly<{ startsOn?: string; keepBooked?: boolean; dryRun?: boolean }> = {},
+) {
+  const read = await readSettings(db, actorId);
+  if (!read.ok) throw new Error("Settings read failed");
+  const provider = read.providers.find((entry) => entry.id === providerId);
+  if (provider === undefined) throw new Error("No such provider in the Settings read");
+  return saveSettings(db, actorId, {
+    kind: "set_provider_weekly_hours",
+    id: providerId,
+    expectedVersion: provider.hoursVersion,
+    startsOn: options.startsOn ?? read.today,
+    hours,
+    keepBooked: options.keepBooked ?? false,
+    dryRun: options.dryRun ?? false,
+  });
+}
+
 interface DayHoursIntent {
   readonly actorId: string;
   readonly action: "day_hours_command" | "day_hours_undo";

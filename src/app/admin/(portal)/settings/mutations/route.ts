@@ -101,7 +101,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         result = await toggleNotificationRecipientMutation(input);
         break;
       case "recipient.test":
-        result = await sendTestNotificationMutation();
+        result = await sendTestNotificationMutation(input);
         break;
       case "recipient.remove":
         result = await removeNotificationRecipientMutation(input);

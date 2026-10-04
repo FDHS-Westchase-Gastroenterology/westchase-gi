@@ -1,14 +1,19 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { addDays } from "@/app/admin/(portal)/schedule/week-calendar";
-import { Displaced } from "@/app/admin/(portal)/settings/displaced";
-import { bookedCount, placeName, shortDate } from "@/app/admin/(portal)/settings/settings-model";
+import {
+  appointmentCount,
+  bookedCount,
+  dateRange,
+  placeName,
+} from "@/app/admin/(portal)/settings/settings-model";
 import type { SettingsSend } from "@/app/admin/(portal)/settings/use-settings-command";
 import { Plus } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import { CalendarDay } from "@/components/ui/calendar";
+import { CalendarSpan } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import {
   Menu,
@@ -19,63 +24,94 @@ import {
   MenuTrigger,
 } from "@/components/ui/menu";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
-import type {
-  SettingsConflict,
-  SettingsLocation,
-} from "@/lib/portal/scheduling/settings-contracts";
+import type { SettingsLocation } from "@/lib/portal/scheduling/settings-contracts";
 
 /* An office's closed days (issue #352, Figma St5): the days coming up when
-   nobody is booked there, holidays mostly. Add closed day opens a month to
-   pick the day and a short note; before anything is saved a dry run says
-   how many booked appointments fall that day. Closing never cancels them:
-   once the day is added they are listed under the card to rebook. Each day
-   reopens from its own menu, with Undo. */
+   nobody is booked there, holidays mostly. Add opens a month to pick a day
+   or a run of days and a short note; before anything is saved a dry run
+   says how many booked appointments fall then. Closing never cancels them:
+   they join the office's appointments that need a new time. Days in a row
+   with the same note show as one run, and a run reopens in one change, with
+   Undo. */
 
-/* The furthest day the server accepts, three years out. */
-const HORIZON_DAYS = 1100;
+/* The longest run the server accepts in one change. */
+const LONGEST_RUN = 61;
 
 interface Draft {
-  readonly day: string;
+  readonly from: string;
+  readonly to: string;
   readonly note: string;
 }
 
-const FRESH: Draft = { day: "", note: "" };
+const FRESH: Draft = { from: "", to: "", note: "" };
+
+interface Run {
+  readonly ids: readonly string[];
+  readonly first: string;
+  readonly last: string;
+  readonly note: string | null;
+}
+
+/** Closed days in a row that share a note, as one run each. */
+function runsOf(closures: SettingsLocation["closures"], today: string): Run[] {
+  const runs: { ids: string[]; first: string; last: string; note: string | null }[] = [];
+  for (const closure of closures
+    .filter((each) => each.closedOn >= today)
+    .toSorted((a, b) => a.closedOn.localeCompare(b.closedOn))) {
+    const run = runs.at(-1);
+    if (
+      run !== undefined &&
+      addDays(run.last, 1) === closure.closedOn &&
+      run.note === closure.note
+    ) {
+      run.ids.push(closure.id);
+      run.last = closure.closedOn;
+    } else
+      runs.push({
+        ids: [closure.id],
+        first: closure.closedOn,
+        last: closure.closedOn,
+        note: closure.note,
+      });
+  }
+  return runs;
+}
 
 function closeCommand(location: Readonly<SettingsLocation>, draft: Draft, dryRun: boolean) {
   const note = draft.note.trim();
   return {
     kind: "add_location_closure",
     id: location.id,
-    expectedVersion: location.version,
-    closedOn: draft.day,
+    closedOn: draft.from,
+    closedThrough: draft.to,
     note: note === "" ? null : note,
     dryRun,
   } as const;
 }
 
-function AddClosedDay({
+function AddClosedDays({
   location,
   today,
   taken,
   send,
-  onAdded,
 }: Readonly<{
   location: SettingsLocation;
   today: string;
   taken: readonly string[];
   send: SettingsSend;
-  onAdded: (conflicts: readonly SettingsConflict[]) => void;
 }>) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>(FRESH);
   const [booked, setBooked] = useState<number | null>(null);
   const [pending, setPending] = useState(false);
   const asked = useRef(0);
+  const single = draft.from !== "" && draft.from === draft.to;
+  const tooLong = draft.from !== "" && addDays(draft.from, LONGEST_RUN - 1) < draft.to;
 
-  /* Picking a day asks the server what it would cover; an answer to an
+  /* Picking days asks the server what they would cover; an answer to an
      older question is dropped. The note doesn't change the answer. */
-  function pick(day: string) {
-    const next = { ...draft, day };
+  function pick(from: string, to: string) {
+    const next = { ...draft, from, to };
     setDraft(next);
     const ticket = asked.current + 1;
     asked.current = ticket;
@@ -95,13 +131,19 @@ function AddClosedDay({
   }
 
   async function add() {
-    if (draft.day === "") return;
+    if (draft.from === "" || tooLong) return;
     setPending(true);
     try {
       const outcome = await send(closeCommand(location, draft, false));
       if (!outcome.ok) return;
       reset(false);
-      onAdded(outcome.conflicts ?? []);
+      const covered = outcome.conflicts?.length ?? 0;
+      toast.success(`${placeName(location)} closed ${dateRange(draft.from, draft.to)}`, {
+        description:
+          covered === 0
+            ? undefined
+            : `${appointmentCount(covered)} need${covered === 1 ? "s" : ""} a new time.`,
+      });
     } finally {
       setPending(false);
     }
@@ -111,7 +153,7 @@ function AddClosedDay({
     <Popover open={open} onOpenChange={reset}>
       <PopoverTrigger
         className="settings-text-command"
-        aria-label={`Add a closed day for ${location.name}`}
+        aria-label={`Add closed days for ${location.name}`}
       >
         <Plus aria-hidden="true" className="size-3.5" />
         Add
@@ -123,16 +165,18 @@ function AddClosedDay({
       >
         <div className="flex flex-col gap-3 p-[18px] pb-4">
           <PopoverTitle>{placeName(location)} closed</PopoverTitle>
-          <CalendarDay
-            day={draft.day}
+          <CalendarSpan
+            className="settings-span-calendar"
+            from={draft.from}
+            to={draft.to}
             min={today}
-            max={addDays(today, HORIZON_DAYS)}
-            disabled={false}
             off={taken}
             onChange={pick}
           />
           <span aria-live="polite" className="text-[0.875rem] font-semibold text-(--wgi-name-ink)">
-            {draft.day === "" ? "Pick the day" : shortDate(draft.day)}
+            {draft.from === ""
+              ? "Pick a day, or the first and last day"
+              : dateRange(draft.from, draft.to)}
           </span>
           <Input
             aria-label="Note"
@@ -144,10 +188,14 @@ function AddClosedDay({
               setDraft({ ...draft, note: event.target.value });
             }}
           />
-          {booked !== null && booked > 0 ? (
+          {tooLong ? (
             <p role="status" className="settings-notice">
-              {bookedCount(booked, "this day")} After adding, you&apos;ll see them and choose new
-              times.
+              Close up to {LONGEST_RUN} days at a time.
+            </p>
+          ) : booked !== null && booked > 0 ? (
+            <p role="status" className="settings-notice">
+              {bookedCount(booked, single ? "this day" : "these days")} They stay booked until each
+              has a new time.
             </p>
           ) : null}
         </div>
@@ -165,12 +213,16 @@ function AddClosedDay({
           <Button
             type="button"
             size="sm"
-            disabled={draft.day === "" || pending}
+            disabled={draft.from === "" || tooLong || pending}
             onClick={() => {
               void add();
             }}
           >
-            {pending ? "Adding…" : "Add closed day"}
+            {pending
+              ? "Adding…"
+              : single || draft.from === ""
+                ? "Close this day"
+                : "Close these days"}
           </Button>
         </div>
       </PopoverContent>
@@ -189,24 +241,21 @@ export function ClosedDays({
   canEdit: boolean;
   send: SettingsSend;
 }>) {
-  const [displaced, setDisplaced] = useState<readonly SettingsConflict[]>([]);
-  const upcoming = location.closures
-    .filter((closure) => closure.closedOn >= today)
-    .toSorted((a, b) => a.closedOn.localeCompare(b.closedOn));
+  const runs = runsOf(location.closures, today);
 
-  function reopen(closure: Readonly<SettingsLocation["closures"][number]>) {
-    const command = { id: location.id, expectedVersion: location.version } as const;
+  function reopen(run: Readonly<Run>) {
     void send(
-      { ...command, kind: "remove_location_closure", closureId: closure.id },
+      { kind: "remove_location_closure", id: location.id, closureIds: run.ids },
       {
         undo: {
-          headline: `${placeName(location)} open ${shortDate(closure.closedOn)}`,
-          detail: closure.note,
+          headline: `${placeName(location)} open ${dateRange(run.first, run.last)}`,
+          detail: run.note,
           inverse: {
-            ...command,
             kind: "add_location_closure",
-            closedOn: closure.closedOn,
-            note: closure.note,
+            id: location.id,
+            closedOn: run.first < today ? today : run.first,
+            closedThrough: run.last,
+            note: run.note,
             dryRun: false,
           },
         },
@@ -215,67 +264,49 @@ export function ClosedDays({
   }
 
   return (
-    <>
-      <div className="settings-location-row">
-        <span className="settings-location-label">Closed days</span>
-        {upcoming.length === 0 ? (
-          <span className="settings-location-value">None coming up</span>
-        ) : (
-          <ul className="settings-closures" aria-label={`${location.name} closed days`}>
-            {upcoming.map((closure) =>
-              canEdit ? (
-                <li key={closure.id}>
-                  <Menu>
-                    <MenuTrigger className="settings-closure" title={closure.note ?? undefined}>
-                      {shortDate(closure.closedOn)}
-                    </MenuTrigger>
-                    <MenuContent align="end" className="min-w-48">
-                      <MenuGroup>
-                        {closure.note === null ? null : <MenuLabel>{closure.note}</MenuLabel>}
-                        <MenuItem
-                          onClick={() => {
-                            reopen(closure);
-                          }}
-                        >
-                          Open this day
-                        </MenuItem>
-                      </MenuGroup>
-                    </MenuContent>
-                  </Menu>
-                </li>
-              ) : (
-                <li key={closure.id} title={closure.note ?? undefined} className="settings-closure">
-                  {shortDate(closure.closedOn)}
-                </li>
-              ),
-            )}
-          </ul>
-        )}
-        {canEdit ? (
-          <AddClosedDay
-            location={location}
-            today={today}
-            taken={location.closures.map((closure) => closure.closedOn)}
-            send={send}
-            onAdded={setDisplaced}
-          />
-        ) : null}
-      </div>
-      {displaced.length > 0 ? (
-        <div className="settings-location-displaced">
-          <Displaced
-            message={
-              displaced.length === 1
-                ? "1 booked appointment falls on this closed day. Choose a new time for it."
-                : `${String(displaced.length)} booked appointments fall on this closed day. Choose new times for them.`
-            }
-            conflicts={displaced}
-            onDismiss={() => {
-              setDisplaced([]);
-            }}
-          />
-        </div>
+    <div className="settings-location-row">
+      <span className="settings-location-label">Closed days</span>
+      {runs.length === 0 ? (
+        <span className="settings-location-value">None coming up</span>
+      ) : (
+        <ul className="settings-closures" aria-label={`${location.name} closed days`}>
+          {runs.map((run) =>
+            canEdit ? (
+              <li key={run.first}>
+                <Menu>
+                  <MenuTrigger className="settings-closure" title={run.note ?? undefined}>
+                    {dateRange(run.first, run.last)}
+                  </MenuTrigger>
+                  <MenuContent align="end" className="min-w-48">
+                    <MenuGroup>
+                      {run.note === null ? null : <MenuLabel>{run.note}</MenuLabel>}
+                      <MenuItem
+                        onClick={() => {
+                          reopen(run);
+                        }}
+                      >
+                        {run.ids.length === 1 ? "Open this day" : "Open these days"}
+                      </MenuItem>
+                    </MenuGroup>
+                  </MenuContent>
+                </Menu>
+              </li>
+            ) : (
+              <li key={run.first} title={run.note ?? undefined} className="settings-closure">
+                {dateRange(run.first, run.last)}
+              </li>
+            ),
+          )}
+        </ul>
+      )}
+      {canEdit ? (
+        <AddClosedDays
+          location={location}
+          today={today}
+          taken={location.closures.map((closure) => closure.closedOn)}
+          send={send}
+        />
       ) : null}
-    </>
+    </div>
   );
 }

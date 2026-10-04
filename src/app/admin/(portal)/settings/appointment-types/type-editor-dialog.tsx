@@ -27,13 +27,20 @@ import type { SettingsProvider, SettingsType } from "@/lib/portal/scheduling/set
 
 /* Add or edit an appointment type (issue #352, Figma St3). The header's Add
    type and a row's ••• menu open this modal through the address (?add=1,
-   ?type=<id>&field=name|details), so Back closes it. A type is its name,
-   icon, length, a line on what it is for, and the providers who see it when
-   booking. Buffers are kept as they are; a new type starts with none. */
-
-export type EditorField = "name" | "details";
+   ?type=<id>), so Back closes it. A type is its name, icon, length, the time
+   held before and after it, a line on what it is for, and the providers who
+   see it when booking. */
 
 const LENGTHS = [10, 15, 20, 30, 40, 45, 60, 75, 90, 120] as const;
+const EXTRAS = [0, 5, 10, 15, 20, 30, 45, 60] as const;
+
+type Picker = "length" | "before" | "after";
+
+function withValue(choices: readonly number[], value: number): number[] {
+  return choices.some((choice) => choice === value)
+    ? [...choices]
+    : [...choices, value].toSorted((a, b) => a - b);
+}
 
 const ICON_NAMES = {
   "user-plus": "New patient",
@@ -73,21 +80,21 @@ function keepFocusInDialog(event: ReactKeyboardEvent<HTMLDialogElement>) {
 
 export function TypeEditorDialog({
   type,
-  field,
   providers,
   send,
 }: Readonly<{
   type: SettingsType | null;
-  field: EditorField;
   providers: readonly SettingsProvider[];
   send: SettingsSend;
 }>) {
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [lengthOpen, setLengthOpen] = useState(false);
+  const [picker, setPicker] = useState<Picker | null>(null);
   const [name, setName] = useState(() => type?.name ?? "");
   const [icon, setIcon] = useState<AppointmentTypeIcon>(() => type?.icon ?? "stethoscope");
   const [length, setLength] = useState(() => type?.durationMinutes ?? 30);
+  const [before, setBefore] = useState(() => type?.bufferBeforeMinutes ?? 0);
+  const [after, setAfter] = useState(() => type?.bufferAfterMinutes ?? 0);
   const [description, setDescription] = useState(() => type?.description ?? "");
   const [providerIds, setProviderIds] = useState<readonly string[]>(
     () =>
@@ -95,14 +102,50 @@ export function TypeEditorDialog({
       providers.flatMap((provider) => (provider.bookable ? [provider.id] : [])),
   );
   const [pending, setPending] = useState(false);
-  const lengths = LENGTHS.some((minutes) => minutes === length)
-    ? LENGTHS
-    : [...LENGTHS, length].toSorted((a, b) => a - b);
-  const lengthItems = lengths.map((minutes) => ({
-    value: minutes,
-    label: `${String(minutes)} min`,
-  }));
   const valid = name.trim() !== "";
+
+  function minutesField(
+    which: Picker,
+    label: string,
+    value: number,
+    choices: readonly number[],
+    onChange: (minutes: number) => void,
+  ) {
+    const items = choices.map((minutes) => ({
+      value: minutes,
+      label: minutes === 0 && which !== "length" ? "None" : `${String(minutes)} min`,
+    }));
+    const inputId = `type-${which}-input`;
+    return (
+      <Field>
+        <FieldLabel htmlFor={inputId}>{label}</FieldLabel>
+        <Select
+          items={items}
+          value={value}
+          open={picker === which}
+          onOpenChange={(open) => {
+            setPicker(open ? which : null);
+          }}
+          onValueChange={(next) => {
+            if (next !== null) onChange(next);
+          }}
+        >
+          <SelectTrigger id={inputId}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent container={dialogRef}>
+            <SelectGroup>
+              {items.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </Field>
+    );
+  }
   const title = type === null ? "Add type" : `Edit ${type.name}`;
 
   function leave() {
@@ -117,6 +160,8 @@ export function TypeEditorDialog({
     const values = {
       name: name.trim(),
       durationMinutes: length,
+      bufferBeforeMinutes: before,
+      bufferAfterMinutes: after,
       icon,
       description: description.trim() === "" ? null : description.trim(),
       providerIds,
@@ -128,8 +173,6 @@ export function TypeEditorDialog({
               kind: "save_appointment_type",
               id: null,
               expectedVersion: null,
-              bufferBeforeMinutes: 0,
-              bufferAfterMinutes: 0,
               ...values,
             })
           : await send(
@@ -137,8 +180,6 @@ export function TypeEditorDialog({
                 kind: "save_appointment_type",
                 id: type.id,
                 expectedVersion: type.version,
-                bufferBeforeMinutes: type.bufferBeforeMinutes,
-                bufferAfterMinutes: type.bufferAfterMinutes,
                 ...values,
               },
               {
@@ -193,8 +234,8 @@ export function TypeEditorDialog({
       onCancel={(event) => {
         event.preventDefault();
         event.currentTarget.toggleAttribute("data-instant", true);
-        if (lengthOpen) {
-          setLengthOpen(false);
+        if (picker !== null) {
+          setPicker(null);
           return;
         }
         if (!pending) leave();
@@ -216,7 +257,7 @@ export function TypeEditorDialog({
               <FieldLabel htmlFor="type-name-input">Name</FieldLabel>
               <Input
                 id="type-name-input"
-                data-initial-focus={field === "name" || undefined}
+                data-initial-focus
                 required
                 maxLength={120}
                 autoComplete="off"
@@ -250,38 +291,28 @@ export function TypeEditorDialog({
                 ))}
               </ToggleGroup>
             </Field>
-            <Field>
-              <FieldLabel htmlFor="type-length-input">Length</FieldLabel>
-              <Select
-                items={lengthItems}
-                value={length}
-                open={lengthOpen}
-                onOpenChange={setLengthOpen}
-                onValueChange={(value) => {
-                  if (value !== null) setLength(value);
-                }}
-              >
-                <SelectTrigger
-                  id="type-length-input"
-                  data-initial-focus={field === "details" || undefined}
-                  aria-describedby="type-length-description"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent container={dialogRef}>
-                  <SelectGroup>
-                    {lengthItems.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-              <FieldDescription id="type-length-description">
-                How long this visit lasts.
+            {minutesField("length", "Length", length, withValue(LENGTHS, length), setLength)}
+            <div className="settings-type-extras">
+              {minutesField(
+                "before",
+                "Prep time before",
+                before,
+                withValue(EXTRAS, before),
+                setBefore,
+              )}
+              {minutesField(
+                "after",
+                "Clean-up time after",
+                after,
+                withValue(EXTRAS, after),
+                setAfter,
+              )}
+            </div>
+            {before + after === 0 ? null : (
+              <FieldDescription>
+                The provider is held {before + length + after} minutes for each visit.
               </FieldDescription>
-            </Field>
+            )}
             <Field>
               <FieldLabel htmlFor="type-description-input">What it is for</FieldLabel>
               <Textarea
@@ -317,7 +348,6 @@ export function TypeEditorDialog({
                   </ToggleGroupItem>
                 ))}
               </ToggleGroup>
-              <FieldDescription>Only these providers can be booked for it.</FieldDescription>
             </Field>
           </FieldGroup>
         </div>

@@ -154,6 +154,10 @@ function scheduleSentence(row: Readonly<ActivityRow>): ActionDescription {
       return known(`added ${provider} to the schedule`);
     case "set_provider_profile":
       return known(`updated ${possessive(provider)} profile`);
+    case "retire_provider":
+      return known(`retired ${provider}`);
+    case "restore_provider":
+      return known(`restored ${provider} to the schedule`);
     case "set_provider_weekly_hours":
       return known(`changed ${possessive(provider)} weekly hours`);
     case "save_provider":
@@ -184,16 +188,37 @@ function scheduleSentence(row: Readonly<ActivityRow>): ActionDescription {
       return known(`deleted ${theType}`);
     case "save_location":
     case "save_location_details":
-      return known(`updated ${possessive(location)} details and hours`);
+      // A provider row records the hours the office change moved.
+      return row.entity === "provider"
+        ? known(`moved ${possessive(provider)} hours to match new office hours`)
+        : known(`updated ${possessive(location)} details and hours`);
+    case "retire_location":
+      return row.entity === "provider"
+        ? known(`ended ${possessive(provider)} hours at a retired office`)
+        : known(`retired ${location}`);
+    case "restore_location":
+      return known(`restored ${location}`);
     case "add_location_closure":
     case "remove_location_closure": {
-      const closure = (
+      // A run of closed days changes in one command: name its first and last day.
+      const days = (
         row.action === "add_location_closure"
           ? addedItems(before, after, "closures")
           : addedItems(after, before, "closures")
-      ).at(0);
-      const day = closure === undefined ? null : asJsonString(closure.closedOn);
-      const on = day === null ? "" : ` on ${calendarDayLabel(day)}`;
+      )
+        .flatMap((closure) => {
+          const day = asJsonString(closure.closedOn);
+          return day === null ? [] : [day];
+        })
+        .toSorted();
+      const first = days.at(0);
+      const last = days.at(-1);
+      const on =
+        first === undefined || last === undefined
+          ? ""
+          : first === last
+            ? ` on ${calendarDayLabel(first)}`
+            : ` from ${calendarDayLabel(first)} to ${calendarDayLabel(last)}`;
       return known(
         row.action === "add_location_closure"
           ? `closed ${location}${on}`

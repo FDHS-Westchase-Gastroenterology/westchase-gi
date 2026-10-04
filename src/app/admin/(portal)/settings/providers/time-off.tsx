@@ -2,15 +2,16 @@
 
 import { CalendarOffIcon } from "lucide-react";
 import { useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { endMinute, practiceMinute } from "@/app/admin/(portal)/schedule/week-calendar";
-import { Displaced } from "@/app/admin/(portal)/settings/displaced";
 import {
   timeOffDetail,
   upcomingTimeOff,
 } from "@/app/admin/(portal)/settings/providers/providers-model";
 import {
   QUARTER_HOUR,
+  appointmentCount,
   bookedCount,
   clockOf,
   dateRange,
@@ -37,7 +38,6 @@ import { Switch } from "@/components/ui/switch";
 import { TIME_OFF_REASONS } from "@/lib/portal/scheduling/settings-contracts";
 import type {
   SchedulingSettings,
-  SettingsConflict,
   SettingsProvider,
   TimeOffReason,
 } from "@/lib/portal/scheduling/settings-contracts";
@@ -47,7 +47,7 @@ import type {
    beside its link: a month to pick the run of days (or one day and its
    hours), the reason, and before anything is saved a dry run that says how
    many booked appointments the time would cover. Time off never cancels
-   them; once it is added they are listed here (displaced.tsx). */
+   them; they join the provider's appointments that need a new time. */
 
 const QUARTERS = Array.from({ length: (24 * 60) / QUARTER_HOUR + 1 }, (_, i) => i * QUARTER_HOUR);
 
@@ -74,7 +74,6 @@ function draftCommand(provider: Readonly<SettingsProvider>, draft: Draft, dryRun
   return {
     kind: "add_time_off",
     id: provider.id,
-    expectedVersion: provider.version,
     startsOn: draft.from,
     endsOn: draft.to,
     allDay,
@@ -90,13 +89,11 @@ function AddTimeOff({
   today,
   taken,
   send,
-  onAdded,
 }: Readonly<{
   provider: SettingsProvider;
   today: string;
   taken: readonly string[];
   send: SettingsSend;
-  onAdded: (conflicts: readonly SettingsConflict[]) => void;
 }>) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>(FRESH);
@@ -143,7 +140,12 @@ function AddTimeOff({
       const outcome = await send(draftCommand(provider, draft, false));
       if (!outcome.ok) return;
       reset(false);
-      onAdded(outcome.conflicts ?? []);
+      const covered = outcome.conflicts?.length ?? 0;
+      if (covered === 0) toast.success("Time off added");
+      else
+        toast.success("Time off added", {
+          description: `${appointmentCount(covered)} need${covered === 1 ? "s" : ""} a new time.`,
+        });
     } finally {
       setPending(false);
     }
@@ -248,8 +250,8 @@ function AddTimeOff({
           </Menu>
           {booked !== null && booked > 0 ? (
             <p role="status" className="settings-notice">
-              {bookedCount(booked, single ? "this day" : "these days")} After adding, you&apos;ll
-              see them and choose new times.
+              {bookedCount(booked, single ? "this day" : "these days")} They stay booked until each
+              has a new time.
             </p>
           ) : null}
         </div>
@@ -290,7 +292,6 @@ export function TimeOff({
   send: SettingsSend;
 }>) {
   const { canEdit, today, observedAt } = settings;
-  const [displaced, setDisplaced] = useState<readonly SettingsConflict[]>([]);
   const entries = upcomingTimeOff(provider.timeOff, new Date(observedAt));
   const taken = entries.flatMap((entry) => {
     const { first, last } = timeOffDays(entry);
@@ -299,16 +300,15 @@ export function TimeOff({
 
   function remove(entry: Readonly<SettingsProvider["timeOff"][number]>) {
     const { first, last } = timeOffDays(entry);
-    const command = { id: provider.id, expectedVersion: provider.version } as const;
     void send(
-      { ...command, kind: "remove_time_off", timeOffId: entry.id },
+      { kind: "remove_time_off", id: provider.id, timeOffId: entry.id },
       {
         undo: {
           headline: "Time off removed",
           detail: `${provider.name} · ${dateRange(first, last)}`,
           inverse: {
-            ...command,
             kind: "add_time_off",
+            id: provider.id,
             // Days already past cannot be added back; an absence under way resumes today.
             startsOn: first < today ? today : first,
             endsOn: last,
@@ -330,28 +330,9 @@ export function TimeOff({
           Time off
         </h3>
         {canEdit ? (
-          <AddTimeOff
-            provider={provider}
-            today={today}
-            taken={taken}
-            send={send}
-            onAdded={setDisplaced}
-          />
+          <AddTimeOff provider={provider} today={today} taken={taken} send={send} />
         ) : null}
       </div>
-      {displaced.length > 0 ? (
-        <Displaced
-          message={
-            displaced.length === 1
-              ? "1 booked appointment falls in this time off. Choose a new time for it."
-              : `${String(displaced.length)} booked appointments fall in this time off. Choose new times for them.`
-          }
-          conflicts={displaced}
-          onDismiss={() => {
-            setDisplaced([]);
-          }}
-        />
-      ) : null}
       {entries.length === 0 ? (
         <p className="text-[0.8125rem] text-(--wgi-muted-ink)">No time off coming up.</p>
       ) : (

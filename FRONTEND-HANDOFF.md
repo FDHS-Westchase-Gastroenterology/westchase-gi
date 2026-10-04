@@ -274,41 +274,60 @@ reads `readSchedulingSettings` on the server. The client hook `useSettingsComman
 [settings/use-settings-command.ts](src/app/admin/(portal)/settings/use-settings-command.ts) mints
 the key, shows the result as a toast, and registers Undo by sending the inverse command.
 
-| Command | Inputs beyond `id` and `expectedVersion` |
-| --- | --- |
-| `add_provider` | `name`, `credentials`, weekly `hours`; creates without `id`. |
-| `set_provider_profile` | `name`, `credentials`, `bookable`, `active`. |
-| `set_provider_weekly_hours` | The full weekly `hours`: weekday, location, open and close minute on the 15-minute grid. |
-| `add_time_off` / `remove_time_off` | `startsOn`, `endsOn`, `allDay` (or one day's `startMinute`/`endMinute`), `reason`, `dryRun`; removal takes `timeOffId`. |
-| `set_provider_types` | The full `typeIds` the provider sees. |
-| `save_appointment_type` | `name`, `durationMinutes`, buffers, `icon`, `description`, `providerIds`; a new type sends null `id` and `expectedVersion` and joins the end of the booking order. |
-| `reorder_appointment_types` | The 1-based `position` in the booking order. |
-| `set_appointment_type_active` / `delete_appointment_type` | `active`; deletion takes no more. |
-| `save_location_details` | `name`, address, `mapsQuery`, and the office's open `hours`. |
-| `add_location_closure` / `remove_location_closure` | `closedOn`, `note`, `dryRun`; removal takes `closureId`. |
-| `set_booking_interval` | `minutes`: a multiple of 15 from 15 to 480. `id` and `expectedVersion` are the read's `practice` row; the result's `entity` is `practice`. It spaces the openings the schedule offers; booking, moving and `availability` still accept any start the type fits, and booked appointments keep their times. |
+`expectedVersion` is the version of the part a command changes: a provider's `profileVersion`,
+`hoursVersion` or `typesVersion`, an office's `detailsVersion`, a type's `version`, or the
+practice's. An edit to one part never makes another stale. The result's `version` is that part's
+new version. Time off and closed days are rows of their own and carry no version.
 
-The action refuses a staff session with `forbidden`, and the database refuses it again. A dry run
-(`dryRun: true`) saves nothing and returns the `conflicts` the change would cover; the pane shows
-their count before the change is added. Neither time off nor a closed day cancels a booking: the
-saved result returns the same `conflicts`, which the pane lists as links to their Day view.
-A turned-off type leaves `portal_scheduling_catalog`, so it is no longer offered for booking;
-booked appointments keep it.
+| Command | Inputs beyond `id` |
+| --- | --- |
+| `add_provider` | `name`, `credentials`, weekly `hours`; creates without `id`. The pane starts a new provider Monday to Friday on the office's hours, and the database gives them every active type. |
+| `set_provider_profile` | `expectedVersion`, `name`, `credentials`, `bookable`. |
+| `retire_provider` / `restore_provider` | `expectedVersion`. Retiring refuses `schedule_in_use` with `conflicts` while anything is booked with them; hours, time off and types are kept for a restore. |
+| `set_provider_weekly_hours` | `expectedVersion`, `startsOn`, the full weekly `hours`, `keepBooked`, `dryRun`. Each window carries `followsOffice`: a window on office hours is the only one that weekday, and the server writes its office's times for it. The week applies from `startsOn` (today to a year out); earlier rows end the day before, and a week matching the one ending then joins it. |
+| `add_time_off` / `remove_time_off` | `startsOn`, `endsOn`, `allDay` (or one day's `startMinute`/`endMinute`), `reason`, `dryRun`; removal takes `timeOffId`. |
+| `set_provider_types` | `expectedVersion`, the full `typeIds` the provider sees. |
+| `save_appointment_type` | `expectedVersion`, `name`, `durationMinutes`, `bufferBeforeMinutes`, `bufferAfterMinutes`, `icon`, `description`, `providerIds`; a new type sends null `id` and `expectedVersion` and joins the end of the booking order. |
+| `reorder_appointment_types` | `expectedVersion`, the 1-based `position` in the booking order. |
+| `set_appointment_type_active` / `delete_appointment_type` | `expectedVersion`, `active`; deletion takes no more. |
+| `save_location_details` | `expectedVersion`, `name`, address, `mapsQuery`, the office's open `hours`, `keepBooked`, `dryRun`. From today, provider days on office hours take the new hours and custom days are trimmed to fit; the answer names those providers in `adjusted`. |
+| `retire_location` / `restore_location` | `expectedVersion`. Retiring refuses `last_location` for the only open office and `schedule_in_use` with `conflicts` while anything is booked there; it ends every provider's hours there and names them in `adjusted`. |
+| `add_location_closure` / `remove_location_closure` | `closedOn`, `closedThrough` (up to 61 days), `note`, `dryRun`; removal takes `closureIds`. |
+| `set_booking_interval` | `expectedVersion`, `minutes`: a multiple of 15 from 15 to 480. `id` and `expectedVersion` are the read's `practice` row; the result's `entity` is `practice`. It spaces the openings the schedule offers; booking, moving and `availability` still accept any start the type fits, and booked appointments keep their times. |
+
+The action refuses a staff session with `forbidden`, and the database refuses it again. No change
+cancels a booking. A change that would leave booked appointments outside a provider's hours
+(weekly hours, office hours) answers `schedule_in_use` with those `conflicts`; the sheet lists
+them and resends with `keepBooked: true` when the admin chooses to keep them. A dry run
+(`dryRun: true`) saves nothing and returns the same `conflicts` (and `adjusted` for an office).
+Time off and closed days always save and return the bookings they cover.
+
+The read lists every upcoming appointment the current hours, time off or closed days no longer
+cover in `needsNewTime`, each with its `reason` (`outside_hours`, `time_off`,
+`office_closed`). The provider's page and the office's card show a count, and its menu links
+each to its day. Retired providers and offices are listed apart in `retiredProviders` and
+`retiredLocations`. A turned-off type leaves `portal_scheduling_catalog`, so it is no longer
+offered for booking; booked appointments keep it.
 
 | Code | Meaning in the Settings window |
 | --- | --- |
-| `outside_office_hours` | Provider hours would leave the office's hours, or office hours would cut into a provider's. |
+| `outside_office_hours` | Provider hours would leave the office's hours. |
+| `schedule_in_use` | Booked appointments are in the way; `conflicts` lists them. |
 | `provider_not_bookable` / `provider_not_eligible` | `book` and `reschedule` refuse a provider who is not bookable or not offered the type. |
 | `location_closed` | `book` and `reschedule` refuse a closed day; its open counts read zero. |
 | `type_in_use` | A type that appointments have used can only be turned off, not deleted. |
-| `already_closed` | The office already has that closed day. |
-| `stale_version` | Another change landed first; the pane refreshes and an open editor keeps its draft. |
+| `already_closed` | Every day in the run is already closed. |
+| `last_location` | The only open office cannot retire. |
+| `stale_version` | Another change to the same part landed first; the pane refreshes and an open editor keeps its draft. |
 
 Acceptance: [e2e/portal/settings-schedule.spec.ts](e2e/portal/settings-schedule.spec.ts) covers
-time off over a booking and its rebooking link, a type turned off and back on with Undo, a keyboard
-reorder with Undo, a closed day and its reopening, the booking interval with Undo, and staff reading every pane without edit
-controls. [e2e/boundaries/scheduling-settings.spec.ts](e2e/boundaries/scheduling-settings.spec.ts)
-covers each refusal against the database.
+weekly hours that leave a booking out and a change planned from a later day and cancelled, time
+off over a booking and its need-a-new-time line, a type turned off and back on with Undo, a
+keyboard reorder with Undo, a closed day and its reopening, the booking interval with Undo, and
+staff reading every pane without edit controls.
+[e2e/boundaries/scheduling-settings.spec.ts](e2e/boundaries/scheduling-settings.spec.ts) covers
+each refusal, the separate versions, office hours moving providers' hours, closed-day runs, and
+retiring and restoring against the database.
 
 ### Settings: Practice and About
 
@@ -325,7 +344,7 @@ same set behind one JSON `POST` with an `action` name. Every write lands one aud
 | Staff access | `deactivateStaff` (`staff.deactivate`) | `id`. An onboarded account is signed out and refused; a pending invite is cancelled, its account deleted, and the address can be invited again. |
 | Notifications | `addNotificationRecipient` (`recipient.add`), `removeNotificationRecipient` (`recipient.remove`) | `email`, optional `label` and `active`; removal takes `id`. |
 | Notifications | `toggleNotificationRecipient` (`recipient.toggle`), `updateRecipientLabel` | `recipientId` with `active` or `label`. Pausing an address offers Undo by sending the opposite `active`. |
-| Notifications | `sendTestNotification` (`recipient.test`) | No input. Sends the sample request email to every address that is on and returns `recipientCount` and the provider's `accepted` count. The audit row (`recipients.test_send`) records the count and recipient ids, never the addresses. |
+| Notifications | `sendTestNotification` (`recipient.test`) | Optional `{ recipientId }` sends to that one address, on or paused; with no input it sends to every address that is on. Returns `recipientCount` and the provider's `accepted` count. The audit row (`recipients.test_send`) records the count and recipient ids, never the addresses. |
 | Software | `inviteMaintainer`, `cancelMaintainerInvite`, `revokeMaintainer` (`maintainer.*`) | Unchanged; the facts on the pane come from [website-custody.ts](src/lib/portal/website-custody.ts). |
 
 | Code | Status | Meaning |

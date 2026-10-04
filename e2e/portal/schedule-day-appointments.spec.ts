@@ -5,8 +5,8 @@ import { runId, serviceDb } from "../harness/env";
 import { createHandoffFixture } from "../harness/handoff";
 import {
   createSchedulingFixture,
-  saveSettings,
   schedulingFixtureDate,
+  setProviderTypes,
 } from "../harness/scheduling";
 import { signIn } from "../harness/session";
 
@@ -62,14 +62,9 @@ test("Schedule day drags a visit past a booked time and a provider who doesn't s
     expect((await fixture.save(fixture.booking("10:00", 0, 0))).ok).toBe(true);
     expect((await fixture.save(fixture.booking("11:00", 1, 1))).ok).toBe(true);
     // Second keeps the 11:00 visit but no longer sees the type.
-    expect(
-      await saveSettings(db, fixture.staff.userId, {
-        kind: "set_provider_types",
-        id: second,
-        expectedVersion: 1,
-        typeIds: [],
-      }),
-    ).toMatchObject({ ok: true });
+    expect(await setProviderTypes(db, fixture.staff.userId, second, [])).toMatchObject({
+      ok: true,
+    });
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await signIn(page, fixture.staff);

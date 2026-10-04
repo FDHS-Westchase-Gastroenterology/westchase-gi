@@ -10,8 +10,7 @@ import { initialsOf } from "@/app/admin/(portal)/schedule/week-calendar";
 import { BookingIntervalBand } from "@/app/admin/(portal)/settings/appointment-types/booking-interval";
 import { DeleteTypeDialog } from "@/app/admin/(portal)/settings/appointment-types/delete-type-dialog";
 import { TypeEditorDialog } from "@/app/admin/(portal)/settings/appointment-types/type-editor-dialog";
-import type { EditorField } from "@/app/admin/(portal)/settings/appointment-types/type-editor-dialog";
-import { shortName } from "@/app/admin/(portal)/settings/settings-model";
+import { shortName, visitLength } from "@/app/admin/(portal)/settings/settings-model";
 import { useSettingsCommand } from "@/app/admin/(portal)/settings/use-settings-command";
 import type { SettingsSend } from "@/app/admin/(portal)/settings/use-settings-command";
 import { Ellipsis, GripVertical } from "@/components/icons";
@@ -30,8 +29,9 @@ import type {
    reorders it, by drag or from the keyboard (Space picks it up, the arrows
    move it, Space drops it, Escape puts it back); the switch turns a type off
    for new bookings while the appointments already made keep it; the •••
-   menu renames, edits or deletes. Every change applies as it is made and
-   confirms in the Undo toast. Staff read the list; admins change it. */
+   menu edits it, or deletes one no appointment has used. Every change
+   applies as it is made and confirms in the Undo toast. Staff read the
+   list; admins change it. */
 
 const AVATAR_CAP = 4;
 
@@ -75,7 +75,8 @@ export function TypesView({
   editing,
 }: Readonly<{
   settings: SchedulingSettings;
-  editing: { readonly typeId: string | null; readonly field: EditorField } | null;
+  /** The type the editor is open on, "new" for a new one, or null. */
+  editing: string | null;
 }>) {
   const send = useSettingsCommand();
   const reducedMotion = useReducedMotion() === true;
@@ -99,8 +100,7 @@ export function TypesView({
     const type = byId.get(id);
     return type === undefined ? [] : [type];
   });
-  const editingType =
-    editing?.typeId === null || editing === null ? undefined : byId.get(editing.typeId);
+  const editingType = editing === null || editing === "new" ? undefined : byId.get(editing);
 
   function nameOf(id: string) {
     return byId.get(id)?.name ?? "That type";
@@ -192,17 +192,13 @@ export function TypesView({
 
   return (
     <div className="wgi-settings mt-6 flex flex-col gap-4">
-      <p className="text-[0.875rem] leading-5 text-(--wgi-muted-ink)">
-        Staff choose from these when booking, in this order. Each type&apos;s length decides how
-        much of the day it takes.
-      </p>
       <BookingIntervalBand practice={settings.practice} canEdit={canEdit} send={send} />
       <div className="settings-types" data-tour="appointment-types">
         <div aria-hidden="true" className="settings-types-head">
           <span />
-          <span>Type</span>
+          <span>Type, in booking order</span>
           <span>Seen by</span>
-          <span>In use</span>
+          <span>Bookable</span>
         </div>
         <Reorder.Group
           ref={groupRef}
@@ -258,11 +254,10 @@ export function TypesView({
       <p aria-live="assertive" className="sr-only">
         {announcement}
       </p>
-      {editing !== null && canEdit && (editing.typeId === null || editingType !== undefined) ? (
+      {editing !== null && canEdit && (editing === "new" || editingType !== undefined) ? (
         <TypeEditorDialog
           key={editingType?.id ?? "new"}
           type={editingType ?? null}
-          field={editing.field}
           providers={providers}
           send={send}
         />
@@ -324,12 +319,8 @@ function TypeRow({
   const seenSet = new Set(type.providerIds);
   const seenBy = providers.filter((provider) => seenSet.has(provider.id));
   const seenLine = seenByLine(seenBy, providers);
-  const length = `${String(type.durationMinutes)} min`;
-  const line = active
-    ? type.description === null
-      ? length
-      : `${length} · ${type.description}`
-    : `${length} · Turned off. Booked appointments keep this type.`;
+  const length = visitLength(type);
+  const line = type.description === null ? length : `${length} · ${type.description}`;
 
   function setInUse(next: boolean) {
     setActive(next);
@@ -342,8 +333,8 @@ function TypeRow({
       { ...command, active: next },
       {
         undo: {
-          headline: next ? `${type.name} turned on` : `${type.name} turned off`,
-          detail: next ? null : "Staff can't book it. Booked appointments keep this type.",
+          headline: next ? `${type.name} can be booked` : `${type.name} can't be booked`,
+          detail: next ? null : "Appointments already booked keep it.",
           inverse: { ...command, active: !next },
           slot: `active:${type.id}`,
         },
@@ -353,8 +344,8 @@ function TypeRow({
     });
   }
 
-  function edit(field: EditorField) {
-    router.push(`?type=${encodeURIComponent(type.id)}&field=${field}`, { scroll: false });
+  function edit() {
+    router.push(`?type=${encodeURIComponent(type.id)}`, { scroll: false });
   }
 
   return (
@@ -430,7 +421,7 @@ function TypeRow({
         <Switch
           checked={active}
           disabled={!canEdit}
-          aria-label={`${type.name} in use`}
+          aria-label={`${type.name} bookable`}
           onCheckedChange={(next) => {
             setInUse(next);
           }}
@@ -442,29 +433,10 @@ function TypeRow({
             <MenuTrigger className="settings-row-more" aria-label={`More for ${type.name}`}>
               <Ellipsis aria-hidden="true" width={15} height={15} />
             </MenuTrigger>
-            <MenuContent align="end" className="min-w-56">
+            <MenuContent align="end" className="min-w-44">
               <MenuGroup>
-                <MenuItem
-                  onClick={() => {
-                    edit("name");
-                  }}
-                >
-                  Rename
-                </MenuItem>
-                <MenuItem
-                  onClick={() => {
-                    edit("details");
-                  }}
-                >
-                  Edit length and details
-                </MenuItem>
-                {type.used ? (
-                  <MenuItem disabled className="max-w-64 whitespace-normal">
-                    Appointments have used this type. Turn it off instead of deleting it.
-                  </MenuItem>
-                ) : (
-                  <MenuItem onClick={onDelete}>Delete</MenuItem>
-                )}
+                <MenuItem onClick={edit}>Edit</MenuItem>
+                {type.used ? null : <MenuItem onClick={onDelete}>Delete</MenuItem>}
               </MenuGroup>
             </MenuContent>
           </Menu>

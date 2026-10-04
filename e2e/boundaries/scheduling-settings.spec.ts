@@ -15,6 +15,7 @@ import {
   restoreBookingInterval,
   saveSettings,
   schedulingFixtureDate,
+  setProviderWeek,
 } from "../harness/scheduling";
 import { createStaffFixture } from "../harness/session";
 
@@ -31,20 +32,25 @@ test("settings commands keep to the 15-minute grid and one place at a time", () 
       kind: "set_provider_weekly_hours",
       id,
       expectedVersion: 1,
+      startsOn: "2026-11-02",
       hours: [{ ...window, openMinute: 485 }],
+      keepBooked: false,
+      dryRun: false,
     },
     // Two windows on one weekday overlap.
     {
       kind: "set_provider_weekly_hours",
       id,
       expectedVersion: 1,
+      startsOn: "2026-11-02",
       hours: [window, { ...window, openMinute: 900, closeMinute: 1080 }],
+      keepBooked: false,
+      dryRun: false,
     },
     // An all-day range carries no minutes; a partial day is one date.
     {
       kind: "add_time_off",
       id,
-      expectedVersion: 1,
       startsOn: "2026-11-02",
       endsOn: "2026-11-02",
       allDay: true,
@@ -56,7 +62,6 @@ test("settings commands keep to the 15-minute grid and one place at a time", () 
     {
       kind: "add_time_off",
       id,
-      expectedVersion: 1,
       startsOn: "2026-11-02",
       endsOn: "2026-11-03",
       allDay: false,
@@ -107,6 +112,17 @@ test("settings commands keep to the 15-minute grid and one place at a time", () 
         { weekday: 1, openMinute: 480, closeMinute: 1020 },
         { weekday: 1, openMinute: 480, closeMinute: 600 },
       ],
+      keepBooked: false,
+      dryRun: false,
+    },
+    // A run of closed days ends on or after it starts.
+    {
+      kind: "add_location_closure",
+      id,
+      closedOn: "2026-11-27",
+      closedThrough: "2026-11-26",
+      note: null,
+      dryRun: false,
     },
   ])
     expect(settingsCommandSchema.safeParse(command).success).toBe(false);
@@ -149,7 +165,6 @@ test("the settings read shows staff the schedule and gives only admins edit righ
         name: provider.name,
         credentials: "MD",
         bookable: true,
-        active: true,
       }),
     ).toEqual({ ok: false, code: "forbidden" });
     expect(
@@ -318,49 +333,76 @@ test("the booking interval spaces each provider's openings, and only admins chan
   }
 });
 
-test("a provider's profile, types and weekly hours change one at a time", async () => {
+function shift(date: string, days: number) {
+  return new Date(Date.parse(`${date}T12:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
+}
+
+/** One provider, office or the new-time list, as the Settings read has them now. */
+async function current(db: ReturnType<typeof serviceDb>, actor: string) {
+  const read = await readSettings(db, actor);
+  if (!read.ok) throw new Error(`Settings read failed: ${read.code}`);
+  return {
+    read,
+    provider: (id: string) => {
+      const found = read.providers.find((entry) => entry.id === id);
+      if (found === undefined) throw new Error("No such provider");
+      return found;
+    },
+    location: (id: string) => {
+      const found = read.locations.find((entry) => entry.id === id);
+      if (found === undefined) throw new Error("No such office");
+      return found;
+    },
+    waiting: (appointmentId: string) =>
+      read.needsNewTime.find((entry) => entry.id === appointmentId)?.reason ?? null,
+  };
+}
+
+test("a provider's profile, types and hours each keep their own version", async () => {
   const db = serviceDb();
   const fixture = await createSchedulingFixture(db, "settings-provider");
   try {
     const actor = fixture.staff.userId;
     const [providerId, secondId] = fixture.providerIds;
     const [first] = fixture.locationIds;
+    const start = await current(db, actor);
+    const before = start.provider(providerId);
+    expect(before).toMatchObject({ profileVersion: 1, bookable: true });
 
     const profile = await saveSettings(db, actor, {
       kind: "set_provider_profile",
       id: providerId,
-      expectedVersion: 1,
+      expectedVersion: before.profileVersion,
       name: "TEST settings-provider First",
       credentials: "MD · Gastroenterology",
       bookable: true,
-      active: true,
     });
     expect(profile).toMatchObject({ ok: true, entity: "provider", id: providerId, version: 2 });
-    // A second editor still holding version 1 is told the current version.
+    // A second editor still holding the old profile is told the current one.
     expect(
       await saveSettings(db, actor, {
         kind: "set_provider_profile",
         id: providerId,
-        expectedVersion: 1,
+        expectedVersion: before.profileVersion,
         name: "TEST settings-provider First",
         credentials: null,
         bookable: true,
-        active: true,
       }),
     ).toEqual({ ok: false, code: "stale_version", currentVersion: 2 });
+    // The profile change leaves the hours version where it was.
+    expect((await current(db, actor)).provider(providerId).hoursVersion).toBe(before.hoursVersion);
 
     // A provider who does not take appointments cannot be booked, and their history stays.
     expect(
       await saveSettings(db, actor, {
         kind: "set_provider_profile",
         id: secondId,
-        expectedVersion: 1,
+        expectedVersion: start.provider(secondId).profileVersion,
         name: "TEST settings-provider Second",
         credentials: null,
         bookable: false,
-        active: true,
       }),
-    ).toMatchObject({ ok: true, version: 2 });
+    ).toMatchObject({ ok: true });
     expect(await fixture.save(fixture.booking("10:00", 0, 1))).toMatchObject({
       ok: false,
       code: "provider_not_bookable",
@@ -369,14 +411,14 @@ test("a provider's profile, types and weekly hours change one at a time", async 
     // A provider who does not see the type is refused on book and on reschedule.
     const booked = await fixture.save(fixture.booking("10:00", 0, 0));
     if (!booked.ok) throw new Error(`Booking failed: ${booked.code}`);
-    expect(
-      await saveSettings(db, actor, {
-        kind: "set_provider_types",
-        id: providerId,
-        expectedVersion: 2,
-        typeIds: [],
-      }),
-    ).toMatchObject({ ok: true, version: 3 });
+    const cleared = await saveSettings(db, actor, {
+      kind: "set_provider_types",
+      id: providerId,
+      expectedVersion: before.typesVersion,
+      typeIds: [],
+    });
+    expect(cleared).toMatchObject({ ok: true });
+    if (!cleared.ok) throw new Error("Types change failed");
     expect(await fixture.save(fixture.booking("13:00", 1, 0))).toMatchObject({
       ok: false,
       code: "provider_not_eligible",
@@ -395,107 +437,200 @@ test("a provider's profile, types and weekly hours change one at a time", async 
         },
       }),
     ).toMatchObject({ ok: false, code: "provider_not_eligible" });
-    const restored = await saveSettings(db, actor, {
-      kind: "set_provider_types",
-      id: providerId,
-      expectedVersion: 3,
-      typeIds: [fixture.typeId],
-    });
-    expect(restored).toMatchObject({ ok: true, version: 4 });
+    expect(
+      await saveSettings(db, actor, {
+        kind: "set_provider_types",
+        id: providerId,
+        expectedVersion: cleared.version,
+        typeIds: [fixture.typeId],
+      }),
+    ).toMatchObject({ ok: true });
 
-    /* Office hours bound a provider's week: the office cannot close around booked hours, and
-       the week cannot reach past the office. */
-    const details = {
-      kind: "save_location_details",
-      id: first,
-      expectedVersion: 1,
-      name: "TEST settings-provider First",
-      street: "1 Test Way",
-      city: "Tampa",
-      region: "FL",
-      postal: "33626",
-      mapsQuery: "1 Test Way Tampa FL 33626",
-    } as const;
-    expect(
-      await saveSettings(db, actor, {
-        ...details,
-        hours: [1, 2, 3, 4, 5].map((weekday) => ({ weekday, openMinute: 540, closeMinute: 1020 })),
-      }),
-    ).toMatchObject({ ok: false, code: "outside_office_hours" });
-    expect(
-      await saveSettings(db, actor, {
-        ...details,
-        hours: [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({
-          weekday,
-          openMinute: 480,
-          closeMinute: 1080,
-        })),
-      }),
-    ).toMatchObject({ ok: true, entity: "location", version: 2 });
     // Four other days plus the booked one, so the week either keeps the booking or strands it.
     const bookedDay = new Date(`${schedulingFixtureDate()}T12:00:00Z`).getUTCDay();
     const otherDays = [0, 1, 2, 3, 4, 5, 6].filter((weekday) => weekday !== bookedDay).slice(0, 4);
     const workDays = [bookedDay, ...otherDays].toSorted((a, b) => a - b);
     const week = (openMinute: number, weekdays: readonly number[] = workDays) =>
       weekdays.map((weekday) => ({ locationId: first, weekday, openMinute, closeMinute: 1020 }));
+    // The fixture's office has no hours of its own, so give it 8 to 6 every day.
     expect(
       await saveSettings(db, actor, {
-        kind: "set_provider_weekly_hours",
-        id: providerId,
-        expectedVersion: 4,
-        hours: week(450),
+        kind: "save_location_details",
+        id: first,
+        expectedVersion: start.location(first).detailsVersion,
+        name: "TEST settings-provider First",
+        street: "1 Test Way",
+        city: "Tampa",
+        region: "FL",
+        postal: "33626",
+        mapsQuery: "1 Test Way Tampa FL 33626",
+        hours: [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({
+          weekday,
+          openMinute: 480,
+          closeMinute: 1080,
+        })),
+        keepBooked: false,
+        dryRun: false,
       }),
-    ).toMatchObject({ ok: false, code: "outside_office_hours" });
-    expect(
-      await saveSettings(db, actor, {
-        kind: "set_provider_weekly_hours",
-        id: providerId,
-        expectedVersion: 4,
-        hours: week(540, otherDays),
-      }),
-    ).toMatchObject({ ok: false, code: "schedule_in_use" });
-    expect(
-      await saveSettings(db, actor, {
-        kind: "set_provider_weekly_hours",
-        id: providerId,
-        expectedVersion: 4,
-        hours: week(540),
-      }),
-    ).toMatchObject({ ok: true, version: 5 });
+    ).toMatchObject({ ok: true, entity: "location", version: 2 });
+    expect(await setProviderWeek(db, actor, providerId, week(450))).toMatchObject({
+      ok: false,
+      code: "outside_office_hours",
+    });
 
-    const read = await readSettings(db, actor);
-    if (!read.ok) throw new Error(`Settings read failed: ${read.code}`);
-    const provider = read.providers.find((entry) => entry.id === providerId);
-    expect(provider).toMatchObject({
+    // A week that leaves the booking out names it, and saves only when asked to keep it.
+    const stranding = await setProviderWeek(db, actor, providerId, week(540, otherDays));
+    expect(stranding).toMatchObject({ ok: false, code: "schedule_in_use" });
+    expect(stranding.ok ? [] : stranding.conflicts?.map((conflict) => conflict.id)).toEqual([
+      booked.id,
+    ]);
+    expect((await current(db, actor)).waiting(booked.id)).toBeNull();
+    expect(
+      await setProviderWeek(db, actor, providerId, week(540, otherDays), { keepBooked: true }),
+    ).toMatchObject({ ok: true, conflicts: [expect.objectContaining({ id: booked.id })] });
+    expect((await current(db, actor)).waiting(booked.id)).toBe("outside_hours");
+    // Putting the day back covers the booking again.
+    expect(await setProviderWeek(db, actor, providerId, week(540))).toMatchObject({ ok: true });
+    let now = await current(db, actor);
+    expect(now.waiting(booked.id)).toBeNull();
+    expect(
+      now.provider(providerId).hours.map((row) => [row.weekday, row.openMinute, row.closeMinute]),
+    ).toEqual(workDays.map((weekday) => [weekday, 540, 1020]));
+
+    // A week from a later day plans a change; this week stays, and cancelling joins them again.
+    const later = schedulingFixtureDate(30);
+    expect(
+      await setProviderWeek(db, actor, providerId, week(600), { startsOn: later }),
+    ).toMatchObject({ ok: true });
+    now = await current(db, actor);
+    const hours = now.provider(providerId).hours;
+    expect(hours.filter((row) => row.validFrom === later).map((row) => row.openMinute)).toEqual(
+      workDays.map(() => 600),
+    );
+    expect(hours.filter((row) => row.validTo !== null).every((row) => row.openMinute === 540)).toBe(
+      true,
+    );
+    expect(
+      await setProviderWeek(db, actor, providerId, week(540), { startsOn: later }),
+    ).toMatchObject({ ok: true });
+    now = await current(db, actor);
+    expect(now.provider(providerId).hours.every((row) => row.validTo === null)).toBe(true);
+    expect(now.provider(providerId)).toMatchObject({
       credentials: "MD · Gastroenterology",
       bookable: true,
       typeIds: [fixture.typeId],
-      version: 5,
     });
-    // The new week starts today; the old rows end yesterday and leave the read.
-    expect(
-      provider?.hours.map((row) => [row.weekday, row.openMinute, row.closeMinute, row.validTo]),
-    ).toEqual(workDays.map((weekday) => [weekday, 540, 1020, null]));
-    expect(read.locations.find((entry) => entry.id === first)).toMatchObject({
+
+    // Office hours lead: a shorter day moves the provider's hours to match from today.
+    const office = now.location(first);
+    const shorter = {
+      kind: "save_location_details",
+      id: first,
+      expectedVersion: office.detailsVersion,
+      name: "TEST settings-provider First",
       street: "1 Test Way",
+      city: "Tampa",
+      region: "FL",
       postal: "33626",
-      version: 2,
+      mapsQuery: "1 Test Way Tampa FL 33626",
+      hours: [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({
+        weekday,
+        openMinute: 600,
+        closeMinute: 960,
+      })),
+      keepBooked: false,
+    } as const;
+    const preview = await saveSettings(db, actor, { ...shorter, dryRun: true });
+    // Both fixture providers work here; the second's 8-to-6 days followed the office's edges.
+    expect(preview).toMatchObject({
+      ok: true,
+      dryRun: true,
+      adjusted: expect.arrayContaining([
+        expect.objectContaining({ providerId, weekdays: workDays }),
+        expect.objectContaining({ providerId: secondId, weekdays: [0, 1, 2, 3, 4, 5, 6] }),
+      ]),
+      conflicts: [expect.objectContaining({ id: booked.id })],
     });
+    expect(await saveSettings(db, actor, { ...shorter, dryRun: false })).toMatchObject({
+      ok: false,
+      code: "schedule_in_use",
+    });
+    expect(
+      await saveSettings(db, actor, { ...shorter, keepBooked: true, dryRun: false }),
+    ).toMatchObject({ ok: true, entity: "location" });
+    now = await current(db, actor);
+    expect(
+      now
+        .provider(providerId)
+        .hours.flatMap((row) => (row.validTo === null ? [[row.openMinute, row.closeMinute]] : [])),
+    ).toEqual(workDays.map(() => [600, 960]));
+    expect(now.waiting(booked.id)).toBe("outside_hours");
+
+    // A day on office hours takes the office's times whatever was sent, and follows the office.
+    const officeDay = (followsOffice: boolean) =>
+      workDays.map((weekday) => ({
+        locationId: first,
+        weekday,
+        openMinute: 660,
+        closeMinute: 720,
+        followsOffice,
+      }));
+    expect(
+      await setProviderWeek(db, actor, providerId, officeDay(true), { keepBooked: true }),
+    ).toMatchObject({ ok: true });
+    now = await current(db, actor);
+    expect(
+      now
+        .provider(providerId)
+        .hours.filter((row) => row.validTo === null)
+        .map((row) => [row.openMinute, row.closeMinute, row.followsOffice]),
+    ).toEqual(workDays.map(() => [600, 960, true]));
+    expect(
+      await saveSettings(db, actor, {
+        ...shorter,
+        expectedVersion: now.location(first).detailsVersion,
+        hours: [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({
+          weekday,
+          openMinute: 540,
+          closeMinute: 1020,
+        })),
+        keepBooked: true,
+        dryRun: false,
+      }),
+    ).toMatchObject({ ok: true });
+    now = await current(db, actor);
+    expect(
+      now
+        .provider(providerId)
+        .hours.flatMap((row) => (row.validTo === null ? [[row.openMinute, row.closeMinute]] : [])),
+    ).toEqual(workDays.map(() => [540, 1020]));
+    // An office-hours day is the only block that day.
+    expect(
+      settingsCommandSchema.safeParse({
+        kind: "set_provider_weekly_hours",
+        id: providerId,
+        expectedVersion: 1,
+        startsOn: "2026-11-02",
+        hours: [
+          ...officeDay(true).slice(0, 1),
+          { ...officeDay(false)[0], openMinute: 1000, closeMinute: 1020 },
+        ],
+        keepBooked: false,
+        dryRun: false,
+      }).success,
+    ).toBe(false);
 
     // A new provider is added after every other and sees every active type.
     const added = await saveSettings(db, actor, {
       kind: "add_provider",
       name: "TEST settings-provider Added",
       credentials: "PA-C",
-      hours: week(540),
+      hours: week(600).map((window) => ({ ...window, closeMinute: 960 })),
     });
     if (!added.ok) throw new Error(`Add provider failed: ${added.code}`);
-    const after = await readSettings(db, actor);
-    if (!after.ok) throw new Error(`Settings read failed: ${after.code}`);
-    expect(after.providers.at(-1)).toMatchObject({ id: added.id, credentials: "PA-C" });
-    expect(after.providers.find((entry) => entry.id === added.id)?.typeIds).toContain(
-      fixture.typeId,
-    );
+    const after = await current(db, actor);
+    expect(after.read.providers.at(-1)).toMatchObject({ id: added.id, credentials: "PA-C" });
+    expect(after.provider(added.id).typeIds).toContain(fixture.typeId);
   } finally {
     await fixture.dispose();
   }
@@ -513,7 +648,6 @@ test("time off warns about the bookings it covers and never cancels them", async
     const timeOff = {
       kind: "add_time_off",
       id: providerId,
-      expectedVersion: 1,
       startsOn: date,
       endsOn: date,
       allDay: true,
@@ -523,7 +657,7 @@ test("time off warns about the bookings it covers and never cancels them", async
     } as const;
 
     const preview = await saveSettings(db, actor, { ...timeOff, dryRun: true });
-    expect(preview).toMatchObject({ ok: true, dryRun: true, version: 1 });
+    expect(preview).toMatchObject({ ok: true, dryRun: true });
     if (!preview.ok) throw new Error("Dry run failed");
     expect(preview.conflicts).toEqual([
       expect.objectContaining({
@@ -533,20 +667,19 @@ test("time off warns about the bookings it covers and never cancels them", async
         patientName: "TEST settings-time-off First",
       }),
     ]);
-    const unchanged = await readSettings(db, actor);
-    if (!unchanged.ok) throw new Error("Settings read failed");
-    expect(unchanged.providers.find((entry) => entry.id === providerId)?.timeOff).toEqual([]);
+    const unchanged = await current(db, actor);
+    expect(unchanged.provider(providerId).timeOff).toEqual([]);
 
     const added = await saveSettings(db, actor, { ...timeOff, dryRun: false });
-    expect(added).toMatchObject({ ok: true, version: 2 });
+    expect(added).toMatchObject({ ok: true });
     if (!added.ok) throw new Error("Time off failed");
     expect(added.conflicts?.map((conflict) => conflict.id)).toEqual([booked.id]);
     const appointment = await db.from("appointments").select("status").eq("id", booked.id).single();
     expect(appointment.data).toEqual({ status: "scheduled" });
 
-    const read = await readSettings(db, actor);
-    if (!read.ok) throw new Error("Settings read failed");
-    const ranges = read.providers.find((entry) => entry.id === providerId)?.timeOff ?? [];
+    const read = await current(db, actor);
+    expect(read.waiting(booked.id)).toBe("time_off");
+    const ranges = read.provider(providerId).timeOff;
     expect(ranges).toEqual([
       expect.objectContaining({ reason: "conference", allDay: true, locationId: null }),
     ]);
@@ -570,16 +703,16 @@ test("time off warns about the bookings it covers and never cancels them", async
       await saveSettings(db, actor, {
         kind: "remove_time_off",
         id: providerId,
-        expectedVersion: 2,
         timeOffId: range.id,
       }),
-    ).toMatchObject({ ok: true, version: 3 });
+    ).toMatchObject({ ok: true });
+    expect((await current(db, actor)).waiting(booked.id)).toBeNull();
   } finally {
     await fixture.dispose();
   }
 });
 
-test("a closed day empties the office for everyone and warns about its bookings", async () => {
+test("closed days empty the office for everyone, warn about bookings, and reopen as a run", async () => {
   const db = serviceDb();
   const fixture = await createSchedulingFixture(db, "settings-closed");
   try {
@@ -591,8 +724,8 @@ test("a closed day empties the office for everyone and warns about its bookings"
     const closure = {
       kind: "add_location_closure",
       id: first,
-      expectedVersion: 1,
       closedOn: date,
+      closedThrough: shift(date, 2),
       note: "TEST holiday",
     } as const;
 
@@ -601,11 +734,14 @@ test("a closed day empties the office for everyone and warns about its bookings"
     expect(preview.conflicts).toEqual([
       expect.objectContaining({ id: booked.id, providerName: "TEST settings-closed First" }),
     ]);
-    const closed = await saveSettings(db, actor, { ...closure, dryRun: false });
-    expect(closed).toMatchObject({ ok: true, entity: "location", version: 2 });
-    expect(
-      await saveSettings(db, actor, { ...closure, expectedVersion: 2, dryRun: false }),
-    ).toEqual({ ok: false, code: "already_closed" });
+    expect(await saveSettings(db, actor, { ...closure, dryRun: false })).toMatchObject({
+      ok: true,
+      entity: "location",
+    });
+    expect(await saveSettings(db, actor, { ...closure, dryRun: false })).toEqual({
+      ok: false,
+      code: "already_closed",
+    });
     expect(await fixture.save(fixture.booking("13:00", 1, 1, 0))).toMatchObject({
       ok: false,
       code: "location_closed",
@@ -644,19 +780,119 @@ test("a closed day empties the office for everyone and warns about its bookings"
         : [];
     expect(ours.reduce((sum, entry) => sum + entry.open, 0)).toBe(0);
 
-    const read = await readSettings(db, actor);
-    if (!read.ok) throw new Error("Settings read failed");
-    const entry = read.locations.find((location) => location.id === first)?.closures[0];
-    expect(entry).toMatchObject({ closedOn: date, note: "TEST holiday" });
-    if (entry === undefined) throw new Error("No closure");
+    const read = await current(db, actor);
+    expect(read.waiting(booked.id)).toBe("office_closed");
+    const closures = read.location(first).closures;
+    expect(closures.map((entry) => [entry.closedOn, entry.note])).toEqual(
+      [0, 1, 2].map((days) => [shift(date, days), "TEST holiday"]),
+    );
     expect(
       await saveSettings(db, actor, {
         kind: "remove_location_closure",
         id: first,
-        expectedVersion: 2,
-        closureId: entry.id,
+        closureIds: closures.map((entry) => entry.id),
       }),
-    ).toMatchObject({ ok: true, version: 3 });
+    ).toMatchObject({ ok: true });
+    const reopened = await current(db, actor);
+    expect(reopened.location(first).closures).toEqual([]);
+    expect(reopened.waiting(booked.id)).toBeNull();
+  } finally {
+    await fixture.dispose();
+  }
+});
+
+test("providers and offices retire once nothing is booked with them, and restore", async () => {
+  const db = serviceDb();
+  const fixture = await createSchedulingFixture(db, "settings-retire");
+  try {
+    const actor = fixture.staff.userId;
+    const [providerId] = fixture.providerIds;
+    const [, second] = fixture.locationIds;
+    const booked = await fixture.save(fixture.booking("10:00", 0, 0, 1));
+    if (!booked.ok) throw new Error(`Booking failed: ${booked.code}`);
+    let now = await current(db, actor);
+    const profile = now.provider(providerId).profileVersion;
+
+    // Still booked: the refusal lists what is in the way.
+    const refused = await saveSettings(db, actor, {
+      kind: "retire_provider",
+      id: providerId,
+      expectedVersion: profile,
+    });
+    expect(refused).toMatchObject({
+      ok: false,
+      code: "schedule_in_use",
+      conflicts: [expect.objectContaining({ id: booked.id })],
+    });
+    const office = await saveSettings(db, actor, {
+      kind: "retire_location",
+      id: second,
+      expectedVersion: now.location(second).detailsVersion,
+    });
+    expect(office).toMatchObject({
+      ok: false,
+      code: "schedule_in_use",
+      conflicts: [expect.objectContaining({ id: booked.id })],
+    });
+
+    // Cancelled, both can go; the provider keeps their hours for a restore.
+    const cancelled = await fixture.save({
+      action: "command",
+      idempotencyKey: randomUUID(),
+      command: {
+        kind: "cancel",
+        id: booked.id,
+        expectedVersion: booked.version,
+        reason: "Patient asked to cancel",
+      },
+    });
+    expect(cancelled).toMatchObject({ ok: true });
+    const hoursBefore = now.provider(providerId).hours.length;
+    const retired = await saveSettings(db, actor, {
+      kind: "retire_provider",
+      id: providerId,
+      expectedVersion: profile,
+    });
+    expect(retired).toMatchObject({ ok: true });
+    now = await current(db, actor);
+    expect(now.read.providers.some((entry) => entry.id === providerId)).toBe(false);
+    const listed = now.read.retiredProviders.find((entry) => entry.id === providerId);
+    expect(listed).toBeDefined();
+    expect(
+      await saveSettings(db, actor, {
+        kind: "restore_provider",
+        id: providerId,
+        expectedVersion: listed?.profileVersion ?? 0,
+      }),
+    ).toMatchObject({ ok: true });
+    expect((await current(db, actor)).provider(providerId).hours).toHaveLength(hoursBefore);
+
+    // A retired office ends providers' hours there, and comes back without them.
+    now = await current(db, actor);
+    const gone = await saveSettings(db, actor, {
+      kind: "retire_location",
+      id: second,
+      expectedVersion: now.location(second).detailsVersion,
+    });
+    expect(gone).toMatchObject({
+      ok: true,
+      adjusted: expect.arrayContaining([expect.objectContaining({ providerId })]),
+    });
+    now = await current(db, actor);
+    expect(
+      now
+        .provider(providerId)
+        .hours.some((row) => row.locationId === second && row.validTo === null),
+    ).toBe(false);
+    const away = now.read.retiredLocations.find((entry) => entry.id === second);
+    expect(away).toBeDefined();
+    expect(
+      await saveSettings(db, actor, {
+        kind: "restore_location",
+        id: second,
+        expectedVersion: away?.detailsVersion ?? 0,
+      }),
+    ).toMatchObject({ ok: true });
   } finally {
     await fixture.dispose();
   }

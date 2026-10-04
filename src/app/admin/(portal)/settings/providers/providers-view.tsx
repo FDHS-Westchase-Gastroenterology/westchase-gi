@@ -5,12 +5,26 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { initialsOf } from "@/app/admin/(portal)/schedule/week-calendar";
+import { NeedsNewTime } from "@/app/admin/(portal)/settings/needs-new-time";
 import { AddProviderDialog } from "@/app/admin/(portal)/settings/providers/add-provider-dialog";
+import {
+  ProfileDialog,
+  RetireDialog,
+} from "@/app/admin/(portal)/settings/providers/profile-dialogs";
 import { TimeOff } from "@/app/admin/(portal)/settings/providers/time-off";
 import { WeeklyHours } from "@/app/admin/(portal)/settings/providers/weekly-hours";
 import { currentHours, providerSubline } from "@/app/admin/(portal)/settings/settings-model";
 import { useSettingsCommand } from "@/app/admin/(portal)/settings/use-settings-command";
-import { Check } from "@/components/icons";
+import { Check, Ellipsis } from "@/components/icons";
+import { Button } from "@/components/ui/button";
+import {
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuItem,
+  MenuSeparator,
+  MenuTrigger,
+} from "@/components/ui/menu";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type {
@@ -19,10 +33,13 @@ import type {
 } from "@/lib/portal/scheduling/settings-contracts";
 
 /* Providers (issue #352, Figma St1): the list of providers on the left, the
-   chosen one's detail on the right. The choice lives in the address
-   (?provider=) so a reload or a shared link opens the same provider; the
-   row is marked chosen on the click, before the page's next read lands. Every control applies
-   its change as it is made and confirms in the Undo toast. */
+   chosen one's detail on the right, and anyone retired at the foot of the
+   list. The choice lives in the address (?provider=) so a reload or a shared
+   link opens the same provider; the row is marked chosen on the click,
+   before the page's next read lands. Every control applies its change as it
+   is made and confirms in the Undo toast. */
+
+type Retired = SchedulingSettings["retiredProviders"][number];
 
 function providerHref(id: string) {
   return `?provider=${encodeURIComponent(id)}`;
@@ -43,50 +60,133 @@ export function ProvidersView({
     setSeenInitial(initialId);
     setChosenId(initialId);
   }
-  const { providers, locations, today } = settings;
-  const chosen = providers.find((provider) => provider.id === chosenId) ?? providers.at(0);
+  const { providers, retiredProviders, locations, today } = settings;
+  const retired = retiredProviders.find((provider) => provider.id === chosenId);
+  const chosen =
+    retired === undefined
+      ? (providers.find((provider) => provider.id === chosenId) ?? providers.at(0))
+      : undefined;
+  const currentId = retired?.id ?? chosen?.id;
+
+  function row(id: string, name: string, line: string, isRetired: boolean) {
+    return (
+      <Link
+        key={id}
+        href={providerHref(id)}
+        replace
+        scroll={false}
+        aria-current={id === currentId ? "page" : undefined}
+        className={cn("settings-list-row", isRetired && "is-retired")}
+        onClick={() => {
+          setChosenId(id);
+        }}
+      >
+        <span aria-hidden="true" className="settings-avatar">
+          {initialsOf(name)}
+        </span>
+        <span className="min-w-0">
+          <span className="block truncate text-[0.875rem] leading-5 font-semibold text-(--wgi-name-ink)">
+            {name}
+          </span>
+          <span className="block truncate text-[0.75rem] leading-4 text-(--wgi-muted-ink)">
+            {line}
+          </span>
+        </span>
+      </Link>
+    );
+  }
 
   return (
     <div className="wgi-settings settings-split mt-6">
       <nav aria-label="Providers" className="settings-list">
-        {providers.map((provider) => (
-          <Link
-            key={provider.id}
-            href={providerHref(provider.id)}
-            replace
-            scroll={false}
-            aria-current={provider.id === chosen?.id ? "page" : undefined}
-            className="settings-list-row"
-            onClick={() => {
-              setChosenId(provider.id);
-            }}
-          >
-            <span aria-hidden="true" className="settings-avatar">
-              {initialsOf(provider.name)}
-            </span>
-            <span className="min-w-0">
-              <span className="block truncate text-[0.875rem] leading-5 font-semibold text-(--wgi-name-ink)">
-                {provider.name}
-              </span>
-              <span className="block truncate text-[0.75rem] leading-4 text-(--wgi-muted-ink)">
-                {provider.bookable
-                  ? providerSubline(currentHours(provider, today), locations)
-                  : "Not taking appointments"}
-              </span>
-            </span>
-          </Link>
-        ))}
+        {providers.map((provider) =>
+          row(
+            provider.id,
+            provider.name,
+            provider.bookable
+              ? providerSubline(currentHours(provider, today), locations)
+              : "Not taking appointments",
+            false,
+          ),
+        )}
         {providers.length === 0 ? (
           <p className="p-2.5 text-[0.8125rem] text-(--wgi-muted-ink)" data-tour="providers-empty">
             No providers yet.
           </p>
         ) : null}
+        {retiredProviders.length === 0 ? null : (
+          <>
+            <p className="settings-list-label">Retired</p>
+            {retiredProviders.map((provider) =>
+              row(provider.id, provider.name, provider.credentials ?? "Retired", true),
+            )}
+          </>
+        )}
       </nav>
+      {retired === undefined ? null : (
+        <RetiredDetail key={retired.id} provider={retired} canEdit={settings.canEdit} />
+      )}
       {chosen === undefined ? null : (
         <ProviderDetail key={chosen.id} provider={chosen} settings={settings} />
       )}
       {adding ? <AddProviderDialog locations={locations} /> : null}
     </div>
+  );
+}
+
+function RetiredDetail({ provider, canEdit }: Readonly<{ provider: Retired; canEdit: boolean }>) {
+  const send = useSettingsCommand();
+  const [pending, setPending] = useState(false);
+  return (
+    <section aria-labelledby="provider-name" className="settings-detail">
+      <header className="flex items-center gap-4">
+        <span aria-hidden="true" className="settings-avatar settings-avatar-large is-retired">
+          {initialsOf(provider.name)}
+        </span>
+        <div className="min-w-0 grow">
+          <h2
+            id="provider-name"
+            className="truncate text-[1.375rem] leading-7 font-bold text-(--wgi-name-ink)"
+          >
+            {provider.name}
+          </h2>
+          <p className="text-[0.8125rem] leading-5 text-(--wgi-muted-ink)">
+            {provider.credentials === null ? "Retired" : `${provider.credentials} · Retired`}
+          </p>
+        </div>
+        {canEdit ? (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={pending}
+            onClick={() => {
+              setPending(true);
+              const command = {
+                id: provider.id,
+                expectedVersion: provider.profileVersion,
+              } as const;
+              void send(
+                { ...command, kind: "restore_provider" },
+                {
+                  undo: {
+                    headline: `${provider.name} is back on the schedule`,
+                    detail: null,
+                    inverse: { ...command, kind: "retire_provider" },
+                  },
+                },
+              ).finally(() => {
+                setPending(false);
+              });
+            }}
+          >
+            {pending ? "Restoring…" : "Restore"}
+          </Button>
+        ) : null}
+      </header>
+      <p className="text-[0.875rem] leading-5 text-(--wgi-muted-ink)">
+        Restoring brings back their hours, time off and appointment types as they were.
+      </p>
+    </section>
   );
 }
 
@@ -98,29 +198,34 @@ function ProviderDetail({
   settings: SchedulingSettings;
 }>) {
   const send = useSettingsCommand();
-  const { canEdit, types } = settings;
+  const { canEdit, types, needsNewTime } = settings;
+  const [dialog, setDialog] = useState<"profile" | "retire" | null>(null);
   /* The switch and the type pills show the change at once; the server's
-     answer replaces the draft when the provider's version moves on. */
-  const [seenVersion, setSeenVersion] = useState(provider.version);
+     answer replaces the draft when that part's version moves on. */
+  const [seenProfile, setSeenProfile] = useState(provider.profileVersion);
+  const [seenTypes, setSeenTypes] = useState(provider.typesVersion);
   const [bookable, setBookable] = useState(provider.bookable);
   const [typeIds, setTypeIds] = useState<readonly string[]>(provider.typeIds);
-  if (seenVersion !== provider.version) {
-    setSeenVersion(provider.version);
+  if (seenProfile !== provider.profileVersion) {
+    setSeenProfile(provider.profileVersion);
     setBookable(provider.bookable);
+  }
+  if (seenTypes !== provider.typesVersion) {
+    setSeenTypes(provider.typesVersion);
     setTypeIds(provider.typeIds);
   }
   const seen = new Set(typeIds);
   const shownTypes = types.filter((type) => type.active || seen.has(type.id));
+  const waiting = needsNewTime.filter((entry) => entry.providerId === provider.id);
 
   function setProfile(next: boolean) {
     setBookable(next);
     const profile = {
       kind: "set_provider_profile",
       id: provider.id,
-      expectedVersion: provider.version,
+      expectedVersion: provider.profileVersion,
       name: provider.name,
       credentials: provider.credentials,
-      active: true,
     } as const;
     void send(
       { ...profile, bookable: next },
@@ -129,7 +234,7 @@ function ProviderDetail({
           headline: next
             ? `${provider.name} takes appointments`
             : `${provider.name} no longer takes appointments`,
-          detail: next ? null : "Booked appointments stay. New ones can't be made with them.",
+          detail: next ? null : "Booked appointments stay.",
           inverse: { ...profile, bookable: !next },
         },
       },
@@ -147,7 +252,7 @@ function ProviderDetail({
     const command = {
       kind: "set_provider_types",
       id: provider.id,
-      expectedVersion: provider.version,
+      expectedVersion: provider.typesVersion,
     } as const;
     void send(
       { ...command, typeIds: next },
@@ -195,8 +300,37 @@ function ProviderDetail({
             }}
           />
         </label>
+        {canEdit ? (
+          <Menu>
+            <MenuTrigger className="settings-row-more" aria-label={`More for ${provider.name}`}>
+              <Ellipsis aria-hidden="true" width={15} height={15} />
+            </MenuTrigger>
+            <MenuContent align="end" className="min-w-56">
+              <MenuGroup>
+                <MenuItem
+                  onClick={() => {
+                    setDialog("profile");
+                  }}
+                >
+                  Edit name and credentials
+                </MenuItem>
+              </MenuGroup>
+              <MenuSeparator />
+              <MenuGroup>
+                <MenuItem
+                  onClick={() => {
+                    setDialog("retire");
+                  }}
+                >
+                  Retire…
+                </MenuItem>
+              </MenuGroup>
+            </MenuContent>
+          </Menu>
+        ) : null}
       </header>
 
+      <NeedsNewTime entries={waiting} withProvider={false} />
       <WeeklyHours provider={provider} settings={settings} send={send} />
       <TimeOff provider={provider} settings={settings} send={send} />
 
@@ -230,6 +364,24 @@ function ProviderDetail({
           </ToggleGroup>
         )}
       </section>
+      {dialog === "profile" ? (
+        <ProfileDialog
+          provider={provider}
+          send={send}
+          onClose={() => {
+            setDialog(null);
+          }}
+        />
+      ) : null}
+      {dialog === "retire" ? (
+        <RetireDialog
+          provider={provider}
+          send={send}
+          onClose={() => {
+            setDialog(null);
+          }}
+        />
+      ) : null}
     </section>
   );
 }

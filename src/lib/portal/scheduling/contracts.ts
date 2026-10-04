@@ -321,6 +321,7 @@ export const SCHEDULING_FAILURE_CODES = [
   "type_in_use",
   "already_closed",
   "hours_in_past",
+  "last_location",
 ] as const;
 export type SchedulingFailureCode = (typeof SCHEDULING_FAILURE_CODES)[number];
 export const schedulingFailureSchema = z.object({

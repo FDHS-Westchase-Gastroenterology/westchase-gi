@@ -6,6 +6,7 @@ import {
   readDayHours,
   saveSettings,
   schedulingFixtureDate,
+  setProviderWeek,
 } from "../harness/scheduling";
 import { signIn } from "../harness/session";
 
@@ -40,14 +41,7 @@ test("the Hours sheet shortens a day, refuses to strand a visit, adds someone of
       [firstId, everyDay],
       [secondId, everyDay.filter((day) => day !== weekday)],
     ] as const) {
-      expect(
-        await saveSettings(db, actor, {
-          kind: "set_provider_weekly_hours",
-          id,
-          expectedVersion: 1,
-          hours: week(weekdays),
-        }),
-      ).toMatchObject({ ok: true });
+      expect(await setProviderWeek(db, actor, id, week(weekdays))).toMatchObject({ ok: true });
     }
     expect(
       await saveSettings(db, actor, {
@@ -61,6 +55,8 @@ test("the Hours sheet shortens a day, refuses to strand a visit, adds someone of
         postal: "33626",
         mapsQuery: "1 Test Way Tampa FL 33626",
         hours: everyDay.map((day) => ({ weekday: day, openMinute: 480, closeMinute: 1080 })),
+        keepBooked: false,
+        dryRun: false,
       }),
     ).toMatchObject({ ok: true });
     // A 3:30 visit holds First until 4:05 with its buffer.
