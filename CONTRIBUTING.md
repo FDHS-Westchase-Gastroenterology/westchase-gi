@@ -378,21 +378,33 @@ compatibility with other branches still using that database. Only fictional fixt
 
 ### Automation alignment
 
-The branch-selection policy above is the operating requirement. The checked-in automation still
-needs these changes before it implements inheritance:
+`.github/workflows/supabase-dependency-integration.yml` implements the branch-selection policy
+above on every pull request:
 
-- `.github/workflows/supabase-dependency-integration.yml` listens for PRs targeting `main`, waits
-  for `Supabase Preview` on each exact head, fetches credentials by the head Git branch name,
-  and serializes runs by PR/ref. It must resolve the database owner for stacked PRs, reuse setup
-  evidence, and serialize destructive work by database project reference.
-- `.github/scripts/dependency-automation.cjs` treats any reported `Supabase Preview` status as a
-  merge gate. It must distinguish setup readiness from checks for subsequent commits.
-- Verify and align the hosted Supabase GitHub/Vercel integration and GitHub branch protection.
-  Do not assume they inherit a database because the PR base changed. Keep automatic Production
-  deployment disabled. Report a mismatch without bypassing protection or creating a redundant
-  database merely to satisfy the old workflow.
+1. The `database owner` job walks the open pull-request chain from the head to the branch that
+   merges into `main`. That branch owns the Preview database; every branch above it inherits.
+   A base with no open pull request fails the job, because its database is unknown.
+2. `supabase-integration` runs one job per database at a time. GitHub keeps one waiting run per
+   database; a third arrival cancels the waiting one, which then needs a re-run.
+3. For the database owner it waits for `Supabase Preview` to complete on the exact head and
+   reports its conclusion. An inherited head does not wait for it.
+4. It loads the owner's credentials and verifies the Vercel Preview attestation. A mismatch
+   fails the owner's run and is a warning on an inherited run, because the specs drive a local
+   server on the loaded credentials.
+5. `scripts/verify-migration-lineage.mjs` compares `supabase/migrations/` with the database's
+   applied versions. Every local migration must be applied. A version only the database has
+   passes when the owner's branch or an open pull request into it carries the file; anything
+   else fails and names the version. The step summary lists both directions.
+6. Seed, schema verification, and the boundary and portal specs follow.
 
-Documentation changes do not perform these automation or hosted-configuration changes.
+`.github/scripts/dependency-automation.cjs` gates merges on `supabase-integration`, which
+carries the lineage verdict; `Supabase Preview` is setup evidence only.
+
+The hosted Supabase GitHub integration still creates a Preview database for a child PR whose
+base is an integration branch (PR #380 received `ogbsgdhbpcfeszoksmdl`). CI never uses that
+database; a Vercel Preview wired to it shows up as the inherited-run attestation warning. Align the hosted integration and
+GitHub branch protection in their own settings; keep automatic Production deployment disabled,
+and report a mismatch without bypassing protection.
 
 **Honesty rule:** if you cannot reach a Supabase project, run the credential-free set and say
 plainly that the credentialed suite did not run. "Not run" is an acceptable answer; silently

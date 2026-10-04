@@ -1,8 +1,7 @@
-import { execFileSync } from "node:child_process";
-
 import { z } from "zod";
 
 import { asJsonObject, asJsonString, jsonSchema } from "../src/lib/json.ts";
+import { queryBranchDatabase } from "./branch-database.mjs";
 
 function providerErrorObject(payload) {
   const parsed = jsonSchema.safeParse(payload);
@@ -526,38 +525,6 @@ async function readResponse(response, operation) {
   }
 
   return payload;
-}
-
-function queryBranchDatabase({ ref, query }) {
-  const dbUrl = requireEnv("POSTGRES_URL", "POSTGRES_URL_NON_POOLING");
-  const parsedUrl = new URL(dbUrl);
-  const direct = parsedUrl.hostname === `db.${ref}.supabase.co`;
-  const pooler =
-    parsedUrl.hostname.endsWith(".pooler.supabase.com") &&
-    decodeURIComponent(parsedUrl.username) === `postgres.${ref}`;
-  assert(
-    process.env.SUPABASE_PREVIEW_BRANCH === "1" && (direct || pooler),
-    "Database verification is Preview-Branch-only",
-  );
-  if (pooler && parsedUrl.port === "6543") {
-    parsedUrl.port = "5432";
-  }
-  const queryUrl = parsedUrl.toString();
-
-  try {
-    return JSON.parse(
-      execFileSync(
-        "supabase",
-        ["db", "query", "--db-url", queryUrl, "--agent=no", "--output", "json", query],
-        {
-          encoding: "utf8",
-          stdio: ["ignore", "pipe", "pipe"],
-        },
-      ),
-    );
-  } catch {
-    throw new Error("Preview Branch database verification query failed");
-  }
 }
 
 async function queryDatabase({ accessToken, ref, query }) {

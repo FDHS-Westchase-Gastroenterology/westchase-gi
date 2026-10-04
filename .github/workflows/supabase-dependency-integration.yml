@@ -1,11 +1,12 @@
 name: Supabase Branch Integration
 
-# Supabase creates one hosted Preview Branch for every PR. This workflow waits
-# for that branch's migrations/configuration/seed deployment, fetches only its
-# ephemeral credentials, and runs the destructive portal contract there.
+# A pull request into main owns a hosted Preview Branch that Supabase creates
+# for it. A pull request into an integration branch inherits that branch's
+# database. This workflow resolves which database the head belongs to, checks
+# that its applied migrations match the code, and runs the destructive portal
+# contract there, one run per database at a time.
 on:
   pull_request:
-    branches: ["main"]
     types: [opened, reopened, synchronize]
   # The dependency controller dispatches after token-authored branch refreshes,
   # which GitHub deliberately does not emit as a pull_request event.
@@ -15,18 +16,76 @@ permissions:
   checks: read
   contents: read
   deployments: read
+  pull-requests: read
 
 concurrency:
   group: supabase-branch-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  database:
+    name: database owner
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      branch: ${{ steps.owner.outputs.branch }}
+      role: ${{ steps.owner.outputs.role }}
+    steps:
+      - name: Resolve the database-owning branch
+        id: owner
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          HEAD_BRANCH: ${{ github.head_ref || github.ref_name }}
+          BASE_BRANCH: ${{ github.base_ref }}
+        run: |
+          repo_owner="${REPOSITORY%%/*}"
+          open_base() {
+            gh api "repos/$REPOSITORY/pulls?state=open&head=$repo_owner:$1&per_page=1" \
+              --jq '.[0].base.ref // empty'
+          }
+
+          base="$BASE_BRANCH"
+          if [ -z "$base" ]; then
+            base="$(open_base "$HEAD_BRANCH")"
+          fi
+
+          # Walk the open pull-request chain until a branch merges into main;
+          # that branch owns the Preview database.
+          owner="$HEAD_BRANCH"
+          hops=0
+          while [ -n "$base" ] && [ "$base" != "main" ]; do
+            hops=$((hops + 1))
+            if [ "$hops" -gt 5 ]; then
+              echo "::error::No branch merging into main within five hops of $HEAD_BRANCH."
+              exit 1
+            fi
+            owner="$base"
+            base="$(open_base "$owner")"
+            if [ -z "$base" ]; then
+              echo "::error::$owner has no open pull request, so its database owner is unknown."
+              exit 1
+            fi
+          done
+
+          if [ "$owner" = "$HEAD_BRANCH" ]; then role=owner; else role=inherited; fi
+          printf 'branch=%s\nrole=%s\n' "$owner" "$role" >> "$GITHUB_OUTPUT"
+          printf 'Database owner: `%s` (%s)\n' "$owner" "$role" >> "$GITHUB_STEP_SUMMARY"
+
   integration:
     name: supabase-integration
+    needs: database
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    # Branches that share a database never run the destructive specs at once.
+    # GitHub keeps one waiting run per group; a third arrival cancels the
+    # waiting one, which then needs a re-run.
+    concurrency:
+      group: supabase-database-${{ needs.database.outputs.branch }}
+      cancel-in-progress: false
     env:
-      BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+      DB_BRANCH: ${{ needs.database.outputs.branch }}
+      DB_ROLE: ${{ needs.database.outputs.role }}
       HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       # Must match the origin Playwright drives (baseURL http://localhost:3100):
       # Next dev serves its client chunks only to origins it knows, so a setup
@@ -36,7 +95,11 @@ jobs:
       PORTAL_SEED_ADMIN_PASSWORD: ${{ secrets.PORTAL_PREVIEW_ADMIN_PASSWORD }}
       SUPABASE_PARENT_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_ID }}
     steps:
+      # Only a database this head owns is deployed from it. The migration
+      # lineage step below decides whether that deployment left the schema
+      # matching the code, so the Preview conclusion is reported, not gated.
       - name: Wait for the Supabase Preview deployment
+        if: env.DB_ROLE == 'owner'
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
@@ -53,14 +116,11 @@ jobs:
             echo "Supabase Preview: status=$status conclusion=${conclusion:-pending}"
 
             if [ "$status" = "completed" ]; then
-              if [ "$conclusion" = "success" ]; then
-                break
-              fi
-              echo "Supabase Preview did not succeed."
-              exit 1
+              printf 'PREVIEW_CONCLUSION=%s\n' "$conclusion" >> "$GITHUB_ENV"
+              break
             fi
             if [ "$attempt" = 90 ]; then
-              echo "Supabase Preview did not complete within 15 minutes."
+              echo "::error::Supabase Preview did not complete on $HEAD_SHA within 15 minutes."
               exit 1
             fi
             sleep 10
@@ -77,10 +137,10 @@ jobs:
         run: |
           test -n "$SUPABASE_ACCESS_TOKEN"
           test -n "$SUPABASE_PARENT_PROJECT_REF"
-          test -n "$BRANCH_NAME"
+          test -n "$DB_BRANCH"
 
           branch_env="$RUNNER_TEMP/supabase-branch.env"
-          supabase branches get "$BRANCH_NAME" \
+          supabase branches get "$DB_BRANCH" \
             --project-ref "$SUPABASE_PARENT_PROJECT_REF" \
             --output env > "$branch_env"
 
@@ -126,11 +186,23 @@ jobs:
             printf 'SUPABASE_PREVIEW_BRANCH=1\n'
           } >> "$GITHUB_ENV"
 
+      # The specs below drive a local server on the loaded credentials, so a
+      # mismatched Vercel Preview cannot change what they test. It is fatal
+      # for the database owner and reported for a branch that inherits.
       - name: Verify Vercel uses the matching Preview Branch
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
         run: |
+          fail() {
+            if [ "$DB_ROLE" = "owner" ]; then
+              echo "::error::$1"
+              exit 1
+            fi
+            echo "::warning::$1"
+            exit 0
+          }
+
           for attempt in {1..90}; do
             deployment_id="$(
               gh api "repos/$REPOSITORY/deployments?sha=$HEAD_SHA&per_page=100" \
@@ -151,7 +223,8 @@ jobs:
 
               if [ "$state" = "success" ] && [ -n "$preview_url" ]; then
                 attestation="$(curl --fail --silent --show-error \
-                  "$preview_url/api/preview-environment")"
+                  "$preview_url/api/preview-environment")" ||
+                  fail "Vercel Preview $preview_url did not answer its attestation."
                 jq -e \
                   --arg branch_ref "$SUPABASE_BRANCH_PROJECT_REF" \
                   --arg head_sha "$HEAD_SHA" \
@@ -160,23 +233,22 @@ jobs:
                     and .clientKeySafe == true
                     and .projectRef == $branch_ref
                     and .gitCommitSha == $head_sha' \
-                  <<<"$attestation" >/dev/null
+                  <<<"$attestation" >/dev/null ||
+                  fail "Vercel Preview $preview_url does not attest Supabase branch $SUPABASE_BRANCH_PROJECT_REF at $HEAD_SHA."
                 printf 'Verified Vercel Preview %s uses Supabase branch %s.\n' \
                   "$preview_url" "$SUPABASE_BRANCH_PROJECT_REF"
                 break
               fi
 
               if [ "$state" = "failure" ] || [ "$state" = "error" ]; then
-                echo "Vercel Preview did not succeed."
-                exit 1
+                fail "Vercel Preview did not succeed."
               fi
             else
               echo "Vercel Preview: deployment pending"
             fi
 
             if [ "$attempt" = 90 ]; then
-              echo "Vercel Preview did not become verifiably branch-matched within 15 minutes."
-              exit 1
+              fail "Vercel Preview did not become verifiably branch-matched within 15 minutes."
             fi
             sleep 10
           done
@@ -195,6 +267,12 @@ jobs:
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+
+      - name: Verify the database's migration lineage
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: node scripts/verify-migration-lineage.mjs
 
       - name: Seed Preview Branch Auth and portal fixtures
         run: node scripts/seed-portal.mjs --target branch
