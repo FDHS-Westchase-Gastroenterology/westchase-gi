@@ -33,7 +33,6 @@ jobs:
     env:
       SOURCE_URL: ${{ secrets.BETA_REFRESH_SOURCE_DATABASE_URL }}
       TARGET_URL: ${{ secrets.BETA_REFRESH_TARGET_DATABASE_URL }}
-      DUMP_DIR: ${{ runner.temp }}/beta-refresh
     steps:
       - name: Refuse any target but the beta database
         run: |
@@ -46,6 +45,7 @@ jobs:
             "postgresql://postgres.$BETA_REF:"*) ;;
             *) echo "The target must be the beta branch database."; exit 1 ;;
           esac
+          echo "DUMP_DIR=$RUNNER_TEMP/beta-refresh" >> "$GITHUB_ENV"
 
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
