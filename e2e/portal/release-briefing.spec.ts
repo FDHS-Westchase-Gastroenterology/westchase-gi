@@ -124,8 +124,8 @@ test.describe("portal release briefing", () => {
 
     const utility = page.getByTestId("portal-release-utility");
     await expect(utility).toBeVisible();
-    await page.getByRole("link", { name: /^Requests/ }).click();
-    await expect(page).toHaveURL(/\/admin\/requests\/?$/);
+    await page.getByRole("link", { name: /^Schedule/ }).click();
+    await expect(page).toHaveURL(/\/admin\/schedule(?:[/?]|$)/);
     await expect(utility).toBeVisible();
 
     await utility.getByRole("button", { name: /What’s new/ }).click();

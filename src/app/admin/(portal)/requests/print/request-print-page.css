@@ -153,9 +153,11 @@
   padding-block: 14px;
 }
 
+/* Leading and the write-in rules are set so a message at the intake limit
+   (2,000 characters) still leaves "This call" and the footer on one sheet. */
 .printed-page-message {
   font-size: 13px;
-  line-height: 1.55;
+  line-height: 1.45;
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
@@ -307,7 +309,7 @@
 
 .printed-page-ruled span {
   display: block;
-  height: 34px;
+  height: 30px;
   border-bottom: 1px solid var(--paper-ink);
 }
 
