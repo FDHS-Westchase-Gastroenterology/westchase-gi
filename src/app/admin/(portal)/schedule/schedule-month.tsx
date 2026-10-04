@@ -85,6 +85,12 @@ function monthHref(month: string): string {
   return `/admin/schedule?month=${month}`;
 }
 
+/* The day a focus or press event came from, if any. */
+function dayOf(target: EventTarget): HTMLElement | null {
+  if (!(target instanceof Element)) return null;
+  return target.closest<HTMLElement>(".wgi-day[data-day]");
+}
+
 /* The same day of the month in another month, or its last day. */
 function sameDayIn(month: string, date: string): string {
   const year = Number(month.slice(0, 4));
@@ -322,12 +328,6 @@ export function ScheduleMonthView({ view }: Readonly<{ view: ScheduleMonth }>) {
       event.preventDefault();
       router.push(dayHref(current));
     }
-  }
-
-  /* The day a focus or press event came from, if any. */
-  function dayOf(target: EventTarget): HTMLElement | null {
-    if (!(target instanceof Element)) return null;
-    return target.closest<HTMLElement>(".wgi-day[data-day]");
   }
 
   /* Focus on a future day opens its preview at once; focus on any other
