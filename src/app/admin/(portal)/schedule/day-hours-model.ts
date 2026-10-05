@@ -361,10 +361,6 @@ export function rowAway(
   return scope === "date" ? awayEntry(provider, span) : undefined;
 }
 
-export function awayAllDay(provider: Readonly<DayHoursProvider>, span: Readonly<MinuteSpan>) {
-  return awayEntry(provider, span) !== undefined;
-}
-
 /** "Conference · all day", or "Conference · 9:00 AM – 1:00 PM". */
 export function timeOffLine(entry: Readonly<TimeOffEntry>): string {
   const label = TIME_OFF_REASONS.find((reason) => reason === entry.reason);
