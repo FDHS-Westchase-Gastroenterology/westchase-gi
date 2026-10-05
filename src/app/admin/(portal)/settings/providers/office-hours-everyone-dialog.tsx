@@ -10,6 +10,7 @@ import {
 } from "@/app/admin/(portal)/settings/providers/hours-editor-dialog";
 import {
   officeHoursWeek,
+  plannedWeeks,
   sameWeek,
   weekOn,
 } from "@/app/admin/(portal)/settings/providers/providers-model";
@@ -44,6 +45,8 @@ interface Target {
   readonly current: readonly WeekWindow[];
   readonly week: readonly WeekWindow[];
   readonly already: boolean;
+  /** Planned changes after the start this would silently replace. */
+  readonly replaces: readonly string[];
 }
 
 /** "Tampa: Mon, Wed–Fri · Lutz: Tue" — where a target week lands, in office order. */
@@ -75,7 +78,10 @@ export function OfficeHoursEveryoneDialog({
     return providers.map((provider) => {
       const current = weekOn(provider.hours, day);
       const week = officeHoursWeek(current, locations);
-      return { provider, current, week, already: sameWeek(week, current) };
+      const replaces = plannedWeeks(provider.hours, today).flatMap((entry) =>
+        entry.from > day ? [entry.from] : [],
+      );
+      return { provider, current, week, already: sameWeek(week, current), replaces };
     });
   }
 
@@ -241,7 +247,11 @@ export function OfficeHoursEveryoneDialog({
                     <span className="truncate text-[0.8125rem] text-(--wgi-muted-ink)">
                       {target.already
                         ? "Already on office hours"
-                        : targetLine(target.week, locations) || "No weekly hours"}
+                        : `${targetLine(target.week, locations) || "No weekly hours"}${
+                            target.replaces.length > 0
+                              ? ` · replaces the change on ${target.replaces.map((day) => shortDate(day)).join(" and ")}`
+                              : ""
+                          }`}
                     </span>
                   </span>
                 </label>
