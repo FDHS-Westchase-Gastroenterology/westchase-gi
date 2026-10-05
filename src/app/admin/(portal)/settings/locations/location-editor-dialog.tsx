@@ -152,6 +152,16 @@ function OfficeHoursField({
   hours: ReadonlyMap<number, DayHours>;
   onChange: (weekday: number, next: Partial<DayHours>) => void;
 }>) {
+  const openDays = WEEK_ORDER.filter((weekday) => hours.get(weekday)?.open === true);
+  const first = openDays.at(0);
+  const firstDay = first === undefined ? undefined : hours.get(first);
+  const canCopy =
+    openDays.length >= 2 &&
+    firstDay !== undefined &&
+    openDays.some((weekday) => {
+      const day = hours.get(weekday);
+      return day !== undefined && (day.from !== firstDay.from || day.until !== firstDay.until);
+    });
   return (
     <Field>
       <FieldLabel id="location-hours-label">Office hours</FieldLabel>
@@ -210,6 +220,19 @@ function OfficeHoursField({
           );
         })}
       </ul>
+      {!canCopy || first === undefined ? null : (
+        <button
+          type="button"
+          className="settings-text-command self-start"
+          onClick={() => {
+            for (const weekday of openDays)
+              if (weekday !== first)
+                onChange(weekday, { from: firstDay.from, until: firstDay.until });
+          }}
+        >
+          Copy {longDay(first)}&rsquo;s hours to every open day
+        </button>
+      )}
     </Field>
   );
 }
@@ -438,9 +461,12 @@ export function LocationEditorDialog({
             <OfficeHoursField
               hours={hours}
               onChange={(weekday, next) => {
-                const day = hours.get(weekday);
-                if (day === undefined) return;
-                setHours(new Map([...hours, [weekday, { ...day, ...next }]]));
+                setHours((current) => {
+                  const day = current.get(weekday);
+                  return day === undefined
+                    ? current
+                    : new Map([...current, [weekday, { ...day, ...next }]]);
+                });
                 setError(null);
               }}
             />
