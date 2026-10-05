@@ -531,6 +531,7 @@
    (B6). */
 .wgi-dayview-open {
   container: dayview-open / size;
+  overflow: hidden;
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -580,6 +581,10 @@
   text-overflow: ellipsis;
 }
 
+.wgi-dayview-open-word {
+  min-width: 0;
+}
+
 .wgi-dayview-open-length {
   margin-left: auto;
   color: var(--color-mint-600);
@@ -600,6 +605,31 @@
 
 .wgi-dayview-open:is([data-popup-open], :focus-visible) .wgi-dayview-open-book {
   display: inline;
+}
+
+/* A narrow tile gives up its length first, then the word "Open", then
+   everything but the disc, which centres in what is left. */
+@container dayview-open (max-width: 13.5rem) {
+  .wgi-dayview-open-length {
+    display: none;
+  }
+}
+
+@container dayview-open (max-width: 9.5rem) {
+  .wgi-dayview-open-lead {
+    display: none;
+  }
+}
+
+@container dayview-open (max-width: 5rem) {
+  .wgi-dayview-open-word,
+  .wgi-dayview-open-book {
+    display: none;
+  }
+
+  .wgi-dayview-open-disc {
+    margin-inline: auto;
+  }
 }
 
 /* A 15-minute opening shrinks to the week's compact cell: the start

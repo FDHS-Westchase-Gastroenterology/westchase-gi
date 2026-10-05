@@ -645,6 +645,22 @@
   text-overflow: ellipsis;
 }
 
+.wgi-week-open {
+  container-type: inline-size;
+  overflow: hidden;
+}
+
+@container (max-width: 4.5rem) {
+  .wgi-week-open-word,
+  .wgi-week-open-book {
+    display: none;
+  }
+
+  .wgi-week-open-disc {
+    margin-inline: auto;
+  }
+}
+
 .wgi-week-grid[data-compare] .wgi-week-open {
   gap: 3px;
   padding: 0 4px;

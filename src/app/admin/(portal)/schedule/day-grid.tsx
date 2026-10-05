@@ -344,7 +344,10 @@ function OpenBody({ cell }: Readonly<{ cell: DayOpenCell }>) {
   return (
     <>
       <span className="wgi-dayview-open-disc" aria-hidden="true" />
-      <span className="wgi-dayview-open-word">Open · {cell.time}</span>
+      <span className="wgi-dayview-open-word">
+        <span className="wgi-dayview-open-lead">Open · </span>
+        {cell.time}
+      </span>
       <span className="wgi-dayview-open-book">Book {cell.time}</span>
       <span className="wgi-dayview-open-length">{cell.length}</span>
     </>
