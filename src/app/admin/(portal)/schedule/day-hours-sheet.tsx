@@ -50,6 +50,7 @@ import type {
 import { readDayHoursFor, setDayHours, undoDayHours } from "./day-hours-actions";
 import {
   addedLine,
+  awayEntry,
   closedLine,
   baselineOf,
   bookingStart,
@@ -74,6 +75,7 @@ import {
   strandedIds,
   switchedOff,
   switchedOn,
+  timeOffLine,
   undoFailureMessage,
   usualLine,
   windowRange,
@@ -612,7 +614,7 @@ function HoursSheet({
             <section key={place.id} className="wgi-hours-group" aria-label={placeName(place)}>
               <h3 className="wgi-hours-group-head">
                 <span className="wgi-hours-group-name">{placeName(place)}</span>
-                {`${String(providers.filter((provider) => editor.draftOf(provider).length > 0).length)} of ${String(providers.length)} working`}
+                {`${String(providers.filter((provider) => editor.draftOf(provider).length > 0 && (scope !== "date" || awayEntry(provider, span) === undefined)).length)} of ${String(providers.length)} working`}
               </h3>
               {providers.map((provider) => (
                 <HoursRow
@@ -769,6 +771,8 @@ function HoursRow(props: RowProps) {
   );
   const conflict = rowCheck?.state === "conflict" ? rowCheck : null;
   const nameId = `${provider.id}-hours-name`;
+  const awayId = `${provider.id}-hours-away`;
+  const away = scope === "date" ? awayEntry(provider, props.span) : undefined;
   const track = useRef<HTMLDivElement>(null);
 
   return (
@@ -776,21 +780,24 @@ function HoursRow(props: RowProps) {
       <div
         className="wgi-hours-row"
         data-off={working ? undefined : ""}
+        data-away={away === undefined ? undefined : ""}
         data-added={props.isAdded ? "" : undefined}
         data-conflict={conflict === null ? undefined : ""}
       >
-        <RowWho {...props} nameId={nameId} working={working} shown={shown} />
+        <RowWho {...props} nameId={nameId} working={working} shown={shown} away={away} />
         <RowTrack
           {...props}
           trackRef={track}
           working={working}
+          away={away !== undefined}
           shown={shown}
           showWas={live !== null || conflict !== null}
         />
         <Switch
           checked={worksAhead(draft, lock)}
-          disabled={!canWork && !worksAhead(draft, lock)}
+          disabled={away !== undefined || (!canWork && !worksAhead(draft, lock))}
           aria-labelledby={nameId}
+          aria-describedby={away === undefined ? undefined : awayId}
           aria-label={undefined}
           onCheckedChange={(on: boolean) => {
             onCommit(
@@ -798,6 +805,11 @@ function HoursRow(props: RowProps) {
             );
           }}
         />
+        {away === undefined ? null : (
+          <span id={awayId} className="sr-only">
+            Time off is set in Settings
+          </span>
+        )}
       </div>
       {conflict === null ? null : (
         <ConflictBanner
@@ -828,10 +840,26 @@ function HoursRow(props: RowProps) {
   );
 }
 
+function subLine(
+  provider: Readonly<DayHoursProvider>,
+  shown: readonly HoursWindow[],
+  working: boolean,
+  scope: DayHoursScope,
+  away: DayHoursProvider["timeOff"][number] | undefined,
+) {
+  if (away !== undefined) return timeOffLine(away);
+  if (!working) return usualLine(provider);
+  const partial = scope === "date" ? provider.timeOff.at(0) : undefined;
+  return partial === undefined
+    ? hoursWords(shown)
+    : `${hoursWords(shown)} · ${timeOffLine(partial)}`;
+}
+
 /** The provider's name, and under it their hours, or the office menu for someone just added. */
 function RowWho({
   provider,
   hours,
+  scope,
   lock,
   draft,
   isAdded,
@@ -839,7 +867,15 @@ function RowWho({
   nameId,
   working,
   shown,
-}: Readonly<RowProps & { nameId: string; working: boolean; shown: readonly HoursWindow[] }>) {
+  away,
+}: Readonly<
+  RowProps & {
+    nameId: string;
+    working: boolean;
+    shown: readonly HoursWindow[];
+    away: DayHoursProvider["timeOff"][number] | undefined;
+  }
+>) {
   const place = hours.locations.find((location) => location.id === draft.at(0)?.locationId);
   return (
     <div className="wgi-hours-who">
@@ -877,7 +913,7 @@ function RowWho({
           </MenuContent>
         </Menu>
       ) : (
-        <span className="wgi-hours-sub">{working ? hoursWords(shown) : usualLine(provider)}</span>
+        <span className="wgi-hours-sub">{subLine(provider, shown, working, scope, away)}</span>
       )}
     </div>
   );
@@ -899,12 +935,14 @@ function RowTrack({
   onCommit,
   trackRef,
   working,
+  away,
   shown,
   showWas,
 }: Readonly<
   RowProps & {
     trackRef: RefObject<HTMLDivElement | null>;
     working: boolean;
+    away: boolean;
     shown: readonly HoursWindow[];
     showWas: boolean;
   }
@@ -915,7 +953,9 @@ function RowTrack({
       {now !== null && now > span.open ? (
         <span className="wgi-hours-past" style={barStyle(span, span.open, now)} />
       ) : null}
-      {working ? null : <span className="wgi-hours-off">{offText(scope, hours.weekday)}</span>}
+      {working || away ? null : (
+        <span className="wgi-hours-off">{offText(scope, hours.weekday)}</span>
+      )}
       {showWas
         ? settledWindows.map((window) => (
             <span
@@ -926,22 +966,34 @@ function RowTrack({
             />
           ))
         : null}
-      {draft.map((window, index) => (
-        <WindowBar
-          // react-doctor-disable-next-line react-doctor/no-array-index-as-key -- a day's windows are positional: the first stays the first while its ends are dragged, and keying by its minutes would remount the slider under the pointer
-          key={index}
-          label={`${provider.name}${draft.length > 1 ? `, window ${String(index + 1)}` : ""}`}
-          index={index}
-          window={window}
-          current={shown.at(index) ?? window}
-          draft={draft}
-          hours={hours}
-          span={span}
-          lock={lock}
-          onDrag={onDrag}
-          onCommit={onCommit}
-        />
-      ))}
+      {away
+        ? null
+        : draft.map((window, index) => (
+            <WindowBar
+              // react-doctor-disable-next-line react-doctor/no-array-index-as-key -- a day's windows are positional: the first stays the first while its ends are dragged, and keying by its minutes would remount the slider under the pointer
+              key={index}
+              label={`${provider.name}${draft.length > 1 ? `, window ${String(index + 1)}` : ""}`}
+              index={index}
+              window={window}
+              current={shown.at(index) ?? window}
+              draft={draft}
+              hours={hours}
+              span={span}
+              lock={lock}
+              onDrag={onDrag}
+              onCommit={onCommit}
+            />
+          ))}
+      {scope === "date"
+        ? provider.timeOff.map((entry) => (
+            <span
+              key={`${String(entry.startMinute)}-${String(entry.endMinute)}`}
+              aria-hidden="true"
+              className="wgi-hours-away"
+              style={barStyle(span, entry.startMinute, entry.endMinute)}
+            />
+          ))
+        : null}
       {live === null ? null : <DragPill span={span} live={live} draft={draft} />}
       {scope === "date"
         ? provider.bookings.map((booking) => (

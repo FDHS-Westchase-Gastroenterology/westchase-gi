@@ -1172,7 +1172,7 @@
   white-space: nowrap;
 }
 
-.wgi-hours-row[data-off] .wgi-hours-name {
+.wgi-hours-row:is([data-off], [data-away]) .wgi-hours-name {
   color: var(--wgi-muted-ink);
   font-weight: 400;
 }
@@ -1229,6 +1229,22 @@
   border-radius: 7px;
   background: linear-gradient(var(--color-mint-100), var(--color-mint-200));
   opacity: 0.7;
+}
+
+/* Time off on the day: a hatched band over the bars, under the drag pill. */
+.wgi-hours-away {
+  position: absolute;
+  z-index: 1;
+  top: 4px;
+  height: 22px;
+  box-sizing: border-box;
+  border-radius: 7px;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--color-slate-200) 0 4px,
+    var(--color-slate-50) 4px 8px
+  );
+  pointer-events: none;
 }
 
 /* Where the bar was before this drag, so the change reads against it. */

@@ -1,9 +1,11 @@
 import type { MinuteSpan } from "@/app/admin/(portal)/settings/providers/providers-model";
 import {
   clockOf,
+  clockRange,
   dayRuns,
   longDay,
   placeName,
+  reasonLabel,
   settingsFailureMessage,
   shortDate,
   shortName,
@@ -17,6 +19,7 @@ import type {
   DayHoursProvider,
   DayHoursScope,
 } from "@/lib/portal/scheduling/day-hours-contracts";
+import { TIME_OFF_REASONS } from "@/lib/portal/scheduling/settings-contracts";
 
 import { endMinute, practiceMinute } from "./week-calendar";
 import { failureMessage } from "./week-card-model";
@@ -335,6 +338,31 @@ export function usualLine(provider: Readonly<DayHoursProvider>): string {
   return provider.usualWeekdays.length === 0
     ? "No weekly hours"
     : `Usually ${dayRuns(provider.usualWeekdays)}`;
+}
+
+type TimeOffEntry = DayHoursProvider["timeOff"][number];
+
+/** The first time off that covers the whole ruler, or undefined. */
+export function awayEntry(
+  provider: Readonly<DayHoursProvider>,
+  span: Readonly<MinuteSpan>,
+): TimeOffEntry | undefined {
+  return provider.timeOff.find(
+    (entry) => entry.startMinute <= span.open && entry.endMinute >= span.close,
+  );
+}
+
+export function awayAllDay(provider: Readonly<DayHoursProvider>, span: Readonly<MinuteSpan>) {
+  return awayEntry(provider, span) !== undefined;
+}
+
+/** "Conference · all day", or "Conference · 9:00 AM – 1:00 PM". */
+export function timeOffLine(entry: Readonly<TimeOffEntry>): string {
+  const label = TIME_OFF_REASONS.find((reason) => reason === entry.reason);
+  const name = label === undefined ? "Time off" : reasonLabel(label);
+  return entry.startMinute <= 0 && entry.endMinute >= DAY_MINUTES
+    ? `${name} · all day`
+    : `${name} · ${clockRange(entry.startMinute, entry.endMinute)}`;
 }
 
 export function offText(scope: DayHoursScope, weekday: number): string {
