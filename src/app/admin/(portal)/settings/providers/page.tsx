@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
 import { ProvidersView } from "@/app/admin/(portal)/settings/providers/providers-view";
-import { Plus } from "@/components/icons";
+import { Clock, Plus } from "@/components/icons";
 import { requireRole } from "@/lib/portal/auth";
 import { readSchedulingSettings } from "@/lib/portal/scheduling/service";
 import { serviceClient } from "@/lib/portal/server";
@@ -15,7 +15,7 @@ import "@/app/admin/(portal)/settings/settings.css";
 export default async function SettingsProvidersPage({
   searchParams,
 }: Readonly<{
-  searchParams: Promise<{ provider?: string; add?: string }>;
+  searchParams: Promise<{ provider?: string; add?: string; everyone?: string }>;
 }>) {
   const session = await requireRole("staff");
   const [settings, params] = await Promise.all([
@@ -30,10 +30,16 @@ export default async function SettingsProvidersPage({
         title="Providers"
         actions={
           settings.canEdit ? (
-            <Link href="?add=1" scroll={false} className="wgi-settings-command">
-              <Plus aria-hidden="true" className="size-4" />
-              Add provider
-            </Link>
+            <>
+              <Link href="?everyone=1" scroll={false} className="wgi-settings-command">
+                <Clock aria-hidden="true" className="size-4" />
+                Everyone on office hours
+              </Link>
+              <Link href="?add=1" scroll={false} className="wgi-settings-command">
+                <Plus aria-hidden="true" className="size-4" />
+                Add provider
+              </Link>
+            </>
           ) : null
         }
       />
@@ -41,6 +47,7 @@ export default async function SettingsProvidersPage({
         settings={settings}
         initialId={params.provider ?? null}
         adding={params.add === "1" && settings.canEdit}
+        everyone={params.everyone === "1" && settings.canEdit}
       />
     </>
   );

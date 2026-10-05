@@ -12,6 +12,7 @@ import {
   moveBlock,
   officeBlock,
   officeDay,
+  officeHoursWeek,
   plannedWeeks,
   sameWeek,
   startDay,
@@ -182,7 +183,7 @@ function BlockRow({
   );
 }
 
-function StartField({
+export function StartField({
   today,
   startsOn,
   replaces,
@@ -329,7 +330,7 @@ function DayEditor({
   );
 }
 
-function ConflictStep({
+export function ConflictStep({
   conflicts,
   name,
 }: Readonly<{ conflicts: readonly SettingsConflict[]; name: string }>) {
@@ -347,7 +348,7 @@ function ConflictStep({
   );
 }
 
-function HoursFooter({
+export function HoursFooter({
   reviewing,
   pending,
   canSave,
@@ -408,6 +409,7 @@ export function HoursEditorDialog({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const next = weekOfDraft(draft);
+  const office = officeHoursWeek(next, locations);
   const problems = new Map(
     WEEK_ORDER.flatMap((weekday) => {
       const problem = dayProblem(draft.get(weekday) ?? [], weekday, locations);
@@ -492,6 +494,18 @@ export function HoursEditorDialog({
               .map((plan) => plan.from)}
             onChange={setStartsOn}
           />
+          {sameWeek(office, next) ? null : (
+            <button
+              type="button"
+              className="settings-text-command self-start"
+              onClick={() => {
+                setDraft(draftOf(office));
+                setError(null);
+              }}
+            >
+              Match office hours
+            </button>
+          )}
           <ul className="settings-hours-edit" aria-label="Days of the week">
             {WEEK_ORDER.map((weekday) => (
               <DayEditor

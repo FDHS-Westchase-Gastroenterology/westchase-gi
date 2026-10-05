@@ -26,8 +26,9 @@ export interface SettingsUndo {
   readonly headline: string;
   /** What the change means, or null. */
   readonly detail: string | null;
-  /** The command that puts it back. Its expected version is filled in when it is sent. */
-  readonly inverse: SettingsCommand;
+  /** The command that puts it back, or a run of them sent in order; the first failure is
+      reported and stops the rest. Expected versions are filled in when they are sent. */
+  readonly inverse: SettingsCommand | readonly SettingsCommand[];
   /** A run of edits to one thing ("hours:<provider>"): a new toast in the slot replaces the
       last one, whose Undo the new toast's inverse already covers one step back. */
   readonly slot?: string;
@@ -81,9 +82,13 @@ function withVersion(command: SettingsCommand, known: ReadonlyMap<string, number
     : command;
 }
 
-export type SettingsSend = ReturnType<typeof useSettingsCommand>;
+export interface SettingsSend {
+  (command: SettingsCommand, options?: Readonly<SendOptions>): Promise<SettingsCommandOutcome>;
+  /** Shows the Undo toast a landed change confirms with. */
+  readonly confirm: (undo: SettingsUndo) => void;
+}
 
-export function useSettingsCommand() {
+export function useSettingsCommand(): SettingsSend {
   const router = useRouter();
   const [known] = useState(() => new Map<string, number>());
   const queue = useRef<Promise<unknown> | undefined>(undefined);
@@ -126,33 +131,40 @@ export function useSettingsCommand() {
     }
     if (outcome.dryRun === true) return outcome;
     const { undo } = options;
-    if (undo !== undefined) {
-      const previous = undo.slot === undefined ? undefined : slots.get(undo.slot);
-      if (previous !== undefined) toast.dismiss(previous);
-      const id = showUndoToast({
-        headline: undo.headline,
-        detail: undo.detail,
-        undo: async () => {
-          const reversed = await run(undo.inverse);
-          return reversed.ok
-            ? { ok: true, message: "Undone." }
-            : {
-                ok: false,
-                message:
-                  reversed.code === "unavailable"
-                    ? UNREACHABLE
-                    : settingsFailureMessage(reversed.code),
-              };
-        },
-        onSettled: () => {
-          router.refresh();
-        },
-      });
-      if (undo.slot !== undefined) slots.set(undo.slot, id);
-    }
+    if (undo !== undefined) confirm(undo);
     router.refresh();
     return outcome;
   }
 
-  return send;
+  /** The Undo toast a landed change confirms with: Undo sends the inverse commands through
+      the same queue, in order. */
+  function confirm(undo: SettingsUndo) {
+    const previous = undo.slot === undefined ? undefined : slots.get(undo.slot);
+    if (previous !== undefined) toast.dismiss(previous);
+    const id = showUndoToast({
+      headline: undo.headline,
+      detail: undo.detail,
+      undo: async () => {
+        const inverses = "kind" in undo.inverse ? [undo.inverse] : undo.inverse;
+        for (const inverse of inverses) {
+          const reversed = await run(inverse);
+          if (!reversed.ok)
+            return {
+              ok: false,
+              message:
+                reversed.code === "unavailable"
+                  ? UNREACHABLE
+                  : settingsFailureMessage(reversed.code),
+            };
+        }
+        return { ok: true, message: "Undone." };
+      },
+      onSettled: () => {
+        router.refresh();
+      },
+    });
+    if (undo.slot !== undefined) slots.set(undo.slot, id);
+  }
+
+  return Object.assign(send, { confirm });
 }

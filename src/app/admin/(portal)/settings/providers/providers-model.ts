@@ -150,6 +150,36 @@ export function officeWeek(location: Readonly<SettingsLocation> | undefined): We
   });
 }
 
+/** The week on office hours: every weekday an office opens, at the office the provider works
+    that day now if it opens then, else the open office they work most (ties to the first in
+    `locations` order). Each day is one block following that office's hours. */
+export function officeHoursWeek(
+  week: readonly WeekWindow[],
+  locations: readonly SettingsLocation[],
+): WeekWindow[] {
+  const worked = (location: Readonly<SettingsLocation>) =>
+    week.filter((window) => window.locationId === location.id).length;
+  return WEEK_ORDER.flatMap((weekday) => {
+    const open = locations
+      .filter((location) => hasOfficeDay(location, weekday))
+      .toSorted((a, b) => worked(b) - worked(a));
+    const now = dayWindows(week, weekday).at(0);
+    const office = open.find((location) => location.id === now?.locationId) ?? open.at(0);
+    const day = office?.hours.find((row) => row.weekday === weekday);
+    return office === undefined || day === undefined
+      ? []
+      : [
+          {
+            locationId: office.id,
+            weekday,
+            openMinute: day.openMinute,
+            closeMinute: day.closeMinute,
+            followsOffice: true,
+          },
+        ];
+  });
+}
+
 /** The ruler's span in whole hours: 7 AM to 6 PM, widened to every office's day. */
 export function rulerSpan(locations: readonly SettingsLocation[]): MinuteSpan {
   const rows = locations.flatMap((location) => location.hours);

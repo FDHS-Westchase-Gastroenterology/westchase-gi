@@ -7,6 +7,7 @@ import { useState } from "react";
 import { initialsOf } from "@/app/admin/(portal)/schedule/week-calendar";
 import { NeedsNewTime } from "@/app/admin/(portal)/settings/needs-new-time";
 import { AddProviderDialog } from "@/app/admin/(portal)/settings/providers/add-provider-dialog";
+import { OfficeHoursEveryoneDialog } from "@/app/admin/(portal)/settings/providers/office-hours-everyone-dialog";
 import {
   ProfileDialog,
   RetireDialog,
@@ -49,10 +50,12 @@ export function ProvidersView({
   settings,
   initialId,
   adding,
+  everyone,
 }: Readonly<{
   settings: SchedulingSettings;
   initialId: string | null;
   adding: boolean;
+  everyone: boolean;
 }>) {
   const [chosenId, setChosenId] = useState(initialId);
   const [seenInitial, setSeenInitial] = useState(initialId);
@@ -130,6 +133,7 @@ export function ProvidersView({
         <ProviderDetail key={chosen.id} provider={chosen} settings={settings} />
       )}
       {adding ? <AddProviderDialog locations={locations} /> : null}
+      {everyone ? <OfficeHoursEveryoneDialog settings={settings} /> : null}
     </div>
   );
 }
