@@ -242,9 +242,9 @@
   cursor: pointer;
 }
 
+/* Office, then from and until on one line; a long office name is cut, never the times. */
 .settings-hours-block {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
 }
@@ -252,13 +252,16 @@
 /* Full-size targets and 16px text here, so a touch screen neither misses nor zooms. */
 .settings-hours-block .settings-time-select {
   width: auto;
-  min-width: 7.5rem;
+  min-width: 7rem;
   min-height: 2.75rem;
   font-size: 1rem;
 }
 
 .settings-hours-block .settings-hours-office {
-  min-width: 8rem;
+  width: 10.5rem;
+  min-width: 0;
+  flex: 0 1 10.5rem;
+  text-overflow: ellipsis;
 }
 
 /* An office-hours day reads its times; they are the office's, not a choice. */
@@ -294,6 +297,10 @@
   .settings-hours-edit-day {
     grid-template-columns: minmax(0, 1fr);
     gap: 0.25rem;
+  }
+
+  .settings-hours-block {
+    flex-wrap: wrap;
   }
 }
 
@@ -761,9 +768,11 @@
 
 /* ---- Locations ---- */
 
+/* Two offices sit side by side; a third starts a new row rather than squeezing every card. */
 .settings-locations {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr));
+  align-items: start;
   gap: 1rem;
 }
 
