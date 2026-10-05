@@ -352,6 +352,15 @@ export function awayEntry(
   );
 }
 
+/** The all-day time off the sheet shows for a provider; only "this day only" knows of time off. */
+export function rowAway(
+  provider: Readonly<DayHoursProvider>,
+  scope: DayHoursScope,
+  span: Readonly<MinuteSpan>,
+): TimeOffEntry | undefined {
+  return scope === "date" ? awayEntry(provider, span) : undefined;
+}
+
 export function awayAllDay(provider: Readonly<DayHoursProvider>, span: Readonly<MinuteSpan>) {
   return awayEntry(provider, span) !== undefined;
 }

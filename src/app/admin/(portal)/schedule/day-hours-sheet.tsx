@@ -50,7 +50,7 @@ import type {
 import { readDayHoursFor, setDayHours, undoDayHours } from "./day-hours-actions";
 import {
   addedLine,
-  awayEntry,
+  rowAway,
   closedLine,
   baselineOf,
   bookingStart,
@@ -614,7 +614,7 @@ function HoursSheet({
             <section key={place.id} className="wgi-hours-group" aria-label={placeName(place)}>
               <h3 className="wgi-hours-group-head">
                 <span className="wgi-hours-group-name">{placeName(place)}</span>
-                {`${String(providers.filter((provider) => editor.draftOf(provider).length > 0 && (scope !== "date" || awayEntry(provider, span) === undefined)).length)} of ${String(providers.length)} working`}
+                {`${String(providers.filter((provider) => editor.draftOf(provider).length > 0 && rowAway(provider, scope, span) === undefined).length)} of ${String(providers.length)} working`}
               </h3>
               {providers.map((provider) => (
                 <HoursRow
@@ -766,13 +766,9 @@ function HoursRow(props: RowProps) {
   const { provider, hours, scope, lock, draft, settledWindows, live, rowCheck, onCommit } = props;
   const shown = live === null ? draft : live.windows;
   const working = worksAhead(draft, lock) || draft.length > 0;
-  const canWork = switchedOn(provider, hours.locations, lock).some(
-    (window) => lock === null || window.closeMinute > lock,
-  );
   const conflict = rowCheck?.state === "conflict" ? rowCheck : null;
   const nameId = `${provider.id}-hours-name`;
-  const awayId = `${provider.id}-hours-away`;
-  const away = scope === "date" ? awayEntry(provider, props.span) : undefined;
+  const away = rowAway(provider, scope, props.span);
   const track = useRef<HTMLDivElement>(null);
 
   return (
@@ -793,23 +789,7 @@ function HoursRow(props: RowProps) {
           shown={shown}
           showWas={live !== null || conflict !== null}
         />
-        <Switch
-          checked={worksAhead(draft, lock)}
-          disabled={away !== undefined || (!canWork && !worksAhead(draft, lock))}
-          aria-labelledby={nameId}
-          aria-describedby={away === undefined ? undefined : awayId}
-          aria-label={undefined}
-          onCheckedChange={(on: boolean) => {
-            onCommit(
-              on ? switchedOn(provider, hours.locations, lock) : switchedOff(provider, lock),
-            );
-          }}
-        />
-        {away === undefined ? null : (
-          <span id={awayId} className="sr-only">
-            Time off is set in Settings
-          </span>
-        )}
+        <RowSwitch {...props} nameId={nameId} away={away !== undefined} />
       </div>
       {conflict === null ? null : (
         <ConflictBanner
@@ -853,6 +833,41 @@ function subLine(
   return partial === undefined
     ? hoursWords(shown)
     : `${hoursWords(shown)} · ${timeOffLine(partial)}`;
+}
+
+/** The row's on/off switch. Time off for the whole day is set in Settings, so it stays off. */
+function RowSwitch({
+  provider,
+  hours,
+  lock,
+  draft,
+  onCommit,
+  nameId,
+  away,
+}: Readonly<RowProps & { nameId: string; away: boolean }>) {
+  const awayId = `${provider.id}-hours-away`;
+  const canWork = switchedOn(provider, hours.locations, lock).some(
+    (window) => lock === null || window.closeMinute > lock,
+  );
+  return (
+    <>
+      <Switch
+        checked={worksAhead(draft, lock)}
+        disabled={away || (!canWork && !worksAhead(draft, lock))}
+        aria-labelledby={nameId}
+        aria-describedby={away ? awayId : undefined}
+        aria-label={undefined}
+        onCheckedChange={(on: boolean) => {
+          onCommit(on ? switchedOn(provider, hours.locations, lock) : switchedOff(provider, lock));
+        }}
+      />
+      {away ? (
+        <span id={awayId} className="sr-only">
+          Time off is set in Settings
+        </span>
+      ) : null}
+    </>
+  );
 }
 
 /** The provider's name, and under it their hours, or the office menu for someone just added. */
