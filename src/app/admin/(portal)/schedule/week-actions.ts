@@ -13,7 +13,10 @@ import type { FoundPerson, PatientSummary, PatientVisit } from "@/lib/portal/pat
 import { findPeople, readPatient, searchPatients } from "@/lib/portal/patients/reads";
 import type { SchedulingFailureCode, SchedulingOutcome } from "@/lib/portal/scheduling/contracts";
 import type { PlacementRefusal } from "@/lib/portal/scheduling/grid-contracts";
-import { executeSchedulingOperation, readSchedulingSettings } from "@/lib/portal/scheduling/service";
+import {
+  executeSchedulingOperation,
+  readSchedulingSettings,
+} from "@/lib/portal/scheduling/service";
 import { serviceClient } from "@/lib/portal/server";
 import { fetchStaffNameMap } from "@/lib/portal/staff-identity";
 
