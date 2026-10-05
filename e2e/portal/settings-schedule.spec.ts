@@ -7,6 +7,7 @@ import {
   createSchedulingFixture,
   readSettings,
   restoreBookingInterval,
+  saveSettings,
   schedulingFixtureDate,
   setProviderWeek,
 } from "../harness/scheduling";
@@ -139,13 +140,25 @@ test("weekly hours change from a start date and name the bookings they leave out
     ).toBe(false);
 
     // A change from a later day leaves this week alone and can be cancelled.
-    let monday = after.today;
-    do monday = new Date(Date.parse(`${monday}T12:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
-    while (new Date(`${monday}T12:00:00Z`).getUTCDay() !== 1);
+    // The day must not be the one just dropped, or its row has no times to shorten.
+    let later = after.today;
+    do later = new Date(Date.parse(`${later}T12:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+    while (new Date(`${later}T12:00:00Z`).getUTCDay() === bookedDay);
+    const laterName = new Intl.DateTimeFormat("en-US", {
+      weekday: "long",
+      timeZone: "UTC",
+    }).format(new Date(`${later}T12:00:00Z`));
     await page.getByRole("button", { name: "Edit hours" }).click();
-    await sheet.getByLabel("Starting").selectOption(monday);
+    await sheet.getByLabel("Starting").selectOption("another");
+    /* Picking a day here closes the calendar at once, so assert on the Starting field
+       itself rather than a selected gridcell. */
+    const anotherDay = sheet.locator(`button[data-day="${later}"]`);
+    for (let pages = 0; pages < 2 && (await anotherDay.count()) === 0; pages += 1)
+      await sheet.getByRole("button", { name: /next month/iu }).click();
+    await anotherDay.click();
+    await expect(sheet.getByLabel("Starting")).toHaveValue(later);
     await sheet
-      .getByRole("combobox", { name: "Monday: until" })
+      .getByRole("combobox", { name: `${laterName}: until` })
       .selectOption({ label: "12:00 PM" });
     await sheet.getByRole("button", { name: "Save hours" }).click();
     await expect(sheet).toHaveCount(0);
@@ -154,6 +167,208 @@ test("weekly hours change from a start date and name the bookings they leave out
     await planned.getByRole("button", { name: /^More for the change on /u }).click();
     await page.getByRole("menuitem", { name: "Cancel this change" }).click();
     await expect(planned).toHaveCount(0);
+  } finally {
+    await fixture.dispose();
+  }
+});
+
+test("providers go on office hours one at a time or all at once, and Undo restores them", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const db = serviceDb();
+  const prefix = `settings-office-${runId}`;
+  const fixture = await createSchedulingFixture(db, prefix);
+  const actor = fixture.staff.userId;
+  const [firstProvider, secondProvider] = fixture.providerIds;
+  const [firstOffice, secondOffice] = fixture.locationIds;
+
+  async function providerOf(providerId: string) {
+    const read = await readSettings(db, actor);
+    if (!read.ok) throw new Error("Settings read failed");
+    const provider = read.providers.find((entry) => entry.id === providerId);
+    if (provider === undefined) throw new Error("Provider missing from Settings read");
+    return provider;
+  }
+
+  /** The provider's week as it stands on the read's today, as a comparable key. */
+  async function liveWeek(providerId: string) {
+    const read = await readSettings(db, actor);
+    if (!read.ok) throw new Error("Settings read failed");
+    const provider = read.providers.find((entry) => entry.id === providerId);
+    if (provider === undefined) throw new Error("Provider missing from Settings read");
+    return provider.hours
+      .filter(
+        (row) => row.validFrom <= read.today && (row.validTo === null || row.validTo >= read.today),
+      )
+      .map(
+        (row) =>
+          `${row.locationId}/${String(row.weekday)}/${String(row.openMinute)}-${String(row.closeMinute)}/${String(row.followsOffice)}`,
+      )
+      .toSorted();
+  }
+
+  try {
+    /* Each TEST provider keeps a plain custom week split across the two offices, set while
+       the fixture's offices still have no hours to bound it. */
+    const weekdays = [1, 2, 3, 4, 5];
+    for (const providerId of fixture.providerIds)
+      expect(
+        await setProviderWeek(
+          db,
+          actor,
+          providerId,
+          weekdays.map((weekday) => ({
+            locationId: weekday === 2 || weekday === 4 ? secondOffice : firstOffice,
+            weekday,
+            openMinute: 480,
+            closeMinute: 1080,
+          })),
+        ),
+      ).toMatchObject({ ok: true });
+    /* Both TEST offices then get real office hours — the first a plain Mon–Fri 8–5, the
+       second a half day on Tuesday, so its editor's copy command has a day that differs —
+       which trims the custom weeks to fit. */
+    const read = await readSettings(db, actor);
+    if (!read.ok) throw new Error("Settings read failed");
+    for (const [office, tuesdayClose] of [
+      [firstOffice, 1020],
+      [secondOffice, 720],
+    ] as const) {
+      const location = read.locations.find((entry) => entry.id === office);
+      if (location === undefined) throw new Error("Office missing from Settings read");
+      expect(
+        await saveSettings(db, actor, {
+          kind: "save_location_details",
+          id: office,
+          expectedVersion: location.detailsVersion,
+          name: location.name,
+          street: "100 Sample Way",
+          city: "Tampa",
+          region: "FL",
+          postal: "33626",
+          mapsQuery: `${location.name}, Tampa, FL`,
+          hours: weekdays.map((weekday) => ({
+            weekday,
+            openMinute: 480,
+            closeMinute: weekday === 2 ? tuesdayClose : 1020,
+          })),
+          keepBooked: false,
+          dryRun: false,
+        }),
+      ).toMatchObject({ ok: true });
+    }
+    const before = Object.fromEntries(
+      await Promise.all(
+        fixture.providerIds.map(
+          async (providerId) => [providerId, await liveWeek(providerId)] as const,
+        ),
+      ),
+    );
+
+    await signIn(page, fixture.staff);
+    await page.goto("/admin/settings/providers");
+    await page.getByRole("link", { name: "Everyone on office hours" }).click();
+    const sheet = page.getByTestId("office-hours-everyone-dialog");
+    await expect(sheet).toBeVisible();
+    await expect(page).toHaveURL(/everyone=1/u);
+    // The demo providers are already on office hours; the TEST providers are checked.
+    await expect(sheet.getByRole("checkbox", { name: /^Dr\. John Chang/u })).toBeDisabled();
+    expect(await sheet.getByText("Already on office hours").count()).toBeGreaterThanOrEqual(6);
+    await expect(
+      sheet.getByRole("checkbox", { name: new RegExp(`^TEST ${prefix} First`, "u") }),
+    ).toBeChecked();
+    await expect(
+      sheet.getByRole("checkbox", { name: new RegExp(`^TEST ${prefix} Second`, "u") }),
+    ).toBeChecked();
+    /* Rows the run didn't make stay untouched: unchecked before saving, so the shared
+       branch's leftovers are never written. */
+    const others = sheet.getByRole("checkbox", {
+      checked: true,
+      name: new RegExp(`^(?!TEST ${prefix})`, "u"),
+    });
+    while ((await others.count()) > 0) await others.first().click();
+    await sheet.getByRole("button", { name: "Save hours" }).click();
+    await expect(sheet).toHaveCount(0);
+    await expect(page.getByText("2 providers are on office hours")).toBeVisible();
+    for (const providerId of fixture.providerIds) {
+      const provider = await providerOf(providerId);
+      const latest = await readSettings(db, actor);
+      if (!latest.ok) throw new Error("Settings read failed");
+      const live = provider.hours.filter(
+        (row) =>
+          row.validFrom <= latest.today && (row.validTo === null || row.validTo >= latest.today),
+      );
+      expect(live).toHaveLength(5);
+      for (const row of live) {
+        expect(row.followsOffice).toBe(true);
+        expect(row.openMinute).toBe(480);
+        expect(row.closeMinute).toBe(row.weekday === 2 ? 720 : 1020);
+        expect(row.locationId).toBe(
+          row.weekday === 2 || row.weekday === 4 ? secondOffice : firstOffice,
+        );
+      }
+    }
+
+    // One Undo puts every provider's week back the way it was.
+    await page.getByRole("button", { name: "Undo" }).click();
+    await expect(page.getByText("Undone.")).toBeVisible();
+    await expect
+      .poll(async () => liveWeek(firstProvider), { timeout: 30_000 })
+      .toEqual(before[firstProvider]);
+    expect(await liveWeek(secondProvider)).toEqual(before[secondProvider]);
+
+    // One provider at a time: Edit hours' Match office hours lands the same week.
+    await page.goto(`/admin/settings/providers?provider=${firstProvider}`);
+    await page.getByRole("button", { name: "Edit hours" }).click();
+    const editor = page.getByTestId("hours-editor-dialog");
+    const match = editor.getByRole("button", { name: "Match office hours" });
+    await expect(match).toBeVisible();
+    await match.click();
+    await expect(match).toHaveCount(0);
+    await expect(editor.getByRole("checkbox", { name: "Office hours" })).toHaveCount(5);
+    await editor.getByRole("button", { name: "Save hours" }).click();
+    await expect(editor).toHaveCount(0);
+    const provider = await providerOf(firstProvider);
+    const latest = await readSettings(db, actor);
+    if (!latest.ok) throw new Error("Settings read failed");
+    const live = provider.hours.filter(
+      (row) =>
+        row.validFrom <= latest.today && (row.validTo === null || row.validTo >= latest.today),
+    );
+    expect(live).toHaveLength(5);
+    for (const row of live) {
+      expect(row.followsOffice).toBe(true);
+      expect(row.openMinute).toBe(480);
+      expect(row.closeMinute).toBe(row.weekday === 2 ? 720 : 1020);
+      expect(row.locationId).toBe(
+        row.weekday === 2 || row.weekday === 4 ? secondOffice : firstOffice,
+      );
+    }
+
+    // The office editor copies one day's hours to every open day; Cancel leaves them alone.
+    await page.goto(`/admin/settings/locations?edit=${secondOffice}`);
+    const officeEditor = page.getByTestId("location-editor-dialog");
+    await expect(officeEditor).toBeVisible();
+    const copy = officeEditor.getByRole("button", {
+      name: "Copy Monday’s hours to every open day",
+    });
+    await expect(copy).toBeVisible();
+    await copy.click();
+    await expect(copy).toHaveCount(0);
+    await expect(officeEditor.getByRole("combobox", { name: "Tuesday opens" })).toHaveValue("480");
+    await expect(officeEditor.getByRole("combobox", { name: "Tuesday closes" })).toHaveValue(
+      "1020",
+    );
+    await officeEditor.getByRole("button", { name: "Cancel" }).click();
+    await expect(officeEditor).toHaveCount(0);
+    const offices = await readSettings(db, actor);
+    if (!offices.ok) throw new Error("Settings read failed");
+    expect(
+      offices.locations
+        .find((entry) => entry.id === secondOffice)
+        ?.hours.find((day) => day.weekday === 2)?.closeMinute,
+    ).toBe(720);
   } finally {
     await fixture.dispose();
   }

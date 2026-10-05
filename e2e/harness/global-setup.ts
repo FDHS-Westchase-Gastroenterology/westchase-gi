@@ -100,8 +100,104 @@ async function sweepStaleFixtures(db: ReturnType<typeof serviceDb>): Promise<voi
   if (recipientError) {
     throw new Error(`Stale recipient sweep failed: ${recipientError.code}`);
   }
-  const count = stale.length + staleRecipients.length;
+  const count = stale.length + staleRecipients.length + (await sweepStaleScheduling(db));
   if (count > 0) {
     console.log(`[e2e] swept ${count} stale fixture rows left by an earlier run`);
   }
+}
+
+/**
+ * Scheduling fixtures (TEST offices/providers/patients and the staff users
+ * that created them) dispose themselves per spec; a cancelled run strands
+ * them, and enough stale office cards squeeze the Locations grid until the
+ * cards' buttons clip out of the cards and stop taking pointer events.
+ */
+async function sweepStaleScheduling(db: ReturnType<typeof serviceDb>): Promise<number> {
+  const { data: staleStaff, error: staffError } = await db
+    .from("staff_profiles")
+    .select("user_id")
+    .ilike("email", "%@example.test");
+  if (staffError !== null) {
+    throw new Error(`Stale staff sweep failed: ${staffError.code}`);
+  }
+  const staffRows = z.array(z.object({ user_id: z.string() })).safeParse(staleStaff);
+  const staffIds = staffRows.success ? staffRows.data.map((row) => row.user_id) : [];
+  const idRows = z.array(z.object({ id: z.string() }));
+  const staleRows = async (
+    table: "scheduling_locations" | "scheduling_providers" | "appointment_types" | "patients",
+  ): Promise<readonly string[]> => {
+    const ids = new Set<string>();
+    const byName = await db.from(table).select("id").ilike("name", "TEST %");
+    if (byName.error !== null) throw new Error(`Stale ${table} sweep failed: ${byName.error.code}`);
+    const named = idRows.safeParse(byName.data);
+    for (const row of named.success ? named.data : []) ids.add(row.id);
+    if (staffIds.length > 0) {
+      const byStaff = await db.from(table).select("id").in("created_by", staffIds);
+      if (byStaff.error !== null) {
+        throw new Error(`Stale ${table} sweep failed: ${byStaff.error.code}`);
+      }
+      const made = idRows.safeParse(byStaff.data);
+      for (const row of made.success ? made.data : []) ids.add(row.id);
+    }
+    return [...ids];
+  };
+  const locationIds = await staleRows("scheduling_locations");
+  const providerIds = await staleRows("scheduling_providers");
+  const typeIds = await staleRows("appointment_types");
+  const patientIds = await staleRows("patients");
+  const appointmentOr = [
+    ...(staffIds.length > 0 ? [`created_by.in.(${staffIds.join(",")})`] : []),
+    ...(locationIds.length > 0 ? [`location_id.in.(${locationIds.join(",")})`] : []),
+    ...(providerIds.length > 0 ? [`provider_id.in.(${providerIds.join(",")})`] : []),
+    ...(patientIds.length > 0 ? [`patient_id.in.(${patientIds.join(",")})`] : []),
+  ];
+  if (appointmentOr.length > 0) {
+    const { error: appointmentError } = await db
+      .from("appointments")
+      .delete()
+      .or(appointmentOr.join(","));
+    if (appointmentError !== null) {
+      throw new Error(`Stale appointment sweep failed: ${appointmentError.code}`);
+    }
+  }
+  for (const [table, list] of [
+    ["scheduling_providers", providerIds],
+    ["appointment_types", typeIds],
+    ["scheduling_locations", locationIds],
+  ] as const) {
+    if (list.length === 0) continue;
+    const { error } = await db
+      .from(table)
+      .delete()
+      .in("id", [...list]);
+    if (error !== null) throw new Error(`Stale ${table} sweep failed: ${error.code}`);
+  }
+  if (patientIds.length > 0) {
+    const { error: linksError } = await db
+      .from("patient_request_links")
+      .delete()
+      .in("patient_id", [...patientIds]);
+    if (linksError !== null) {
+      throw new Error(`Stale patient links sweep failed: ${linksError.code}`);
+    }
+    const { error: patientsError } = await db
+      .from("patients")
+      .delete()
+      .in("id", [...patientIds]);
+    if (patientsError !== null) {
+      throw new Error(`Stale patients sweep failed: ${patientsError.code}`);
+    }
+  }
+  for (const userId of staffIds) {
+    const { error: tourError } = await db.from("staff_tours").delete().eq("staff_user_id", userId);
+    if (tourError !== null) throw new Error(`Stale tours sweep failed: ${tourError.code}`);
+    const { error: profileError } = await db.from("staff_profiles").delete().eq("user_id", userId);
+    if (profileError !== null) {
+      throw new Error(`Stale staff sweep failed: ${profileError.code}`);
+    }
+    await db.auth.admin.deleteUser(userId);
+  }
+  return (
+    locationIds.length + providerIds.length + typeIds.length + patientIds.length + staffIds.length
+  );
 }
