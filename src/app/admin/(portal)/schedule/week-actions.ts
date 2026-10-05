@@ -196,7 +196,6 @@ export async function readOpenTimeTypes(providerId: string): Promise<OpenTimeTyp
       .map((type) => ({
         id: type.id,
         name: type.name,
-        icon: type.icon,
         durationMinutes: type.durationMinutes,
         version: type.version,
       })),
@@ -237,8 +236,9 @@ export async function readOpenTimeFit(
   });
   if (!read.ok) return { ok: false, code: read.code };
   if (!("slots" in read)) return { ok: false, code: "unavailable" };
-  const match = read.slots.find((slot) => slot.startsAt === input.startsAt);
-  const next = read.slots.find((slot) => slot.startsAt > input.startsAt);
+  const at = Date.parse(input.startsAt);
+  const match = read.slots.find((slot) => Date.parse(slot.startsAt) === at);
+  const next = read.slots.find((slot) => Date.parse(slot.startsAt) > at);
   return {
     ok: true,
     fits: match !== undefined,
