@@ -524,6 +524,25 @@
   display: none;
 }
 
+/* A narrow screen scrolls the columns sideways and pins the hours. */
+@media (max-width: 48rem) {
+  .wgi-dayview-grid {
+    min-width: min-content;
+    grid-template-columns: var(--dayview-gutter) repeat(
+        max(var(--dayview-columns), 1),
+        minmax(9.5rem, 1fr)
+      );
+  }
+
+  .wgi-dayview-gutter-head,
+  .wgi-dayview-gutter {
+    position: sticky;
+    z-index: 3;
+    left: 0;
+    background: var(--wgi-surface);
+  }
+}
+
 /* ---------- Open time ---------- */
 
 /* White, a dashed mint edge and a plus disc; pointed at or opened, the
