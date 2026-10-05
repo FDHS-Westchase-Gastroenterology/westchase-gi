@@ -23,7 +23,7 @@ import {
   searchWeekPatients,
 } from "./week-actions";
 import type { OpenTimeFitOutcome } from "./week-actions";
-import { appointmentAt, appointmentWhen } from "./week-calendar";
+import { appointmentAt, appointmentWhen, practiceTime } from "./week-calendar";
 import { startClock } from "./week-card-model";
 import type { OpenTimeType, WeekPatient } from "./week-card-model";
 import { CardError, useCommand } from "./week-card-parts";
@@ -36,10 +36,10 @@ const MINUTE_MS = 60_000;
 
 type FitRead = { readonly typeId: string; readonly outcome: OpenTimeFitOutcome } | null;
 
-function noFitLine(time: string, next: { readonly time: string } | null) {
+function noFitLine(time: string, next: { readonly startsAt: string } | null) {
   return next === null
     ? `Doesn't fit at ${time}, and nothing later that day does.`
-    : `Doesn't fit at ${time}. The next time that does is ${next.time}.`;
+    : `Doesn't fit at ${time}. The next time that does is ${practiceTime(next.startsAt)}.`;
 }
 
 /** The visit type the card books: the cell's own until another is picked,
