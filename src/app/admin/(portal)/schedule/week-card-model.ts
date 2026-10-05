@@ -1,4 +1,8 @@
-import type { SchedulingFailureCode, SchedulingInput } from "@/lib/portal/scheduling/contracts";
+import type {
+  AppointmentTypeIcon,
+  SchedulingFailureCode,
+  SchedulingInput,
+} from "@/lib/portal/scheduling/contracts";
 
 import {
   addDays,
@@ -62,6 +66,15 @@ export interface WeekPatient {
   readonly id: string;
   readonly name: string;
   readonly dateOfBirth: string | null;
+}
+
+/** A visit type the open-time card can book at a provider's open time. */
+export interface OpenTimeType {
+  readonly id: string;
+  readonly name: string;
+  readonly icon: AppointmentTypeIcon;
+  readonly durationMinutes: number;
+  readonly version: number;
 }
 
 export interface WeekRescheduleTimes {

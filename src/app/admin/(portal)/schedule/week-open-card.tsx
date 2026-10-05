@@ -12,19 +12,41 @@ import {
   ComboboxStatus,
 } from "@/components/ui/combobox";
 import { FieldLabel } from "@/components/ui/field";
+import { NativeSelect } from "@/components/ui/native-select";
 import { PopoverTitle } from "@/components/ui/popover";
 
 import type { WeekOpenCell } from "./schedule-week-model";
-import { bookOpenTime, searchWeekPatients } from "./week-actions";
+import { bookOpenTime, readOpenTimeFit, readOpenTimeTypes, searchWeekPatients } from "./week-actions";
+import type { OpenTimeFitOutcome } from "./week-actions";
 import { appointmentAt, appointmentWhen } from "./week-calendar";
 import { startClock } from "./week-card-model";
-import type { WeekPatient } from "./week-card-model";
+import type { OpenTimeType, WeekPatient } from "./week-card-model";
 import { CardError, useCommand } from "./week-card-parts";
 import type { DoneHandler } from "./week-card-parts";
 
 /* ---- The open-time card ---- */
 
 const SEARCH_REST_MS = 250;
+const MINUTE_MS = 60_000;
+
+/** The chosen type's end, read from the server once it answers and
+   computed from the type's length until then. */
+function endFor(cell: Readonly<WeekOpenCell>, type: Readonly<OpenTimeType>, fit: FitRead) {
+  if (type.id === cell.type.id) return cell.endsAt;
+  if (fit?.typeId === type.id && fit.outcome.ok && fit.outcome.endsAt !== null) {
+    return fit.outcome.endsAt;
+  }
+  return new Date(Date.parse(cell.startsAt) + type.durationMinutes * MINUTE_MS).toISOString();
+}
+
+type FitRead = { readonly typeId: string; readonly outcome: OpenTimeFitOutcome } | null;
+type TypeList = readonly OpenTimeType[] | null | undefined;
+
+function noFitLine(time: string, next: { readonly time: string } | null) {
+  return next === null
+    ? `Doesn't fit at ${time}, and nothing later that day does.`
+    : `Doesn't fit at ${time}. The next time that does is ${next.time}.`;
+}
 
 export function OpenTimeCard({
   cell,
@@ -34,9 +56,73 @@ export function OpenTimeCard({
   onDone: DoneHandler;
 }>) {
   const titleId = useId();
+  const visitId = useId();
   const [query, setQuery] = useState("");
   const [patient, setPatient] = useState<WeekPatient | null>(null);
   const command = useCommand(onDone);
+  const [typeList, setTypeList] = useState<TypeList>(undefined);
+  const [typeId, setTypeId] = useState(cell.type.id);
+  const [fitRead, setFitRead] = useState<FitRead>(null);
+  const { providerId, locationId, date, startsAt } = cell;
+  const isDefault = typeId === cell.type.id;
+
+  useEffect(() => {
+    let live = true;
+    startTransition(async () => {
+      try {
+        // react-doctor-disable-next-line react-doctor/async-defer-await -- the guard below is the staleness check: `live` is falsified only by this effect's cleanup, which runs while the read is in flight
+        const outcome = await readOpenTimeTypes(providerId);
+        if (live) setTypeList(outcome.ok ? outcome.types : null);
+      } catch {
+        if (live) setTypeList(null);
+      }
+    });
+    return () => {
+      live = false;
+    };
+  }, [providerId]);
+
+  useEffect(() => {
+    if (isDefault) return undefined;
+    let live = true;
+    startTransition(async () => {
+      let outcome: OpenTimeFitOutcome;
+      try {
+        // react-doctor-disable-next-line react-doctor/async-defer-await -- the guard below is the staleness check: `live` is falsified only by this effect's cleanup, which runs while the read is in flight
+        outcome = await readOpenTimeFit({
+          providerId,
+          locationId,
+          date,
+          appointmentTypeId: typeId,
+          startsAt,
+        });
+      } catch {
+        outcome = { ok: false, code: "unavailable" };
+      }
+      if (live) setFitRead({ typeId, outcome });
+    });
+    return () => {
+      live = false;
+    };
+  }, [isDefault, providerId, locationId, date, typeId, startsAt]);
+
+  const options: readonly OpenTimeType[] = typeList ?? [
+    {
+      id: cell.type.id,
+      name: cell.type.name,
+      icon: "stethoscope",
+      durationMinutes: cell.type.durationMinutes,
+      version: cell.type.version,
+    },
+  ];
+  const type = options.find((each) => each.id === typeId) ?? options[0];
+  const fit = isDefault || fitRead?.typeId !== typeId ? null : fitRead.outcome;
+  const checking = !isDefault && fit === null;
+  const fitFailed = fit !== null && !fit.ok;
+  const noFit = fit?.ok === true && !fit.fits;
+  const canBook = !checking && !fitFailed && !noFit;
+  const expectedTypeVersion = fit?.ok === true ? fit.expectedTypeVersion : cell.type.version;
+  const endsAt = endFor(cell, type, fitRead);
 
   function book(chosen: Readonly<WeekPatient>) {
     command.run(
@@ -47,8 +133,8 @@ export function OpenTimeCard({
             patientId: chosen.id,
             providerId: cell.providerId,
             locationId: cell.locationId,
-            appointmentTypeId: cell.type.id,
-            expectedTypeVersion: cell.type.version,
+            appointmentTypeId: type.id,
+            expectedTypeVersion,
             start: { date: cell.date, time: startClock(cell.startsAt) },
           },
         }),
@@ -69,7 +155,7 @@ export function OpenTimeCard({
       <ul className="wgi-week-card-facts">
         <li>
           <Clock width={16} height={16} />
-          {appointmentWhen(cell.startsAt, cell.endsAt)}
+          {appointmentWhen(cell.startsAt, endsAt)}
         </li>
         <li>
           <User width={16} height={16} />
@@ -77,9 +163,37 @@ export function OpenTimeCard({
         </li>
         <li>
           <MapPin width={16} height={16} />
-          {cell.locationName} · {cell.type.name}
+          {cell.locationName} · {type.name}
         </li>
       </ul>
+      <div className="wgi-week-card-face">
+        <FieldLabel htmlFor={visitId} className="wgi-week-card-label">
+          Visit
+        </FieldLabel>
+        <NativeSelect
+          id={visitId}
+          value={type.id}
+          onChange={(event) => {
+            command.clear();
+            setTypeId(event.target.value);
+          }}
+        >
+          {options.map((each) => (
+            <option key={each.id} value={each.id}>
+              {each.name} · {each.durationMinutes} min
+            </option>
+          ))}
+        </NativeSelect>
+        {typeList === null ? (
+          <p className="wgi-week-card-quiet">Other visit types couldn&apos;t be loaded.</p>
+        ) : null}
+        {fit?.ok === true && !fit.fits ? (
+          <p role="status" className="wgi-week-card-nofit">
+            {noFitLine(cell.time, fit.next)}
+          </p>
+        ) : null}
+        {fitFailed ? <CardError>That time couldn&apos;t be checked. Try again.</CardError> : null}
+      </div>
       {patient === null ? (
         <PatientSearch query={query} onQuery={setQuery} onPick={setPatient} />
       ) : (
@@ -92,7 +206,7 @@ export function OpenTimeCard({
             <Button
               size="sm"
               className="wgi-week-card-go"
-              disabled={command.pending}
+              disabled={command.pending || !canBook}
               onClick={() => {
                 book(patient);
               }}

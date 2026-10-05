@@ -13,13 +13,14 @@ import type { FoundPerson, PatientSummary, PatientVisit } from "@/lib/portal/pat
 import { findPeople, readPatient, searchPatients } from "@/lib/portal/patients/reads";
 import type { SchedulingFailureCode, SchedulingOutcome } from "@/lib/portal/scheduling/contracts";
 import type { PlacementRefusal } from "@/lib/portal/scheduling/grid-contracts";
-import { executeSchedulingOperation } from "@/lib/portal/scheduling/service";
+import { executeSchedulingOperation, readSchedulingSettings } from "@/lib/portal/scheduling/service";
 import { serviceClient } from "@/lib/portal/server";
 import { fetchStaffNameMap } from "@/lib/portal/staff-identity";
 
 import type {
   WeekAppointmentCommand,
   WeekAppointmentDetail,
+  OpenTimeType,
   WeekBookCommand,
   WeekPatient,
   WeekRescheduleTimes,
@@ -171,6 +172,76 @@ export async function readRescheduleTimes(
       date: read.date,
       slots: read.slots.map((slot) => ({ startsAt: slot.startsAt, time: slot.time })),
     },
+  };
+}
+
+export type OpenTimeTypesOutcome =
+  | { readonly ok: true; readonly types: readonly OpenTimeType[] }
+  | { readonly ok: false };
+
+/** The visit types a provider takes, for the open-time card's choice. Only
+   the types leave the settings read: it also carries patient names. */
+export async function readOpenTimeTypes(providerId: string): Promise<OpenTimeTypesOutcome> {
+  const session = await requireRole("staff", { unauthenticated: "throw" });
+  const settings = await readSchedulingSettings(serviceClient(), session.id);
+  if (!settings.ok) return { ok: false };
+  return {
+    ok: true,
+    types: settings.types
+      .filter((type) => type.active && type.providerIds.includes(providerId))
+      .toSorted((a, b) => a.sortOrder - b.sortOrder)
+      .map((type) => ({
+        id: type.id,
+        name: type.name,
+        icon: type.icon,
+        durationMinutes: type.durationMinutes,
+        version: type.version,
+      })),
+  };
+}
+
+export type OpenTimeFitOutcome =
+  | {
+      readonly ok: true;
+      readonly fits: boolean;
+      readonly endsAt: string | null;
+      readonly expectedTypeVersion: number;
+      readonly next: { readonly startsAt: string; readonly time: string } | null;
+    }
+  | Failure;
+
+/** Whether one open start still fits a chosen visit type, and when it
+   ends; when it does not, the next start that does. */
+export async function readOpenTimeFit(
+  input: Readonly<{
+    providerId: string;
+    locationId: string;
+    date: string;
+    appointmentTypeId: string;
+    startsAt: string;
+  }>,
+): Promise<OpenTimeFitOutcome> {
+  const session = await requireRole("staff", { unauthenticated: "throw" });
+  const read = await executeSchedulingOperation(serviceClient(), session.id, {
+    action: "availability",
+    providerId: input.providerId,
+    locationId: input.locationId,
+    date: input.date,
+    appointmentTypeId: input.appointmentTypeId,
+    patientId: null,
+    appointmentId: null,
+    intervalMinutes: 15,
+  });
+  if (!read.ok) return { ok: false, code: read.code };
+  if (!("slots" in read)) return { ok: false, code: "unavailable" };
+  const match = read.slots.find((slot) => slot.startsAt === input.startsAt);
+  const next = read.slots.find((slot) => slot.startsAt > input.startsAt);
+  return {
+    ok: true,
+    fits: match !== undefined,
+    endsAt: match?.endsAt ?? null,
+    expectedTypeVersion: read.expectedTypeVersion,
+    next: next === undefined ? null : { startsAt: next.startsAt, time: next.time },
   };
 }
 

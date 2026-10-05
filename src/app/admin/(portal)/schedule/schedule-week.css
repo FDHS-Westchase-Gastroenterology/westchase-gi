@@ -848,7 +848,13 @@
    the frame's 14. The error, when there is one, takes that space instead. */
 .wgi-week-card-body > .wgi-week-card-actions,
 .wgi-week-card-facts + .wgi-week-card-error,
-.wgi-week-card-call + .wgi-week-card-error {
+.wgi-week-card-call + .wgi-week-card-nofit {
+  margin: 0;
+  color: var(--color-amber-800);
+  font-size: 0.75rem;
+}
+
+.wgi-week-card-error {
   margin-top: 14px;
 }
 

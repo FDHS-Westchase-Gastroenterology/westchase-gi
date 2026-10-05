@@ -68,6 +68,7 @@ test("Schedule week switches provider, compares two in lanes, and opens a cell's
       .first()
       .click();
     await expect(card.getByText(/^Book /u).first()).toBeVisible();
+    await expect(card.getByLabel("Visit")).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(card).toHaveCount(0);
 
