@@ -16,7 +16,12 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { PopoverTitle } from "@/components/ui/popover";
 
 import type { WeekOpenCell } from "./schedule-week-model";
-import { bookOpenTime, readOpenTimeFit, readOpenTimeTypes, searchWeekPatients } from "./week-actions";
+import {
+  bookOpenTime,
+  readOpenTimeFit,
+  readOpenTimeTypes,
+  searchWeekPatients,
+} from "./week-actions";
 import type { OpenTimeFitOutcome } from "./week-actions";
 import { appointmentAt, appointmentWhen } from "./week-calendar";
 import { startClock } from "./week-card-model";
@@ -29,18 +34,7 @@ import type { DoneHandler } from "./week-card-parts";
 const SEARCH_REST_MS = 250;
 const MINUTE_MS = 60_000;
 
-/** The chosen type's end, read from the server once it answers and
-   computed from the type's length until then. */
-function endFor(cell: Readonly<WeekOpenCell>, type: Readonly<OpenTimeType>, fit: FitRead) {
-  if (type.id === cell.type.id) return cell.endsAt;
-  if (fit?.typeId === type.id && fit.outcome.ok && fit.outcome.endsAt !== null) {
-    return fit.outcome.endsAt;
-  }
-  return new Date(Date.parse(cell.startsAt) + type.durationMinutes * MINUTE_MS).toISOString();
-}
-
 type FitRead = { readonly typeId: string; readonly outcome: OpenTimeFitOutcome } | null;
-type TypeList = readonly OpenTimeType[] | null | undefined;
 
 function noFitLine(time: string, next: { readonly time: string } | null) {
   return next === null
@@ -48,23 +42,13 @@ function noFitLine(time: string, next: { readonly time: string } | null) {
     : `Doesn't fit at ${time}. The next time that does is ${next.time}.`;
 }
 
-export function OpenTimeCard({
-  cell,
-  onDone,
-}: Readonly<{
-  cell: WeekOpenCell;
-  onDone: DoneHandler;
-}>) {
-  const titleId = useId();
-  const visitId = useId();
-  const [query, setQuery] = useState("");
-  const [patient, setPatient] = useState<WeekPatient | null>(null);
-  const command = useCommand(onDone);
-  const [typeList, setTypeList] = useState<TypeList>(undefined);
-  const [typeId, setTypeId] = useState(cell.type.id);
-  const [fitRead, setFitRead] = useState<FitRead>(null);
+/** The visit type the card books: the cell's own until another is picked,
+   then that type's fit at this start, read from the scheduling service. */
+function useVisitChoice(cell: Readonly<WeekOpenCell>) {
   const { providerId, locationId, date, startsAt } = cell;
-  const isDefault = typeId === cell.type.id;
+  const [typeList, setTypeList] = useState<readonly OpenTimeType[] | null | undefined>(undefined);
+  const [picked, setPicked] = useState<string | null>(null);
+  const [fitRead, setFitRead] = useState<FitRead>(null);
 
   useEffect(() => {
     let live = true;
@@ -83,7 +67,7 @@ export function OpenTimeCard({
   }, [providerId]);
 
   useEffect(() => {
-    if (isDefault) return undefined;
+    if (picked === null || picked === cell.type.id) return undefined;
     let live = true;
     startTransition(async () => {
       let outcome: OpenTimeFitOutcome;
@@ -93,36 +77,105 @@ export function OpenTimeCard({
           providerId,
           locationId,
           date,
-          appointmentTypeId: typeId,
+          appointmentTypeId: picked,
           startsAt,
         });
       } catch {
         outcome = { ok: false, code: "unavailable" };
       }
-      if (live) setFitRead({ typeId, outcome });
+      if (live) setFitRead({ typeId: picked, outcome });
     });
     return () => {
       live = false;
     };
-  }, [isDefault, providerId, locationId, date, typeId, startsAt]);
+  }, [picked, cell.type.id, providerId, locationId, date, startsAt]);
 
-  const options: readonly OpenTimeType[] = typeList ?? [
-    {
-      id: cell.type.id,
-      name: cell.type.name,
-      icon: "stethoscope",
-      durationMinutes: cell.type.durationMinutes,
-      version: cell.type.version,
-    },
-  ];
-  const type = options.find((each) => each.id === typeId) ?? options[0];
-  const fit = isDefault || fitRead?.typeId !== typeId ? null : fitRead.outcome;
-  const checking = !isDefault && fit === null;
-  const fitFailed = fit !== null && !fit.ok;
-  const noFit = fit?.ok === true && !fit.fits;
-  const canBook = !checking && !fitFailed && !noFit;
-  const expectedTypeVersion = fit?.ok === true ? fit.expectedTypeVersion : cell.type.version;
-  const endsAt = endFor(cell, type, fitRead);
+  const fallback: OpenTimeType = {
+    id: cell.type.id,
+    name: cell.type.name,
+    icon: "stethoscope",
+    durationMinutes: cell.type.durationMinutes,
+    version: cell.type.version,
+  };
+  const options = typeList ?? [fallback];
+  const type =
+    options.find((each) => each.id === picked) ??
+    options.find((each) => each.id === cell.type.id) ??
+    fallback;
+  const changed = type.id !== cell.type.id;
+  const fit = changed && fitRead?.typeId === type.id ? fitRead.outcome : null;
+  const fits = fit?.ok === true && fit.fits;
+  let endsAt = cell.endsAt;
+  if (changed) {
+    endsAt =
+      fits && fit.endsAt !== null
+        ? fit.endsAt
+        : new Date(Date.parse(startsAt) + type.durationMinutes * MINUTE_MS).toISOString();
+  }
+  return {
+    options,
+    type,
+    fit,
+    endsAt,
+    listFailed: typeList === null,
+    canBook: !changed || fits,
+    expectedTypeVersion: fit?.ok === true ? fit.expectedTypeVersion : cell.type.version,
+    choose: setPicked,
+  };
+}
+
+function VisitField({
+  choice,
+  time,
+}: Readonly<{ choice: Readonly<ReturnType<typeof useVisitChoice>>; time: string }>) {
+  const visitId = useId();
+  const { fit } = choice;
+  return (
+    <div className="wgi-week-card-face">
+      <FieldLabel htmlFor={visitId} className="wgi-week-card-label">
+        Visit
+      </FieldLabel>
+      <NativeSelect
+        id={visitId}
+        value={choice.type.id}
+        onChange={(event) => {
+          choice.choose(event.target.value);
+        }}
+      >
+        {choice.options.map((each) => (
+          <option key={each.id} value={each.id}>
+            {each.name} · {each.durationMinutes} min
+          </option>
+        ))}
+      </NativeSelect>
+      {choice.listFailed ? (
+        <p className="wgi-week-card-quiet">Other visit types couldn&apos;t be loaded.</p>
+      ) : null}
+      {fit?.ok === true && !fit.fits ? (
+        <p role="status" className="wgi-week-card-nofit">
+          {noFitLine(time, fit.next)}
+        </p>
+      ) : null}
+      {fit?.ok === false ? (
+        <CardError>That time couldn&apos;t be checked. Try again.</CardError>
+      ) : null}
+    </div>
+  );
+}
+
+export function OpenTimeCard({
+  cell,
+  onDone,
+}: Readonly<{
+  cell: WeekOpenCell;
+  onDone: DoneHandler;
+}>) {
+  const titleId = useId();
+  const [query, setQuery] = useState("");
+  const [patient, setPatient] = useState<WeekPatient | null>(null);
+  const command = useCommand(onDone);
+  const choice = useVisitChoice(cell);
+  const { type, endsAt, canBook, expectedTypeVersion } = choice;
 
   function book(chosen: Readonly<WeekPatient>) {
     command.run(
@@ -166,34 +219,7 @@ export function OpenTimeCard({
           {cell.locationName} · {type.name}
         </li>
       </ul>
-      <div className="wgi-week-card-face">
-        <FieldLabel htmlFor={visitId} className="wgi-week-card-label">
-          Visit
-        </FieldLabel>
-        <NativeSelect
-          id={visitId}
-          value={type.id}
-          onChange={(event) => {
-            command.clear();
-            setTypeId(event.target.value);
-          }}
-        >
-          {options.map((each) => (
-            <option key={each.id} value={each.id}>
-              {each.name} · {each.durationMinutes} min
-            </option>
-          ))}
-        </NativeSelect>
-        {typeList === null ? (
-          <p className="wgi-week-card-quiet">Other visit types couldn&apos;t be loaded.</p>
-        ) : null}
-        {fit?.ok === true && !fit.fits ? (
-          <p role="status" className="wgi-week-card-nofit">
-            {noFitLine(cell.time, fit.next)}
-          </p>
-        ) : null}
-        {fitFailed ? <CardError>That time couldn&apos;t be checked. Try again.</CardError> : null}
-      </div>
+      <VisitField choice={choice} time={cell.time} />
       {patient === null ? (
         <PatientSearch query={query} onQuery={setQuery} onPick={setPatient} />
       ) : (
