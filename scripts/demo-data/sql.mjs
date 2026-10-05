@@ -117,6 +117,7 @@ const TABLES = [
       ["weekday", I],
       ["open_minute", I],
       ["close_minute", I],
+      ["follows_office", BO],
       ["valid_from", D],
     ],
   ],

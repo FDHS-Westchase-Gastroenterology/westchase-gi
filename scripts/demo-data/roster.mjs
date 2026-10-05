@@ -69,7 +69,9 @@ export const isClosedDay = (date) =>
   holidays(Number(date.slice(0, 4))).some(([day]) => day === date);
 export const LUNCH = [720, 780];
 
-const minuteOf = (clock) => Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3));
+/** The portal's office day: both offices Monday to Friday 8:00–5:00, the owner's 2026-10-04
+    decision; the patient site still publishes Lutz 8:00–4:30. */
+export const PORTAL_OFFICE_DAY = [8 * 60, 17 * 60];
 const office = (id) => {
   const o = site.locations.find((l) => l.id === id);
   return {
@@ -80,11 +82,11 @@ const office = (id) => {
     region: o.region,
     postal: o.postal,
     maps_query: o.mapsQuery,
-    open: minuteOf(o.hours.opens),
-    close: minuteOf(o.hours.closes),
+    open: PORTAL_OFFICE_DAY[0],
+    close: PORTAL_OFFICE_DAY[1],
   };
 };
-/** Both offices open Monday to Friday at the hours the patient site publishes. */
+/** Both offices open Monday to Friday at the portal's office hours. */
 export const LOCATIONS = { tampa: office("tampa"), lutz: office("lutz") };
 export const OFFICE_DAYS = [1, 2, 3, 4, 5];
 
@@ -136,25 +138,35 @@ export const TYPES = {
 const T = "tampa";
 const L = "lutz";
 
-/** Weekly template by roster position: weekday → [location, open minute, close minute]. Every
-    window sits inside its office's hours. */
+/** Weekly template by roster position: weekday → office. Every provider works Monday to
+    Friday on their office's whole day; a weekday the template was off goes to the office it
+    works most, ties to Tampa. */
 const TEMPLATES = {
   physician: [
-    { 1: [T, 480, 990], 2: [L, 480, 960], 3: [T, 480, 990], 5: [T, 480, 960] },
-    { 1: [L, 510, 990], 3: [T, 510, 1020], 4: [T, 510, 1020], 5: [L, 510, 900] },
-    { 1: [T, 480, 990], 2: [T, 480, 990], 4: [L, 480, 960], 5: [T, 480, 720] },
+    { 1: T, 2: L, 3: T, 5: T },
+    { 1: L, 3: T, 4: T, 5: L },
+    { 1: T, 2: T, 4: L, 5: T },
   ],
   np: [
-    { 1: [T, 480, 1020], 2: [T, 480, 1020], 3: [T, 480, 1020], 4: [T, 480, 1020] },
-    {
-      1: [L, 480, 990],
-      2: [T, 540, 1020],
-      3: [L, 480, 990],
-      4: [T, 540, 1020],
-      5: [L, 480, 990],
-    },
+    { 1: T, 2: T, 3: T, 4: T },
+    { 1: L, 2: T, 3: L, 4: T, 5: L },
   ],
-  infusion: [{ 2: [T, 480, 960], 4: [T, 480, 960] }],
+  infusion: [{ 2: T, 4: T }],
+};
+
+/** A template's week: every weekday on office hours at the office it works that day, or at
+    the office it works most on the days it was off. */
+const fullWeek = (days) => {
+  const counts = Object.values(days).reduce((tally, loc) => {
+    tally[loc] = (tally[loc] ?? 0) + 1;
+    return tally;
+  }, {});
+  const most = [T, L].toSorted(
+    (a, b) => (counts[b] ?? 0) - (counts[a] ?? 0) || (a === T ? -1 : 1),
+  )[0];
+  return Object.fromEntries(
+    OFFICE_DAYS.map((weekday) => [weekday, [days[weekday] ?? most, ...PORTAL_OFFICE_DAY]]),
+  );
 };
 
 /** Builds the clinic for a roster: hours, NP pairing, and one physician's away days. */
@@ -166,7 +178,7 @@ export function clinic(roster) {
   const hours = {};
   for (const kind of ["physician", "np", "infusion"])
     byKind(kind).forEach((k, i) => {
-      hours[k] = TEMPLATES[kind][i % TEMPLATES[kind].length];
+      hours[k] = fullWeek(TEMPLATES[kind][i % TEMPLATES[kind].length]);
     });
   const npFor = Object.fromEntries(
     physicianKeys.map((k, i) => [k, i === 2 ? npKeys : [npKeys[i % npKeys.length]]]),

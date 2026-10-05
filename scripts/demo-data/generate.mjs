@@ -176,6 +176,7 @@ export function generateDemoData({ seed, now, staff: identities, profile = "full
         weekday: +wd,
         open_minute: open,
         close_minute: close,
+        follows_office: true,
         valid_from: "2026-01-05",
       })),
     ),
