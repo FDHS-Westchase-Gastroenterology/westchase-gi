@@ -1,7 +1,8 @@
 /* The demo clinic: real staff names from the practice roster, invented clinic hours.
-   Names and credentials come from src/lib/providers.ts, and office addresses and hours from
-   src/lib/site.ts, so demo data never drifts from the practice. Provider hours, the locations'
-   weekly rotation and the time-off week are invented. */
+   Names and credentials come from src/lib/providers.ts, office addresses from
+   src/lib/site.ts, and portal office hours from PORTAL_OFFICE_DAY below, so demo data
+   never drifts from the practice. Provider hours, the locations' weekly rotation and
+   the time-off week are invented. */
 import { infusionNurse, nursePractitioners, physicians } from "@/lib/providers";
 import { site } from "@/lib/site";
 
