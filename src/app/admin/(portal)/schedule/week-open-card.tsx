@@ -93,7 +93,6 @@ function useVisitChoice(cell: Readonly<WeekOpenCell>) {
   const fallback: OpenTimeType = {
     id: cell.type.id,
     name: cell.type.name,
-    icon: "stethoscope",
     durationMinutes: cell.type.durationMinutes,
     version: cell.type.version,
   };

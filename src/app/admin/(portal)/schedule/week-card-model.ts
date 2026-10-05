@@ -1,8 +1,4 @@
-import type {
-  AppointmentTypeIcon,
-  SchedulingFailureCode,
-  SchedulingInput,
-} from "@/lib/portal/scheduling/contracts";
+import type { SchedulingFailureCode, SchedulingInput } from "@/lib/portal/scheduling/contracts";
 
 import {
   addDays,
@@ -72,7 +68,6 @@ export interface WeekPatient {
 export interface OpenTimeType {
   readonly id: string;
   readonly name: string;
-  readonly icon: AppointmentTypeIcon;
   readonly durationMinutes: number;
   readonly version: number;
 }
