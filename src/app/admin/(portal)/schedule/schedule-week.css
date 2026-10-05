@@ -652,7 +652,8 @@
 
 @container (max-width: 4.5rem) {
   .wgi-week-open-word,
-  .wgi-week-open-book {
+  .wgi-week-open-book,
+  .wgi-week-open[data-popup-open] .wgi-week-open-book {
     display: none;
   }
 
@@ -1311,6 +1312,12 @@
     display: inline;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  @container (max-width: 4.5rem) {
+    .wgi-week-open:hover .wgi-week-open-book {
+      display: none;
+    }
   }
 
   .wgi-week-card-call:hover,
