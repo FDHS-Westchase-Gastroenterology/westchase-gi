@@ -2,6 +2,8 @@
 
 The WGI AWS project uses the new AWS experience, so the AWS Agent Toolkit starter ruleset below applies to AWS work in this repository. AWS says to remove it once advanced features are activated for the project; replace it then with the advanced ruleset, `rules/aws-agent-rules.md` in aws/agent-toolkit-for-aws.
 
+The saved help_level is LOW. Do not ask the help-level question; flag security risks and otherwise build on the decisions the task brief already records.
+
 <!-- BEGIN AWS Agent Toolkit rules -->
 # AWS Guidance for the new AWS experience
 
