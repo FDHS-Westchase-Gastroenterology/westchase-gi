@@ -249,6 +249,61 @@ promotion and scheduler activation require separate explicit authorization.
 [`CONTRIBUTING.md`](CONTRIBUTING.md#how-to-contribute-with-a-supabase-preview-branch) defines the
 setup record, verification workflow, and outstanding automation alignment.
 
+## Agent environment
+
+The development Mac is set up once, and every new session loads that setup by itself: the CLIs
+below, the MCP servers from `.mcp.json` and the user config, the AWS skills under
+`~/.claude/skills/`, and `.claude/rules/aws-starter-rules.md`. There is no per-session bootstrap.
+When a tool is missing or signed out, check it, recover with the steps here, and keep working.
+Jason is needed only for the browser sign-ins named below.
+
+### Tools and fallbacks
+
+- `aws`, `terraform`, `gh`, `psql` (PostgreSQL 17), `java` (OpenJDK 21), `uv`, `supabase` and
+  `vercel` are installed, and the `supabase` and `vercel` CLIs are signed in. Docker is not
+  installed; do not install it or anything that needs it.
+- Claude Code sessions receive `AWS_PROFILE=wgi` and `JAVA_HOME` from the user settings `env`.
+  Other harnesses pass `--profile wgi` to `aws`, and set
+  `JAVA_HOME="$(brew --prefix openjdk@21)/libexec/openjdk.jdk/Contents/Home"` when
+  `java -version` finds no runtime.
+
+| MCP server | Configured in | Use | When it is unavailable |
+| --- | --- | --- | --- |
+| `terraform` | `.mcp.json` | Terraform Registry provider and module docs | `terraform providers schema -json` and the Registry website |
+| `playwright` | `.mcp.json` | Headless Chrome at 1440×900. Give `filename` a path under `screenshots/playwright-mcp/`; a bare name lands in the repo root | `npx playwright` |
+| `aws-mcp` | user config | AWS APIs, documentation and skills as profile `wgi`. Prefer it to the claude.ai "AWS MCP" connector, which has its own sign-in | `aws … --profile wgi` |
+| `github` | user config | Issues, pull requests and checks | `gh` |
+| `supabase`, `vercel` | user config | Projects, branches, deployments and logs | the signed-in `supabase` and `vercel` CLIs |
+
+A server marked "Needs authentication" waits for Jason to sign in through `/mcp`. Use its
+fallback meanwhile and mention it once in the final report; it never stops the task.
+
+`.claude/settings.json` and `.claude/hooks/guard-destructive.sh` stop for approval before an
+agent destroys infrastructure, deletes cloud resources or data, or rewrites `main`. When they
+stop you, ask; do not route around them with another tool or a split command.
+
+### AWS access
+
+- AWS is one project in the new AWS experience: Free plan, Region us-east-2, AWS CLI profile
+  `wgi`, signed in with `aws login`. There are no IAM users and no access keys. The project is
+  non-production and has no BAA, so patient data never goes into it.
+- Start AWS work with `aws sts get-caller-identity --profile wgi`.
+- Credentials last 12 hours and refresh by themselves for 90 days. When a call fails for expired
+  or missing credentials, run `aws login --region us-east-2 --profile wgi` as a background
+  command. It opens an AWS sign-in page in Jason's browser: tell him one approval is waiting (by
+  push notification where the harness has one), and rerun the `sts` check once the command exits
+  0. Never ask for access keys, and never create IAM users or keys.
+- If `aws-mcp` still fails after a successful login, use the AWS CLI for the rest of the session.
+- Production does not exist yet. INIT-1's AWS Organization, its production and non-production
+  accounts, us-east-1 and the BAA wait on Jason upgrading this project to the Paid plan and
+  activating advanced features. Until then AWS Organizations, the Artifact BAAs, GuardDuty,
+  Security Hub and IAM Identity Center are unavailable, and other Regions are blocked apart from
+  the global-service exceptions in the rules file. Work that needs them waits; work that does not
+  continues.
+- Once advanced features are active, replace `.claude/rules/aws-starter-rules.md` with AWS's
+  advanced ruleset (`rules/aws-agent-rules.md` in aws/agent-toolkit-for-aws), add the new
+  profiles, and update this section.
+
 ## GitHub conventions
 
 ### Branch protection
