@@ -253,7 +253,7 @@ setup record, verification workflow, and outstanding automation alignment.
 
 The development Mac is set up once, and every new session loads that setup by itself: the CLIs
 below, the MCP servers from `.mcp.json` and the user config, the AWS skills under
-`~/.claude/skills/`, and `.claude/rules/aws-starter-rules.md`. There is no per-session bootstrap.
+`~/.claude/skills/`, and `.claude/rules/aws-agent-rules.md`. There is no per-session bootstrap.
 When a tool is missing or signed out, check it, recover with the steps here, and keep working.
 Jason is needed only for the browser sign-ins named below.
 
@@ -284,9 +284,10 @@ stop you, ask; do not route around them with another tool or a split command.
 
 ### AWS access
 
-- AWS is one project in the new AWS experience: Free plan, Region us-east-2, AWS CLI profile
-  `wgi`, signed in with `aws login`. There are no IAM users and no access keys. The project is
-  non-production and has no BAA, so patient data never goes into it.
+- AWS is an Organization in the new AWS experience with advanced features active. Jason's
+  management account owns it, and AWS added an Identity Delegated Admin account for IAM Identity
+  Center. Agents work in the `wgi` project, a non-production member account: Region us-east-2, AWS
+  CLI profile `wgi`, signed in with `aws login`. There are no IAM users and no access keys.
 - Start AWS work with `aws sts get-caller-identity --profile wgi`.
 - Credentials last 12 hours and refresh by themselves for 90 days. When a call fails for expired
   or missing credentials, run `aws login --region us-east-2 --profile wgi` as a background
@@ -294,15 +295,20 @@ stop you, ask; do not route around them with another tool or a split command.
   push notification where the harness has one), and rerun the `sts` check once the command exits
   0. Never ask for access keys, and never create IAM users or keys.
 - If `aws-mcp` still fails after a successful login, use the AWS CLI for the rest of the session.
-- Production does not exist yet. INIT-1's AWS Organization, its production and non-production
-  accounts, us-east-1 and the BAA wait on Jason upgrading this project to the Paid plan and
-  activating advanced features. Until then AWS Organizations, the Artifact BAAs, GuardDuty,
-  Security Hub and IAM Identity Center are unavailable, and other Regions are blocked apart from
-  the global-service exceptions in the rules file. Work that needs them waits; work that does not
-  continues.
-- Once advanced features are active, replace `.claude/rules/aws-starter-rules.md` with AWS's
-  advanced ruleset (`rules/aws-agent-rules.md` in aws/agent-toolkit-for-aws), add the new
-  profiles, and update this section.
+- Patient data goes only into an account that the Organization's BAA covers and that is
+  designated as a HIPAA account. Only the management account can accept the BAA; check for it
+  with `aws artifact list-customer-agreements --region us-east-1 --profile wgi`, which lists it
+  once it is active.
+- The Organization's Region policy limits us-east-1 to global services and us-west-2 to Bedrock,
+  and denies every Region but those and us-east-2. INIT-1's us-east-1 workloads wait on Jason
+  editing its `UsEast1Partitional` statement; while it stands,
+  `aws ec2 describe-availability-zones --region us-east-1 --profile wgi` fails with an explicit
+  service control policy deny.
+- Production does not exist yet. Creating accounts, editing service control policies, securing
+  root users and accepting agreements are Jason's steps in AWS Settings or the management
+  account. When work needs one, tell him exactly what it needs and continue with the work that
+  does not depend on it. When a new account exists, add its CLI profile to `~/.aws/config` and
+  to this section.
 
 ## GitHub conventions
 
