@@ -295,15 +295,14 @@ stop you, ask; do not route around them with another tool or a split command.
   push notification where the harness has one), and rerun the `sts` check once the command exits
   0. Never ask for access keys, and never create IAM users or keys.
 - If `aws-mcp` still fails after a successful login, use the AWS CLI for the rest of the session.
-- Patient data goes only into an account that the Organization's BAA covers and that is
-  designated as a HIPAA account. Only the management account can accept the BAA; check for it
-  with `aws artifact list-customer-agreements --region us-east-1 --profile wgi`, which lists it
-  once it is active.
-- The Organization's Region policy limits us-east-1 to global services and us-west-2 to Bedrock,
-  and denies every Region but those and us-east-2. INIT-1's us-east-1 workloads wait on Jason
-  editing its `UsEast1Partitional` statement; while it stands,
-  `aws ec2 describe-availability-zones --region us-east-1 --profile wgi` fails with an explicit
-  service control policy deny.
+- The Organization's BAA is active. It covers the management account and every current and
+  future member account, and accepting it designated them all as HIPAA accounts.
+  `aws artifact list-customer-agreements --region us-east-1 --profile wgi` lists it as `ACTIVE`.
+  Patient data needs HIPAA-eligible services and encryption in transit and at rest, and it stays
+  out of non-production: the `wgi` project never holds it.
+- The Organization's Region policy allows us-east-1 and us-east-2, limits us-west-2 to Bedrock,
+  and denies every other Region. The us-east-1 check is
+  `aws ec2 describe-availability-zones --region us-east-1 --profile wgi`, which lists its zones.
 - Production does not exist yet. Creating accounts, editing service control policies, securing
   root users and accepting agreements are Jason's steps in AWS Settings or the management
   account. When work needs one, tell him exactly what it needs and continue with the work that
