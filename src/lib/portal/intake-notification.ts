@@ -1,4 +1,4 @@
-import type { PortalEmailOutcome, SendPortalEmail } from "@/lib/portal/email";
+import type { DeliveryOutcome, PortalEmailOutcome, SendPortalEmail } from "@/lib/portal/email";
 
 export type NotificationRecipient = Readonly<{
   id: string;
@@ -10,7 +10,7 @@ export interface NotificationEvent {
   readonly type: "notification";
   readonly recipient: string;
   readonly provider_message_id: string | null;
-  readonly status: "accepted" | "failed";
+  readonly status: DeliveryOutcome;
   readonly meta:
     | { readonly provider: string }
     | {
@@ -20,7 +20,19 @@ export interface NotificationEvent {
       };
 }
 
-const SUBJECT = "New appointment request — Westchase GI portal";
+/** The new-request email. Settings › Notifications previews these and its test send uses them,
+    so what staff see there is what a real request sends. */
+export const NOTIFICATION_SUBJECT = "New appointment request — Westchase GI portal";
+
+/** A test send says so in its subject, so nobody mistakes it for a patient's request. */
+export const TEST_NOTIFICATION_SUBJECT = `[Test] ${NOTIFICATION_SUBJECT}`;
+
+export const NOTIFICATION_INTRO =
+  "A new appointment request is waiting in the Westchase GI portal.";
+
+export function notificationText(portalUrl: string): string {
+  return `${NOTIFICATION_INTRO}\n\nOpen the portal: ${portalUrl}`;
+}
 
 function eventFromOutcome(
   requestId: string,
@@ -61,7 +73,7 @@ export async function createAppointmentNotificationEvents(
     );
   }
 
-  const text = `A new appointment request is waiting in the Westchase GI portal.\n\nOpen the portal: ${portalUrl}`;
+  const text = notificationText(portalUrl);
 
   return Promise.all(
     recipients.map(async (recipient) =>
@@ -71,11 +83,32 @@ export async function createAppointmentNotificationEvents(
         await sendEmail({
           purpose: "appointment_notification",
           to: recipient.email,
-          subject: SUBJECT,
+          subject: NOTIFICATION_SUBJECT,
           text,
           idempotencyKey: `appointment-notification/${requestId}/${recipient.id}`,
         }),
       ),
+    ),
+  );
+}
+
+/** The same message to every address that is on, marked as a test. It carries no request. */
+export async function sendTestNotifications(
+  sendEmail: SendPortalEmail,
+  sendId: string,
+  recipients: readonly NotificationRecipient[],
+  portalUrl: string,
+): Promise<PortalEmailOutcome[]> {
+  const text = notificationText(portalUrl);
+  return Promise.all(
+    recipients.map(async (recipient) =>
+      sendEmail({
+        purpose: "appointment_notification_test",
+        to: recipient.email,
+        subject: TEST_NOTIFICATION_SUBJECT,
+        text,
+        idempotencyKey: `appointment-notification-test/${sendId}/${recipient.id}`,
+      }),
     ),
   );
 }

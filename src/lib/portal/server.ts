@@ -95,3 +95,5 @@ export function serviceClient() {
     },
   });
 }
+
+export type ServiceClient = ReturnType<typeof serviceClient>;

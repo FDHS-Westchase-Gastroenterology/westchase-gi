@@ -1,29 +1,37 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useEffect } from "react";
 
+import {
+  PortalFeedbackMessage,
+  PortalFeedbackProvider,
+} from "@/app/admin/(portal)/portal-feedback";
 import type { ReviewFlyer, ReviewTargetKey } from "@/lib/review-flyers";
 
-const DOWNLOAD_ACTIONS = [
-  ["pdf", "Flyer PDF"],
-  ["svg", "SVG"],
-  ["png", "PNG"],
-] as const;
+import { FlyerCard } from "./flyer-card";
+import { assetUrl, flyerCodeFile } from "./flyer-files";
+import type { FlyerFiles } from "./flyer-files";
+import { FEEDBACK_SOURCE } from "./flyer-output";
+import { clearPrintMarks } from "./print-marks";
+import { PrintSeveralMenu } from "./print-several-menu";
 
-function assetUrl(filename: string, download = false): string {
-  const path = `/admin/review-flyers/assets/${encodeURIComponent(filename)}`;
-  return download ? `${path}?download=1` : path;
-}
+import "./review-flyers.css";
 
-function printFlyer(key: ReviewTargetKey | "all") {
-  document.body.dataset.reviewFlyerPrint = key;
-  window.print();
-}
+/* Review flyers (issue #357; Figma Ypf9ohpRcGWF5C9T9bSvWW, section 14,
+   516:9469): the six bilingual flyers as cards in a grid, each with a
+   real preview of its code, Print, and a Download menu; the header prints
+   several together. Below the screen sits the print composition itself,
+   one letter page per flyer, which the print rules in globals.css show
+   for whatever was marked. Pressing the browser's own Print with nothing
+   marked prints the whole-practice flyer, as it always has. */
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
-function Flyer({ flyer }: Readonly<{ flyer: ReviewFlyer }>) {
+/** Which files the server holds, per flyer; a flyer it does not list has none. */
+export type ReviewFlyerFiles = Readonly<Partial<Record<ReviewTargetKey, FlyerFiles>>>;
+
+const NO_FILES: FlyerFiles = { pdf: false, svg: false, png: false };
+
+function Flyer({ flyer, code }: Readonly<{ flyer: ReviewFlyer; code: string }>) {
   const providerLine =
     flyer.credentials !== null && flyer.credentials !== ""
       ? `${flyer.title}, ${flyer.credentials}`
@@ -53,13 +61,7 @@ function Flyer({ flyer }: Readonly<{ flyer: ReviewFlyer }>) {
       </div>
       <div className="review-flyer-qr-card">
         {/* Keep the protected asset request in the authenticated browser. */}
-        <Image
-          src={assetUrl(flyer.assets.svg.filename)}
-          alt=""
-          width={512}
-          height={512}
-          unoptimized
-        />
+        <Image src={assetUrl(code)} alt="" width={512} height={512} unoptimized />
       </div>
       <p className="review-flyer-scan">
         {flyer.scanEn}
@@ -89,8 +91,10 @@ function Flyer({ flyer }: Readonly<{ flyer: ReviewFlyer }>) {
   );
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
-export function ReviewFlyerPrinter({ flyers }: Readonly<{ flyers: ReviewFlyer[] }>) {
+function ReviewFlyerPrinterBody({
+  flyers,
+  files,
+}: Readonly<{ flyers: readonly ReviewFlyer[]; files: ReviewFlyerFiles }>) {
   useEffect(() => {
     const beforePrint = () => {
       const currentPrint = document.body.dataset.reviewFlyerPrint;
@@ -98,127 +102,59 @@ export function ReviewFlyerPrinter({ flyers }: Readonly<{ flyers: ReviewFlyer[] 
         document.body.dataset.reviewFlyerPrint = "practice";
       }
     };
-    const afterPrint = () => {
-      delete document.body.dataset.reviewFlyerPrint;
-    };
     window.addEventListener("beforeprint", beforePrint);
-    window.addEventListener("afterprint", afterPrint);
+    window.addEventListener("afterprint", clearPrintMarks);
     return () => {
       window.removeEventListener("beforeprint", beforePrint);
-      window.removeEventListener("afterprint", afterPrint);
-      delete document.body.dataset.reviewFlyerPrint;
+      window.removeEventListener("afterprint", clearPrintMarks);
+      clearPrintMarks();
     };
   }, []);
 
+  const printable = flyers.flatMap((flyer) => {
+    const code = flyerCodeFile(flyer, files[flyer.key] ?? NO_FILES);
+    return code === null ? [] : [{ flyer, code }];
+  });
+
   return (
     <>
-      <div className="review-flyer-screen">
-        <nav aria-label="Breadcrumb" className="flex items-center text-[0.9rem]">
-          <Link
-            href="/admin"
-            className="inline-flex min-h-11 min-w-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-          >
-            Home
-          </Link>
-          <span aria-hidden="true" className="mx-2 text-[var(--color-muted)]">
-            /
-          </span>
-          <span className="text-[var(--color-muted)]">Print review flyers</span>
-        </nav>
-        <div className="mt-4 flex flex-wrap items-end justify-between gap-5">
-          <div className="max-w-[46rem]">
-            <h1 className="portal-title">Print review flyers</h1>
-            <p className="mt-2 max-w-[62ch] text-[0.95rem] text-[var(--color-muted)]">
-              Choose one ready-to-print bilingual flyer, or print the full set. The PDF option is
-              best for a print shop or when another device needs a guaranteed one-page file.
+      <div className="review-flyer-screen wgi-flyers" data-testid="review-flyers">
+        <header className="wgi-flyers-head">
+          <div className="wgi-flyers-heading">
+            <h1 className="wgi-flyers-title">Review flyers</h1>
+            <p className="wgi-flyers-lede">
+              Hang these where patients check out. Each code opens a review page on the
+              patient&rsquo;s phone, in English or Spanish.
             </p>
           </div>
-          <button
-            type="button"
-            className="btn btn-navy shrink-0"
-            onClick={() => {
-              printFlyer("all");
-            }}
-          >
-            Print all six flyers
-          </button>
-        </div>
+          <PrintSeveralMenu flyers={printable.map(({ flyer }) => flyer)} />
+        </header>
 
-        <p className="mt-6 inline-flex items-center gap-2 rounded-full bg-[var(--color-mint)] px-3.5 py-2 text-[0.88rem] font-bold text-[var(--color-navy)]">
-          <span aria-hidden="true">✓</span>
-          All six codes and one-page PDFs are machine-verified.
-        </p>
+        <PortalFeedbackMessage source={FEEDBACK_SOURCE} testId="review-flyer-output-feedback" />
 
-        <section className="mt-8" aria-label="Available review flyers">
-          <div className="grid gap-4">
-            {flyers.map((flyer) => (
-              <article
-                key={flyer.key}
-                className="card-lined grid min-w-0 gap-5 p-5 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:p-6"
-                data-review-target={flyer.key}
-              >
-                <Image
-                  className="aspect-square w-[8.5rem] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white"
-                  src={assetUrl(flyer.assets.svg.filename)}
-                  alt={`QR code for ${flyer.title}`}
-                  width={512}
-                  height={512}
-                  unoptimized
-                />
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <h2 className="h3">{flyer.title}</h2>
-                    <span className="rounded-full bg-[var(--color-mint)] px-2.5 py-1 text-[0.75rem] font-bold text-[var(--color-navy)]">
-                      Verified
-                    </span>
-                  </div>
-                  {flyer.credentials !== null && flyer.credentials !== "" ? (
-                    <p className="mt-1 font-bold text-[var(--color-ink)]">{flyer.credentials}</p>
-                  ) : null}
-                  <p className="mt-2 max-w-[56ch] text-[0.95rem] text-[var(--color-muted)]">
-                    {flyer.description}
-                  </p>
-                  <div className="mt-4 flex flex-wrap items-center gap-2.5">
-                    <button
-                      type="button"
-                      className="btn btn-amber btn-sm min-h-11"
-                      onClick={() => {
-                        printFlyer(flyer.key);
-                      }}
-                    >
-                      Print flyer
-                    </button>
-                    {DOWNLOAD_ACTIONS.map(([kind, label]) => (
-                      <a
-                        key={kind}
-                        className="btn btn-outline btn-sm min-h-11"
-                        href={assetUrl(flyer.assets[kind].filename, true)}
-                        download={flyer.assets[kind].filename}
-                      >
-                        {label}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
+        <section className="wgi-flyers-grid" aria-label="Review flyers">
+          {flyers.map((flyer) => (
+            <FlyerCard key={flyer.key} flyer={flyer} files={files[flyer.key] ?? NO_FILES} />
+          ))}
         </section>
-
-        <aside className="mt-8 max-w-[68ch] border-t border-[var(--color-line)] pt-6 text-[0.9rem] text-[var(--color-muted)]">
-          <p>
-            <strong className="text-[var(--color-ink)]">Printing tip:</strong> use bright-white
-            cardstock and color ink. Keep the white area around each QR code clear so phone cameras
-            can scan it reliably.
-          </p>
-        </aside>
       </div>
 
       <div className="review-flyer-print-root">
-        {flyers.map((flyer) => (
-          <Flyer key={flyer.key} flyer={flyer} />
+        {printable.map(({ flyer, code }) => (
+          <Flyer key={flyer.key} flyer={flyer} code={code} />
         ))}
       </div>
     </>
+  );
+}
+
+export function ReviewFlyerPrinter({
+  flyers,
+  files,
+}: Readonly<{ flyers: readonly ReviewFlyer[]; files: ReviewFlyerFiles }>) {
+  return (
+    <PortalFeedbackProvider>
+      <ReviewFlyerPrinterBody flyers={flyers} files={files} />
+    </PortalFeedbackProvider>
   );
 }

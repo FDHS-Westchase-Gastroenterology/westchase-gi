@@ -1,0 +1,2 @@
+alter table public.request_transitions
+  drop constraint request_transitions_semantic_command_valid;

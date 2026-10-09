@@ -16,6 +16,7 @@ import {
   inviteStaffMutation,
   removeNotificationRecipientMutation,
   resendStaffInviteMutation,
+  sendTestNotificationMutation,
   toggleNotificationRecipientMutation,
 } from "@/lib/portal/management";
 import type { ManagementFailure } from "@/lib/portal/management";
@@ -33,6 +34,7 @@ const FAILURE_STATUSES = {
   invalid: 400,
   not_found: 404,
   conflict: 409,
+  none_on: 409,
   forbidden: 403,
   limit: 429,
   unconfirmed: 503,
@@ -98,6 +100,9 @@ export async function POST(request: NextRequest): Promise<Response> {
       case "recipient.toggle":
         result = await toggleNotificationRecipientMutation(input);
         break;
+      case "recipient.test":
+        result = await sendTestNotificationMutation(input);
+        break;
       case "recipient.remove":
         result = await removeNotificationRecipientMutation(input);
         break;
@@ -128,7 +133,8 @@ export async function POST(request: NextRequest): Promise<Response> {
         return json({ ok: false, error: "Unknown operation" }, 400);
     }
 
-    return json(result, result.ok ? successStatus : failureStatus(result));
+    // A failure is spread into a plain object: an interface carries no index signature for Json.
+    return result.ok ? json(result, successStatus) : json({ ...result }, failureStatus(result));
   } catch (error) {
     const status = error instanceof PortalAuthorizationError ? error.status : null;
     if (status !== null) {

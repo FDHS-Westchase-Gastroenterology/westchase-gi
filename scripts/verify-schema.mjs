@@ -1,9 +1,7 @@
-import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
-
 import { z } from "zod";
 
 import { asJsonObject, asJsonString, jsonSchema } from "../src/lib/json.ts";
+import { queryBranchDatabase } from "./branch-database.mjs";
 
 function providerErrorObject(payload) {
   const parsed = jsonSchema.safeParse(payload);
@@ -32,16 +30,54 @@ const staffProfileRowSchema = z.object({
   role: z.string(),
   active: z.boolean(),
   onboarded_at: z.string(),
-  portal_tour_dismissed_at: z.string(),
 });
+const staffTourRowSchema = z.object({ tour: z.string(), status: z.string() });
+const uuidSchema = z.uuid();
+
+try {
+  process.loadEnvFile(".env.local");
+} catch (error) {
+  if (error?.code !== "ENOENT") {
+    throw error;
+  }
+}
 
 const TABLES = [
+  "appointment_type_providers",
+  "appointment_types",
+  "appointments",
   "audit_log",
+  "clinical_command_receipts",
+  "clinical_signers",
+  "location_closures",
+  "location_hours",
+  "notification_outbox",
   "notification_recipients",
+  "patient_billing_accounts",
+  "patient_billing_entries",
+  "patient_billing_receipts",
+  "patient_clinical_records",
+  "patient_clinical_revisions",
+  "patient_command_receipts",
+  "patient_request_links",
+  "patient_revisions",
+  "patients",
   "portal_release_states",
+  "provider_hours",
+  "provider_time_exceptions",
+  "request_command_receipts",
   "request_events",
+  "request_transitions",
   "requests",
+  "scheduling_changes",
+  "scheduling_command_receipts",
+  "scheduling_locations",
+  "scheduling_practice",
+  "scheduling_providers",
   "staff_profiles",
+  "staff_request_receipts",
+  "staff_schedule_preferences",
+  "staff_tours",
 ];
 
 const RETIRED_TABLES = [["registry", "assets"].join("_"), ["registry", "grants"].join("_")];
@@ -59,12 +95,88 @@ const RPC_SIGNATURES = {
     "p_event text, p_route_template text, p_locale text, p_device_class text",
   portal_close_request: "p_actor_email text, p_request_id uuid, p_disposition text",
   portal_complete_staff_onboarding: "p_user_id uuid",
+  portal_create_staff_request: "p_actor_email text, p_idempotency_key uuid, p_request jsonb",
+  portal_create_request_with_outbox: "p_request jsonb",
   portal_delete_request_early: "p_actor_email text, p_request_id uuid, p_authorization_ref text",
+  portal_execute_request_command:
+    "p_actor_email text, p_request_id uuid, p_expected_version bigint, p_idempotency_key uuid, p_fingerprint text, p_decision jsonb, p_note text, p_transition_id uuid",
+  portal_apply_request_command:
+    "p_actor_email text, p_request_id uuid, p_expected_version bigint, p_idempotency_key uuid, p_fingerprint text, p_decision jsonb, p_note text, p_transition_id uuid",
+  portal_check_request_appointment: "",
+  portal_execute_patient_command:
+    "p_actor_id uuid, p_idempotency_key uuid, p_fingerprint text, p_command jsonb",
+  portal_execute_billing_command:
+    "p_actor_id uuid, p_idempotency_key uuid, p_fingerprint text, p_command jsonb",
+  portal_read_patient_billing: "p_actor_id uuid, p_patient_id uuid, p_before_version bigint",
+  portal_execute_clinical_command:
+    "p_actor_id uuid, p_idempotency_key uuid, p_fingerprint text, p_command jsonb",
+  portal_preserve_clinical_record: "",
+  portal_read_clinical_record: "p_actor_id uuid, p_record_id uuid, p_before_version bigint",
+  portal_list_patient_clinical_records:
+    "p_actor_id uuid, p_patient_id uuid, p_query text, p_status text, p_record_kind text, p_limit integer, p_after_created_at timestamp with time zone, p_after_id uuid",
+  portal_list_clinical_signers: "p_actor_id uuid, p_after_user_id uuid, p_limit integer",
+  portal_read_request_worklist: "p_actor_id uuid, p_filter jsonb",
+  portal_request_worklist_rows:
+    "p_query text, p_location text, p_received_from timestamp with time zone, p_received_to timestamp with time zone, p_now timestamp with time zone",
+  portal_search_patients:
+    "p_actor_id uuid, p_query text, p_archived boolean, p_limit integer, p_after_name text, p_after_id uuid",
+  portal_read_patient:
+    "p_actor_id uuid, p_patient_id uuid, p_history_before bigint, p_links_after uuid",
+  portal_find_people: "p_actor_id uuid, p_query text, p_limit integer",
+  portal_name_key: "p_name text",
+  portal_read_activity:
+    "p_actor_id uuid, p_categories text[], p_appointment_actions text[], p_provider_id uuid, p_from date, p_to date, p_query text, p_before_at timestamp with time zone, p_before_id uuid, p_limit integer",
+  portal_activity_rows:
+    "p_viewer_email text, p_admin boolean, p_categories text[], p_appointment_actions text[], p_provider_id uuid, p_from timestamp with time zone, p_until timestamp with time zone, p_hits jsonb, p_full integer, p_before_at timestamp with time zone, p_before_id uuid, p_limit integer",
+  portal_preserve_appointment_patient: "",
+  portal_schedule_allows:
+    "p_location_id uuid, p_start timestamp with time zone, p_end timestamp with time zone, p_hours jsonb, p_exceptions jsonb",
+  portal_provider_schedule: "p_provider_id uuid",
+  portal_save_scheduling_config:
+    "p_actor_id uuid, p_idempotency_key uuid, p_fingerprint text, p_command jsonb",
+  portal_execute_appointment_command:
+    "p_actor_id uuid, p_idempotency_key uuid, p_fingerprint text, p_command jsonb",
+  portal_scheduling_catalog:
+    "p_actor_id uuid, p_entity text, p_query text, p_active boolean, p_limit integer, p_after_name text, p_after_id uuid",
+  portal_read_scheduling_config:
+    "p_actor_id uuid, p_entity text, p_id uuid, p_history_before bigint",
+  portal_list_appointments:
+    "p_actor_id uuid, p_from timestamp with time zone, p_to timestamp with time zone, p_patient_id uuid, p_provider_id uuid, p_location_id uuid, p_statuses text[], p_limit integer, p_after_start timestamp with time zone, p_after_id uuid",
+  portal_read_appointment: "p_actor_id uuid, p_id uuid, p_history_before bigint",
+  portal_available_appointment_slots:
+    "p_actor_id uuid, p_provider_id uuid, p_location_id uuid, p_date date, p_appointment_type_id uuid, p_patient_id uuid, p_appointment_id uuid, p_interval_minutes integer",
+  portal_can_place_appointment:
+    "p_actor_id uuid, p_appointment_id uuid, p_provider_id uuid, p_location_id uuid, p_starts_at timestamp with time zone",
+  portal_schedule_month_summary:
+    "p_actor_id uuid, p_month date, p_location_id uuid, p_appointment_type_id uuid",
+  portal_schedule_month_availability:
+    "p_actor_id uuid, p_month date, p_appointment_type_id uuid, p_request_location text, p_patient_id uuid",
+  portal_schedule_working: "p_first date, p_last date, p_provider_ids uuid[], p_location_id uuid",
+  portal_schedule_greedy_opens:
+    "p_first date, p_last date, p_provider_ids uuid[], p_location_id uuid, p_type_id uuid",
+  portal_schedule_week:
+    "p_actor_id uuid, p_week_start date, p_provider_ids uuid[], p_location_id uuid, p_appointment_type_id uuid",
+  portal_schedule_day: "p_actor_id uuid, p_date date, p_appointment_type_id uuid",
+  portal_schedule_week_provider: "p_actor_id uuid",
+  portal_remember_week_provider: "p_actor_id uuid, p_provider_id uuid",
+  portal_save_scheduling_settings:
+    "p_actor_id uuid, p_idempotency_key uuid, p_fingerprint text, p_command jsonb",
+  portal_scheduling_settings: "p_actor_id uuid",
+  portal_booking_interval: "",
+  portal_set_booking_interval:
+    "p_actor_id uuid, p_idempotency_key uuid, p_fingerprint text, p_command jsonb",
+  portal_office_hours_allow:
+    "p_location_id uuid, p_weekday integer, p_open_minute integer, p_close_minute integer",
+  portal_settings_hours_valid: "p_hours jsonb, p_keys text[]",
+  portal_scheduling_settings_record: "p_entity text, p_id uuid",
+  portal_default_type_providers_for_provider: "",
+  portal_default_type_providers_for_type: "",
   portal_log_call_outcome:
     "p_actor_email text, p_request_id uuid, p_outcome text, p_note text, p_follow_up_at timestamp with time zone",
   portal_undo_call_outcome: "p_actor_email text, p_request_id uuid, p_event_id uuid",
   portal_hide_staff_release: "p_user_id uuid, p_release_id text",
   portal_open_staff_release: "p_user_id uuid, p_release_id text",
+  portal_prepare_new_request_print_packet: "p_actor_email text",
   portal_preview_data_lifecycle: "p_now timestamp with time zone",
   portal_record_staff_password_reset: "p_user_id uuid",
   portal_record_staff_release_dismiss: "p_user_id uuid, p_release_id text",
@@ -73,7 +185,7 @@ const RPC_SIGNATURES = {
   portal_run_data_lifecycle: "p_actor_email text, p_now timestamp with time zone",
   portal_set_request_legal_hold:
     "p_actor_email text, p_request_id uuid, p_held boolean, p_reason text",
-  portal_set_staff_tour_dismissed: "p_user_id uuid, p_dismissed boolean",
+  portal_set_staff_tour: "p_user_id uuid, p_tour text, p_status text",
   portal_toggle_notification_recipient: "p_actor_email text, p_recipient_id uuid, p_active boolean",
   portal_update_recipient_label: "p_actor_email text, p_recipient_id uuid, p_label text",
   portal_update_request_status: "p_actor_email text, p_request_id uuid, p_next_status text",
@@ -103,6 +215,8 @@ const RETIRED_RPC_SIGNATURES = [
     name: ["portal", "deactivate", "registry", "grant"].join("_"),
     signature: "p_actor_email text, p_grant_id uuid",
   },
+  // The single portal tour's dismissal, replaced by staff_tours and portal_set_staff_tour.
+  { name: "portal_set_staff_tour_dismissed", signature: "p_user_id uuid, p_dismissed boolean" },
 ];
 
 const RPCS = Object.keys(RPC_SIGNATURES).sort();
@@ -114,11 +228,65 @@ const RPC_RESULTS = {
   portal_record_analytics_event: "boolean",
   portal_close_request: "boolean",
   portal_complete_staff_onboarding: "boolean",
+  portal_create_staff_request: "uuid",
+  portal_create_request_with_outbox: "uuid",
   portal_delete_request_early: "boolean",
+  portal_execute_request_command: "jsonb",
+  portal_apply_request_command: "jsonb",
+  portal_check_request_appointment: "trigger",
+  portal_execute_patient_command: "jsonb",
+  portal_execute_billing_command: "jsonb",
+  portal_read_patient_billing: "jsonb",
+  portal_execute_clinical_command: "jsonb",
+  portal_preserve_clinical_record: "trigger",
+  portal_read_clinical_record: "jsonb",
+  portal_list_patient_clinical_records: "jsonb",
+  portal_list_clinical_signers: "jsonb",
+  portal_read_request_worklist: "jsonb",
+  portal_request_worklist_rows:
+    "TABLE(id uuid, name text, phone text, location text, preferred_time text, locale text, status text, created_at timestamp with time zone, follow_up_at timestamp with time zone, legacy_review_required boolean, version bigint, last_activity_at timestamp with time zone, last_activity_by text, bucket text, bucket_order integer, ascending_time timestamp with time zone, descending_time timestamp with time zone, patient_id uuid)",
+  portal_search_patients: "jsonb",
+  portal_read_patient: "jsonb",
+  portal_find_people: "jsonb",
+  portal_name_key: "text",
+  portal_read_activity: "jsonb",
+  portal_activity_rows:
+    "TABLE(source text, id uuid, occurred_at timestamp with time zone, category text, appointment_action text, actor_email text, action text, patient_id uuid, request_id uuid, provider_id uuid, prior_provider_id uuid, location_id uuid, appointment_type_id uuid, subject_staff_id uuid, recipient_id uuid)",
+  portal_preserve_appointment_patient: "trigger",
+  portal_schedule_allows: "boolean",
+  portal_provider_schedule: "jsonb",
+  portal_save_scheduling_config: "jsonb",
+  portal_execute_appointment_command: "jsonb",
+  portal_scheduling_catalog: "jsonb",
+  portal_read_scheduling_config: "jsonb",
+  portal_list_appointments: "jsonb",
+  portal_read_appointment: "jsonb",
+  portal_available_appointment_slots: "jsonb",
+  portal_can_place_appointment: "jsonb",
+  portal_schedule_month_summary: "jsonb",
+  portal_schedule_month_availability: "jsonb",
+  portal_schedule_working:
+    "TABLE(provider_id uuid, location_id uuid, day date, working tstzmultirange)",
+  portal_schedule_greedy_opens:
+    "TABLE(provider_id uuid, location_id uuid, day date, starts_at timestamp with time zone, ends_at timestamp with time zone, appointment_type_id uuid)",
+  portal_schedule_week: "jsonb",
+  portal_schedule_day: "jsonb",
+  portal_schedule_week_provider: "jsonb",
+  portal_remember_week_provider: "jsonb",
+  portal_save_scheduling_settings: "jsonb",
+  portal_scheduling_settings: "jsonb",
+  portal_booking_interval: "integer",
+  portal_set_booking_interval: "jsonb",
+  portal_office_hours_allow: "boolean",
+  portal_settings_hours_valid: "boolean",
+  portal_scheduling_settings_record: "jsonb",
+  portal_default_type_providers_for_provider: "trigger",
+  portal_default_type_providers_for_type: "trigger",
   portal_log_call_outcome: "uuid",
   portal_undo_call_outcome: "jsonb",
   portal_hide_staff_release: "boolean",
   portal_open_staff_release: "boolean",
+  portal_prepare_new_request_print_packet: "jsonb",
   portal_preview_data_lifecycle: "jsonb",
   portal_record_staff_password_reset: "boolean",
   portal_record_staff_release_dismiss: "boolean",
@@ -126,7 +294,7 @@ const RPC_RESULTS = {
   portal_remove_notification_recipient: "boolean",
   portal_run_data_lifecycle: "jsonb",
   portal_set_request_legal_hold: "boolean",
-  portal_set_staff_tour_dismissed: "boolean",
+  portal_set_staff_tour: "boolean",
   portal_toggle_notification_recipient: "boolean",
   portal_update_recipient_label: "boolean",
   portal_update_request_status: "boolean",
@@ -137,18 +305,28 @@ const AUDIT_RPC_SOURCES = {
   portal_add_request_note: "staff",
   portal_close_request: "staff",
   portal_complete_staff_onboarding: "staff",
+  portal_create_staff_request: "staff",
   portal_delete_request_early: "staff",
+  portal_apply_request_command: "staff",
+  portal_execute_patient_command: "staff",
+  portal_execute_billing_command: "staff",
+  portal_execute_clinical_command: "staff",
+  portal_save_scheduling_config: "staff",
+  portal_save_scheduling_settings: "staff",
+  portal_set_booking_interval: "staff",
+  portal_execute_appointment_command: "staff",
   portal_log_call_outcome: "staff",
   portal_undo_call_outcome: "staff",
   portal_hide_staff_release: "staff",
   portal_open_staff_release: "staff",
+  portal_prepare_new_request_print_packet: "staff",
   portal_record_staff_password_reset: "staff",
   portal_record_staff_release_dismiss: "staff",
   portal_record_staff_release_guide_open: "staff",
   portal_remove_notification_recipient: "staff",
   portal_run_data_lifecycle: "system",
   portal_set_request_legal_hold: "staff",
-  portal_set_staff_tour_dismissed: "staff",
+  portal_set_staff_tour: "staff",
   portal_toggle_notification_recipient: "staff",
   portal_update_recipient_label: "staff",
   portal_update_request_status: "staff",
@@ -217,8 +395,36 @@ const RECIPIENT_MUTATIONS_MIGRATION = {
   version: "20260802005123",
   name: "atomic_notification_recipient_mutations",
 };
+const APPOINTMENT_WORKFLOW_AUTHORITY_MIGRATION = {
+  version: "20260806120000",
+  name: "appointment_workflow_authority",
+};
+const NEW_REQUEST_PRINT_PACKET_MIGRATION = {
+  version: "20260809214522",
+  name: "prepare_new_request_print_packet",
+};
+const PRINT_PACKET_COALESCE_REPAIR_MIGRATION = {
+  version: "20260809221925",
+  name: "repair_print_packet_coalesce",
+};
+const PRINT_PACKET_RETURN_STATEMENT_FIX_MIGRATION = {
+  version: "20260809222335",
+  name: "fix_print_packet_return_statement",
+};
+const STAFF_REQUEST_CREATION_MIGRATION = {
+  version: "20260817153511",
+  name: "create_staff_authored_requests",
+};
+const RECEIPT_SERVICE_GRANT_MIGRATION = {
+  version: "20260817164844",
+  name: "restrict_receipt_service_grant",
+};
+const QUEUE_INTEGRITY_CALL_AGAIN_MIGRATION = {
+  version: "20260822201152",
+  name: "queue_integrity_call_again_authority",
+};
 
-const TARGETS = new Set(["dev", "prod"]);
+const TARGETS = new Set(["branch", "prod"]);
 
 function parseTarget(args) {
   const inline = args.find((arg) => arg.startsWith("--target="));
@@ -227,7 +433,7 @@ function parseTarget(args) {
     inline?.slice("--target=".length) ?? (flagIndex >= 0 ? args[flagIndex + 1] : undefined);
 
   if (!value || !TARGETS.has(value)) {
-    throw new Error("Usage: node scripts/verify-schema.mjs --target dev|prod");
+    throw new Error("Usage: node scripts/verify-schema.mjs --target branch|prod");
   }
 
   return value;
@@ -245,17 +451,26 @@ function requireEnv(...names) {
 }
 
 function projectConfig(target) {
-  if (target === "dev") {
+  if (target === "branch") {
+    const ref = requireEnv("SUPABASE_BRANCH_PROJECT_REF", "SUPABASE_PROJECT_REF");
+    const url = requireEnv("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL");
+    const productionRef = requireEnv("SUPABASE_PROD_PROJECT_REF", "SUPABASE_PROJECT_REF_PROD");
+    assert(
+      process.env.SUPABASE_PREVIEW_BRANCH === "1" &&
+        ref !== productionRef &&
+        new URL(url).origin === `https://${ref}.supabase.co`,
+      "Preview Branch verification refused a non-branch or Production target",
+    );
     return {
-      ref: requireEnv("SUPABASE_DEV_PROJECT_REF", "SUPABASE_PROJECT_REF"),
-      url: requireEnv("SUPABASE_DEV_URL", "NEXT_PUBLIC_SUPABASE_URL"),
+      ref,
+      url,
       anonKey: requireEnv(
-        "SUPABASE_DEV_ANON_KEY",
-        "SUPABASE_DEV_PUBLISHABLE_KEY",
-        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "SUPABASE_ANON_KEY",
         "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
       ),
-      serviceKey: requireEnv("SUPABASE_DEV_SERVICE_ROLE_KEY", "SUPABASE_SERVICE_ROLE_KEY"),
+      serviceKey: requireEnv("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY"),
     };
   }
 
@@ -273,7 +488,7 @@ function projectConfig(target) {
 }
 
 function adminCredentials(target) {
-  return target === "dev"
+  return target === "branch"
     ? {
         email: requireEnv("PORTAL_SEED_ADMIN_EMAIL"),
         password: requireEnv("PORTAL_SEED_ADMIN_PASSWORD"),
@@ -313,6 +528,11 @@ async function readResponse(response, operation) {
 }
 
 async function queryDatabase({ accessToken, ref, query }) {
+  if (process.env.SUPABASE_PREVIEW_BRANCH === "1") {
+    return queryBranchDatabase({ ref, query });
+  }
+
+  assert(accessToken, "SUPABASE_ACCESS_TOKEN is required for Production schema verification");
   const response = await fetch(
     `https://api.supabase.com/v1/projects/${encodeURIComponent(ref)}/database/query`,
     {
@@ -324,27 +544,6 @@ async function queryDatabase({ accessToken, ref, query }) {
       body: JSON.stringify({ query }),
     },
   );
-  if (response.status === 401) {
-    const linkedRef = readFileSync("supabase/.temp/project-ref", "utf8").trim();
-    const devRef = process.env.SUPABASE_DEV_PROJECT_REF ?? process.env.SUPABASE_PROJECT_REF;
-    assert(
-      ref === devRef && linkedRef === devRef,
-      "Direct database verification fallback is Development-only",
-    );
-    const dbUrl = readFileSync("supabase/.temp/pooler-url", "utf8").trim();
-    const password = requireEnv("SUPABASE_DEV_DB_PASSWORD", "SUPABASE_DB_PASSWORD");
-    return JSON.parse(
-      execFileSync(
-        "supabase",
-        ["db", "query", "--db-url", dbUrl, "--agent=no", "--output", "json", query],
-        {
-          encoding: "utf8",
-          env: { ...process.env, PGPASSWORD: password },
-          stdio: ["ignore", "pipe", "inherit"],
-        },
-      ),
-    );
-  }
   const payload = await readResponse(response, "Database verification query");
 
   if (Array.isArray(payload)) {
@@ -380,6 +579,167 @@ async function selectRows({ url, serviceKey, table, query }) {
   }
 
   return payload;
+}
+
+async function deleteRows({ url, serviceKey, table, query }) {
+  const response = await fetch(`${url}/rest/v1/${table}?${query}`, {
+    method: "DELETE",
+    headers: serviceHeaders(serviceKey),
+  });
+  await readResponse(response, `Delete ${table}`);
+}
+
+async function callServiceRpc({ url, serviceKey, name, body }) {
+  const response = await fetch(`${url}/rest/v1/rpc/${name}`, {
+    method: "POST",
+    headers: {
+      ...serviceHeaders(serviceKey),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  return { response, payload: await parseResponse(response) };
+}
+
+async function assertStaffRequestCreation({ url, serviceKey }) {
+  const actorEmail = `verify-staff-request-${Date.now()}@example.test`;
+  const idempotencyKey = crypto.randomUUID();
+  const payload = {
+    name: "TEST Staff Request",
+    phone: "813-555-0199",
+    email: "test.staff.request@example.test",
+    location: "tampa",
+    preferred_time: "morning",
+    message: "TEST fictional schema verification request",
+  };
+  let requestId = null;
+
+  try {
+    const first = await callServiceRpc({
+      url,
+      serviceKey,
+      name: "portal_create_staff_request",
+      body: {
+        p_actor_email: actorEmail,
+        p_idempotency_key: idempotencyKey,
+        p_request: payload,
+      },
+    });
+    const createdRequestId = uuidSchema.safeParse(first.payload);
+    assert(first.response.ok && createdRequestId.success, "Staff request creation failed");
+    requestId = createdRequestId.data;
+
+    async function readEffects() {
+      const encodedId = encodeURIComponent(requestId);
+      const [requests, events, audits, outbox] = await Promise.all([
+        selectRows({
+          url,
+          serviceKey,
+          table: "requests",
+          query: `select=id,status,locale,source_path&id=eq.${encodedId}`,
+        }),
+        selectRows({
+          url,
+          serviceKey,
+          table: "request_events",
+          query: `select=id,type,status,meta&request_id=eq.${encodedId}`,
+        }),
+        selectRows({
+          url,
+          serviceKey,
+          table: "audit_log",
+          query: `select=id,actor_email,action,entity,entity_id,source,detail&entity_id=eq.${encodedId}`,
+        }),
+        selectRows({
+          url,
+          serviceKey,
+          table: "notification_outbox",
+          query: `select=id&request_id=eq.${encodedId}`,
+        }),
+      ]);
+      return { requests, events, audits, outbox };
+    }
+
+    function assertEffects(effects) {
+      assert(
+        effects.requests.length === 1 &&
+          effects.requests[0].status === "new" &&
+          effects.requests[0].locale === "en" &&
+          effects.requests[0].source_path === "/admin/requests/new",
+        "Staff request row has incorrect state or provenance",
+      );
+      assert(
+        effects.events.length === 1 &&
+          effects.events[0].type === "created" &&
+          effects.events[0].status === "recorded" &&
+          JSON.stringify(effects.events[0].meta) === '{"origin":"staff"}',
+        "Staff request must have exactly one staff-origin created event",
+      );
+      assert(
+        effects.audits.length === 1 &&
+          effects.audits[0].actor_email === actorEmail &&
+          effects.audits[0].action === "request.create" &&
+          effects.audits[0].entity === "requests" &&
+          effects.audits[0].source === "staff" &&
+          JSON.stringify(effects.audits[0].detail) === '{"origin":"staff"}',
+        "Staff request must have exactly one PHI-free creation audit",
+      );
+      assert(effects.outbox.length === 0, "Staff request unexpectedly created notification work");
+    }
+
+    const initialEffects = await readEffects();
+    assertEffects(initialEffects);
+
+    const replay = await callServiceRpc({
+      url,
+      serviceKey,
+      name: "portal_create_staff_request",
+      body: {
+        p_actor_email: actorEmail,
+        p_idempotency_key: idempotencyKey,
+        p_request: payload,
+      },
+    });
+    assert(
+      replay.response.ok && replay.payload === requestId,
+      "Exact staff request replay did not return the original request",
+    );
+    assertEffects(await readEffects());
+
+    const conflict = await callServiceRpc({
+      url,
+      serviceKey,
+      name: "portal_create_staff_request",
+      body: {
+        p_actor_email: actorEmail,
+        p_idempotency_key: idempotencyKey,
+        p_request: { ...payload, location: "lutz" },
+      },
+    });
+    assert(
+      !conflict.response.ok && providerErrorCode(conflict.payload) === "23505",
+      "Changed-payload idempotency reuse was not rejected",
+    );
+    assertEffects(await readEffects());
+  } finally {
+    if (requestId !== null) {
+      const encodedId = encodeURIComponent(requestId);
+      await Promise.all([
+        deleteRows({
+          url,
+          serviceKey,
+          table: "audit_log",
+          query: `entity_id=eq.${encodedId}&action=eq.request.create`,
+        }),
+        deleteRows({
+          url,
+          serviceKey,
+          table: "requests",
+          query: `id=eq.${encodedId}`,
+        }),
+      ]);
+    }
+  }
 }
 
 async function assertSelectDeniedAsUser({ url, anonKey, accessToken, table, query }) {
@@ -504,7 +864,7 @@ function sameValues(actual, expected) {
 async function main() {
   const target = parseTarget(process.argv.slice(2));
   const config = projectConfig(target);
-  const accessToken = requireEnv("SUPABASE_ACCESS_TOKEN");
+  const accessToken = process.env.SUPABASE_ACCESS_TOKEN || null;
   const credentials = adminCredentials(target);
   const email = credentials.email.trim().toLowerCase();
   const password = credentials.password;
@@ -522,6 +882,57 @@ async function main() {
       order by version;
     `,
   });
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === "20260906214913" && row.name === "patient_registry_and_request_links",
+    ),
+    "Patient registry and request-link migration is not applied",
+  );
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === "20260906222923" && row.name === "scheduling_providers_and_appointments",
+    ),
+    "Provider availability and appointment migration is not applied",
+  );
+  assert(
+    migrationRows.some(
+      (row) => row.version === "20260906231144" && row.name === "patient_billing_ledger",
+    ),
+    "Patient billing ledger migration is not applied",
+  );
+  assert(
+    migrationRows.some(
+      (row) => row.version === "20260907000133" && row.name === "complete_request_worklists",
+    ),
+    "Complete request worklist migration is not applied",
+  );
+  assert(
+    migrationRows.some(
+      (row) => row.version === "20260907003004" && row.name === "optional_patient_clinical_records",
+    ),
+    "Optional patient clinical record migration is not applied",
+  );
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === "20260907010143" && row.name === "coordinate_requests_and_appointments",
+    ),
+    "Coordinated request and appointment migration is not applied",
+  );
+  assert(
+    migrationRows.some(
+      (row) => row.version === "20260930203000" && row.name === "schedule_month_summary",
+    ),
+    "Schedule month summary migration is not applied",
+  );
+  assert(
+    migrationRows.some(
+      (row) => row.version === "20260930230000" && row.name === "card_booking_month_availability",
+    ),
+    "Card booking month availability migration is not applied",
+  );
   assert(
     migrationRows.some(
       (row) => row.version === PHASE_C_MIGRATION.version && row.name === PHASE_C_MIGRATION.name,
@@ -643,6 +1054,62 @@ async function main() {
     ),
     `Recipient-mutations migration ${RECIPIENT_MUTATIONS_MIGRATION.version}_${RECIPIENT_MUTATIONS_MIGRATION.name} is not applied`,
   );
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === APPOINTMENT_WORKFLOW_AUTHORITY_MIGRATION.version &&
+        row.name === APPOINTMENT_WORKFLOW_AUTHORITY_MIGRATION.name,
+    ),
+    "Appointment-workflow authority migration is not applied",
+  );
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === NEW_REQUEST_PRINT_PACKET_MIGRATION.version &&
+        row.name === NEW_REQUEST_PRINT_PACKET_MIGRATION.name,
+    ),
+    "New-request print-packet migration is not applied",
+  );
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === PRINT_PACKET_COALESCE_REPAIR_MIGRATION.version &&
+        row.name === PRINT_PACKET_COALESCE_REPAIR_MIGRATION.name,
+    ),
+    "Print-packet coalesce repair migration is not applied",
+  );
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === PRINT_PACKET_RETURN_STATEMENT_FIX_MIGRATION.version &&
+        row.name === PRINT_PACKET_RETURN_STATEMENT_FIX_MIGRATION.name,
+    ),
+    "Print-packet return-statement fix migration is not applied",
+  );
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === STAFF_REQUEST_CREATION_MIGRATION.version &&
+        row.name === STAFF_REQUEST_CREATION_MIGRATION.name,
+    ),
+    "Staff-request creation migration is not applied",
+  );
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === RECEIPT_SERVICE_GRANT_MIGRATION.version &&
+        row.name === RECEIPT_SERVICE_GRANT_MIGRATION.name,
+    ),
+    "Receipt service-grant restriction migration is not applied",
+  );
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === QUEUE_INTEGRITY_CALL_AGAIN_MIGRATION.version &&
+        row.name === QUEUE_INTEGRITY_CALL_AGAIN_MIGRATION.name,
+    ),
+    "Queue-integrity call-again migration is not applied",
+  );
 
   const onboardingColumnRows = await queryDatabase({
     accessToken,
@@ -663,11 +1130,11 @@ async function main() {
     "staff_profiles.onboarded_at must be nullable timestamptz with no default",
   );
 
-  const tourColumnRows = await queryDatabase({
+  const retiredTourColumnRows = await queryDatabase({
     accessToken,
     ref: config.ref,
     query: `
-      select data_type, is_nullable, column_default
+      select column_name
       from information_schema.columns
       where table_schema = 'public'
         and table_name = 'staff_profiles'
@@ -675,11 +1142,89 @@ async function main() {
     `,
   });
   assert(
-    tourColumnRows.length === 1 &&
-      tourColumnRows[0].data_type === "timestamp with time zone" &&
-      tourColumnRows[0].is_nullable === "YES" &&
-      tourColumnRows[0].column_default === null,
-    "staff_profiles.portal_tour_dismissed_at must be nullable timestamptz with no default",
+    retiredTourColumnRows.length === 0,
+    "staff_profiles.portal_tour_dismissed_at is retired; staff_tours holds tour state",
+  );
+
+  const staffTourColumnRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select column_name, data_type, is_nullable
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'staff_tours'
+      order by ordinal_position;
+    `,
+  });
+  const staffTourConstraintRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select conname, pg_catalog.pg_get_constraintdef(oid) as definition
+      from pg_catalog.pg_constraint
+      where conrelid = 'public.staff_tours'::pg_catalog.regclass
+      order by conname;
+    `,
+  });
+  const staffTourAclRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select
+        c.relrowsecurity,
+        pg_catalog.has_table_privilege('anon', c.oid, 'SELECT') as anon_select,
+        pg_catalog.has_table_privilege('authenticated', c.oid, 'SELECT') as authenticated_select,
+        pg_catalog.has_table_privilege('authenticated', c.oid, 'INSERT') as authenticated_insert,
+        pg_catalog.has_table_privilege('service_role', c.oid, 'SELECT') as service_select,
+        pg_catalog.has_table_privilege('service_role', c.oid, 'INSERT') as service_insert
+      from pg_catalog.pg_class as c
+      join pg_catalog.pg_namespace as n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relname = 'staff_tours' and c.relkind = 'r';
+    `,
+  });
+  const staffTourConstraint = (name) =>
+    staffTourConstraintRows.find((row) => row.conname === name)?.definition?.toLowerCase() ?? "";
+  assert(
+    sameValues(
+      staffTourColumnRows.map((row) => row.column_name),
+      ["staff_user_id", "tour", "status", "recorded_at"],
+    ) &&
+      staffTourColumnRows.every((row) => row.is_nullable === "NO") &&
+      staffTourConstraint("staff_tours_pkey").includes("staff_user_id, tour") &&
+      staffTourConstraint("staff_tours_staff_user_id_fkey").includes("on delete cascade") &&
+      staffTourConstraint("staff_tours_tour_valid").includes("'front_desk'") &&
+      staffTourConstraint("staff_tours_tour_valid").includes("'admin'") &&
+      staffTourConstraint("staff_tours_status_valid").includes("'pending'") &&
+      staffTourConstraint("staff_tours_status_valid").includes("'finished'") &&
+      staffTourConstraint("staff_tours_status_valid").includes("'skipped'") &&
+      staffTourAclRows.length === 1 &&
+      staffTourAclRows[0].relrowsecurity === true &&
+      staffTourAclRows[0].anon_select === false &&
+      staffTourAclRows[0].authenticated_select === false &&
+      staffTourAclRows[0].authenticated_insert === false &&
+      staffTourAclRows[0].service_select === true &&
+      staffTourAclRows[0].service_insert === true,
+    "staff_tours must key one front desk or admin tour record per staff account, cascade with the profile, and stay service-role-only",
+  );
+
+  const requestLocationColumnRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select data_type, is_nullable, column_default
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'scheduling_locations'
+        and column_name = 'request_location';
+    `,
+  });
+  assert(
+    requestLocationColumnRows.length === 1 &&
+      requestLocationColumnRows[0].data_type === "text" &&
+      requestLocationColumnRows[0].is_nullable === "YES" &&
+      requestLocationColumnRows[0].column_default === null,
+    "scheduling_locations.request_location must be nullable text with no default",
   );
 
   const portalReleaseColumnRows = await queryDatabase({
@@ -822,12 +1367,16 @@ async function main() {
         and table_name = 'requests'
         and column_name in (
           'closure_disposition',
+          'closure_provenance',
+          'closure_reason',
           'closed_at',
           'follow_up_at',
+          'legacy_review_required',
           'record_handoff_at',
           'retention_hold_at',
           'retention_hold_by',
-          'retention_hold_reason'
+          'retention_hold_reason',
+          'version'
         )
       order by column_name;
     `,
@@ -835,21 +1384,50 @@ async function main() {
   const expectedLifecycleColumns = [
     "closed_at",
     "closure_disposition",
+    "closure_provenance",
+    "closure_reason",
+    "follow_up_at",
+    "legacy_review_required",
+    "record_handoff_at",
+    "retention_hold_at",
+    "retention_hold_by",
+    "retention_hold_reason",
+    "version",
+  ];
+  const nullableLifecycleColumns = new Set([
+    "closed_at",
+    "closure_disposition",
+    "closure_provenance",
+    "closure_reason",
     "follow_up_at",
     "record_handoff_at",
     "retention_hold_at",
     "retention_hold_by",
     "retention_hold_reason",
-  ];
+  ]);
   assert(
     sameValues(
       requestLifecycleColumnRows.map((row) => row.column_name),
       expectedLifecycleColumns,
     ) &&
       requestLifecycleColumnRows.every(
-        (row) => row.is_nullable === "YES" && row.column_default === null,
-      ),
-    "Appointment-request lifecycle columns are missing or unexpectedly non-null/defaulted",
+        (row) =>
+          !nullableLifecycleColumns.has(row.column_name) ||
+          (row.is_nullable === "YES" && row.column_default === null),
+      ) &&
+      requestLifecycleColumnRows.find((row) => row.column_name === "version")?.data_type ===
+        "bigint" &&
+      requestLifecycleColumnRows.find((row) => row.column_name === "version")?.is_nullable ===
+        "NO" &&
+      requestLifecycleColumnRows.find((row) => row.column_name === "version")?.column_default !==
+        null &&
+      requestLifecycleColumnRows.find((row) => row.column_name === "legacy_review_required")
+        ?.data_type === "boolean" &&
+      requestLifecycleColumnRows.find((row) => row.column_name === "legacy_review_required")
+        ?.is_nullable === "NO" &&
+      requestLifecycleColumnRows.find((row) => row.column_name === "legacy_review_required")
+        ?.column_default !== null,
+    "Appointment-workflow columns are missing or do not preserve the required nullable/default contract",
   );
 
   const auditProvenanceColumnRows = await queryDatabase({
@@ -901,7 +1479,7 @@ async function main() {
     accessToken,
     ref: config.ref,
     query: `
-      select conname
+      select conname, pg_catalog.pg_get_constraintdef(oid) as definition
       from pg_catalog.pg_constraint
       where conrelid = 'public.requests'::pg_catalog.regclass
         and conname in (
@@ -909,26 +1487,98 @@ async function main() {
           'requests_phone_length',
           'requests_email_length',
           'requests_closure_disposition_valid',
-          'requests_closure_state_valid',
-          'requests_retention_hold_state_valid'
+          'requests_closure_reason_valid',
+          'requests_retention_hold_state_valid',
+          'requests_status_valid',
+          'requests_workflow_shape_valid'
         )
       order by conname;
     `,
   });
   const expectedRequestConstraints = [
     "requests_closure_disposition_valid",
-    "requests_closure_state_valid",
+    "requests_closure_reason_valid",
     "requests_email_length",
     "requests_name_length",
     "requests_phone_length",
     "requests_retention_hold_state_valid",
+    "requests_status_valid",
+    "requests_workflow_shape_valid",
   ];
+  const requestStatusConstraint =
+    requestConstraintRows
+      .find((row) => row.conname === "requests_status_valid")
+      ?.definition?.toLowerCase() ?? "";
+  const workflowConstraint =
+    requestConstraintRows
+      .find((row) => row.conname === "requests_workflow_shape_valid")
+      ?.definition?.toLowerCase() ?? "";
   assert(
     sameValues(
       requestConstraintRows.map((row) => row.conname),
       expectedRequestConstraints,
-    ),
+    ) &&
+      requestStatusConstraint.includes("'booked'") &&
+      !requestStatusConstraint.includes("'scheduled'") &&
+      workflowConstraint.includes("legacy_review_required") &&
+      workflowConstraint.includes("closure_reason"),
     `Request constraints mismatch: ${requestConstraintRows.map((row) => row.conname).join(", ")}`,
+  );
+
+  const transitionEvidenceRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select
+        c.column_name,
+        c.data_type,
+        c.is_nullable,
+        c.column_default,
+        constraint_check.definition,
+        constraint_check.convalidated
+      from information_schema.columns as c
+      left join lateral (
+        select
+          pg_catalog.pg_get_constraintdef(pc.oid) as definition,
+          pc.convalidated
+        from pg_catalog.pg_constraint as pc
+        where pc.conrelid = 'public.request_transitions'::pg_catalog.regclass
+          and pc.conname = 'request_transitions_call_again_at_valid'
+      ) as constraint_check on true
+      where c.table_schema = 'public'
+        and c.table_name = 'request_transitions'
+        and c.column_name = 'call_again_at';
+    `,
+  });
+  const transitionEvidence = transitionEvidenceRows[0];
+  const transitionEvidenceConstraint = transitionEvidence?.definition?.toLowerCase() ?? "";
+  assert(
+    transitionEvidenceRows.length === 1 &&
+      transitionEvidence?.data_type === "timestamp with time zone" &&
+      transitionEvidence?.is_nullable === "YES" &&
+      transitionEvidence?.column_default === null &&
+      transitionEvidence?.convalidated === false &&
+      transitionEvidenceConstraint.includes("reopen_request") &&
+      transitionEvidenceConstraint.includes("set_call_again") &&
+      transitionEvidenceConstraint.includes("call_again_at is not null"),
+    "request_transitions must enforce new call-again evidence without rewriting truthful legacy transitions",
+  );
+
+  const transitionCommandRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select pg_catalog.pg_get_constraintdef(oid) as definition
+      from pg_catalog.pg_constraint
+      where conrelid = 'public.request_transitions'::pg_catalog.regclass
+        and conname = 'request_transitions_command_check';
+    `,
+  });
+  assert(
+    transitionCommandRows.length === 1 &&
+      transitionCommandRows[0].definition.toLowerCase().includes("set_call_again") &&
+      transitionCommandRows[0].definition.toLowerCase().includes("record_contact_and_close"),
+    "request_transitions command vocabulary must include call-again repair and contact completion",
   );
 
   const intakeLimitRows = await queryDatabase({
@@ -1094,11 +1744,157 @@ async function main() {
         !row.authenticated_delete,
       `The authenticated role has portal table access on ${row.table_name}`,
     );
+    if (
+      [
+        "staff_request_receipts",
+        "patient_command_receipts",
+        "patient_billing_entries",
+        "patient_billing_receipts",
+        "patient_clinical_revisions",
+        "clinical_command_receipts",
+        "patient_revisions",
+        "scheduling_changes",
+        "scheduling_command_receipts",
+      ].includes(row.table_name)
+    ) {
+      assert(
+        row.service_select && row.service_insert && !row.service_update && !row.service_delete,
+        `${row.table_name} must expose only append-only service access`,
+      );
+    } else if (row.table_name === "patient_request_links") {
+      assert(
+        row.service_select && row.service_insert && !row.service_update && row.service_delete,
+        "Patient request links must be explicitly removed before a different patient can be chosen",
+      );
+    } else {
+      assert(
+        row.service_select && row.service_insert && row.service_update && row.service_delete,
+        `The service_role lacks CRUD on ${row.table_name}`,
+      );
+    }
+  }
+
+  const appointmentConstraints = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `select conname, contype, pg_get_constraintdef(oid) as definition
+      from pg_constraint where conrelid = 'public.appointments'::regclass;`,
+  });
+  for (const [name, owner, start, end] of [
+    ["appointments_provider_no_overlap", "provider_id", "reserved_from", "reserved_until"],
+    ["appointments_patient_no_overlap", "patient_id", "starts_at", "ends_at"],
+  ]) {
+    const constraint = appointmentConstraints.find((row) => row.conname === name);
     assert(
-      row.service_select && row.service_insert && row.service_update && row.service_delete,
-      `The service_role lacks CRUD on ${row.table_name}`,
+      constraint?.contype === "x" &&
+        constraint.definition.includes(`${owner} WITH =`) &&
+        constraint.definition.includes(`tstzrange(${start}, ${end}, '[)'::text) WITH &&`) &&
+        constraint.definition.includes("status <> 'cancelled'::text"),
+      `${name} must reject overlaps in every non-cancelled appointment`,
     );
   }
+  assert(
+    appointmentConstraints.some(
+      (row) =>
+        row.contype === "f" &&
+        row.definition.includes("FOREIGN KEY (source_request_id, patient_id)") &&
+        row.definition.includes("REFERENCES patient_request_links(request_id, patient_id)") &&
+        row.definition.includes("ON DELETE SET NULL (source_request_id)"),
+    ),
+    "Intake cleanup must remove only the source link, preserving the appointment and patient",
+  );
+  const ownershipTriggers = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `select pg_get_triggerdef(oid) as definition from pg_trigger
+      where tgrelid = 'public.appointments'::regclass and tgname = 'appointments_preserve_patient' and tgenabled <> 'D';`,
+  });
+  assert(
+    ownershipTriggers.length === 1 &&
+      ownershipTriggers[0].definition.includes("BEFORE UPDATE OF patient_id") &&
+      ownershipTriggers[0].definition.includes("request_workflow_managed") &&
+      ownershipTriggers[0].definition.includes("portal_preserve_appointment_patient()"),
+    "Appointment patient ownership must remain immutable",
+  );
+  const coordinationTriggers = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `select tgname,tgdeferrable,tginitdeferred,pg_get_triggerdef(oid) as definition from pg_trigger
+      where tgname in ('requests_appointment_consistent','appointments_request_consistent')
+      and tgrelid in ('public.requests'::regclass,'public.appointments'::regclass) and tgenabled<>'D';`,
+  });
+  assert(
+    coordinationTriggers.length === 2 &&
+      coordinationTriggers.every(
+        (row) =>
+          row.tgdeferrable &&
+          row.tginitdeferred &&
+          row.definition.includes("portal_check_request_appointment()"),
+      ),
+    "Request and appointment consistency must be checked at transaction end on both tables",
+  );
+
+  const billingConstraints = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `select contype, pg_get_constraintdef(oid) as definition
+      from pg_constraint where conrelid = 'public.patient_billing_entries'::regclass;`,
+  });
+  for (const [column, target] of [
+    ["appointment_id", "appointments(id, patient_id)"],
+    ["source_entry_id", "patient_billing_entries(id, patient_id)"],
+  ]) {
+    assert(
+      billingConstraints.some(
+        (row) =>
+          row.contype === "f" &&
+          row.definition.includes(`FOREIGN KEY (${column}, patient_id)`) &&
+          row.definition.includes(`REFERENCES ${target}`),
+      ),
+      `Billing ${column} must belong to the ledger patient`,
+    );
+  }
+  assert(
+    billingConstraints.some(
+      (row) => row.contype === "u" && row.definition.includes("UNIQUE (patient_id, version)"),
+    ),
+    "Billing entries must have one permanent entry per patient account version",
+  );
+
+  const clinicalConstraints = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `select contype, pg_get_constraintdef(oid) as definition
+      from pg_constraint where conrelid = 'public.patient_clinical_records'::regclass;`,
+  });
+  for (const [column, target] of [
+    ["appointment_id", "appointments(id, patient_id)"],
+    ["amends_id", "patient_clinical_records(id, patient_id)"],
+  ]) {
+    assert(
+      clinicalConstraints.some(
+        (row) =>
+          row.contype === "f" &&
+          row.definition.includes(`FOREIGN KEY (${column}, patient_id)`) &&
+          row.definition.includes(`REFERENCES ${target}`) &&
+          row.definition.includes("ON DELETE RESTRICT"),
+      ),
+      `Clinical ${column} must preserve its patient relationship`,
+    );
+  }
+  const clinicalTriggers = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `select pg_get_triggerdef(oid) as definition from pg_trigger
+      where tgrelid = 'public.patient_clinical_records'::regclass
+      and tgname = 'patient_clinical_records_preserve' and tgenabled <> 'D';`,
+  });
+  assert(
+    clinicalTriggers.length === 1 &&
+      clinicalTriggers[0].definition.includes("BEFORE UPDATE") &&
+      clinicalTriggers[0].definition.includes("portal_preserve_clinical_record()"),
+    "Clinical ownership and signed content must remain protected",
+  );
 
   const rpcRows = await queryDatabase({
     accessToken,
@@ -1176,6 +1972,21 @@ async function main() {
         "portal_record_analytics_event must upsert rollups atomically",
       );
     }
+    if (rpc.proname === "portal_prepare_new_request_print_packet") {
+      const definition = rpc.definition.toLowerCase();
+      assert(
+        definition.includes("packet as materialized") &&
+          definition.includes("snapshot as materialized") &&
+          definition.includes("where request.status = 'new'") &&
+          definition.includes("order by packet.created_at asc, packet.id asc") &&
+          definition.includes("coalesce(") &&
+          !definition.includes("pg_catalog.coalesce(") &&
+          definition.includes("into v_packet") &&
+          definition.includes("'row_count', snapshot.row_count") &&
+          definition.includes("'status_filter', 'new'"),
+        "portal_prepare_new_request_print_packet must materialize one ordered new set with built-in coalesce and a top-level statement for its result and audit count",
+      );
+    }
     if (rpc.proname === "portal_log_call_outcome") {
       const definition = rpc.definition.toLowerCase();
       assert(
@@ -1191,8 +2002,68 @@ async function main() {
           definition.includes("'lifecycle'") &&
           definition.includes("'before'") &&
           definition.includes("'after'") &&
-          definition.includes("'sequence'"),
-        "portal_log_call_outcome must lock the request, audit once, preserve all seven outcomes, and snapshot lifecycle state",
+          definition.includes("'sequence'") &&
+          definition.includes("a call-again time is required") &&
+          definition.includes("p_follow_up_at is null"),
+        "portal_log_call_outcome must lock the request, require dates for Contacted outcomes, audit once, preserve all seven outcomes, and snapshot lifecycle state",
+      );
+    }
+    if (rpc.proname === "portal_apply_request_command") {
+      const definition = rpc.definition.toLowerCase();
+      assert(
+        definition.includes("for update") &&
+          definition.includes("p_expected_version") &&
+          definition.includes("idempotency_conflict") &&
+          definition.includes("request_command_receipts") &&
+          definition.includes("request_transitions") &&
+          definition.includes("interval '15 minutes'") &&
+          definition.includes("request.workflow_command") &&
+          definition.includes("record_contact_attempt") &&
+          definition.includes("record_contact_and_close") &&
+          definition.includes("contact_completed") &&
+          definition.includes("no_further_contact") &&
+          definition.includes("reopen_request") &&
+          definition.includes("set_call_again") &&
+          definition.includes("next_call_again_at is null") &&
+          definition.includes("v.follow_up_at is not null") &&
+          definition.includes("t.prior_snapshot") &&
+          definition.includes("migration_unconverted"),
+        "portal_apply_request_command must serialize versions, require coherent call-again commands, restore stored snapshots, persist idempotency evidence, constrain undo, and audit each accepted workflow command",
+      );
+    }
+    if (rpc.proname === "portal_execute_request_command") {
+      const definition = rpc.definition.toLowerCase();
+      assert(
+        definition.includes("for update") &&
+          definition.includes("request_command_receipts") &&
+          definition.includes("request_workflow_managed") &&
+          definition.includes("request_transition_id=p_transition_id") &&
+          definition.includes("portal_apply_request_command"),
+        "The request command entry point must preserve replay and guard coordinated appointment changes",
+      );
+    }
+    if (rpc.proname === "portal_create_request_with_outbox") {
+      const definition = rpc.definition.toLowerCase();
+      assert(
+        definition.includes("insert into public.requests") &&
+          definition.includes("insert into public.request_events") &&
+          definition.includes("insert into public.notification_outbox") &&
+          definition.includes("where active"),
+        "portal_create_request_with_outbox must persist the request, creation evidence, and active-recipient outbox rows together",
+      );
+    }
+    if (rpc.proname === "portal_create_staff_request") {
+      const definition = rpc.definition.toLowerCase();
+      assert(
+        definition.includes("pg_advisory_xact_lock") &&
+          definition.includes("staff_request_receipts") &&
+          definition.includes("extensions.digest") &&
+          definition.includes("insert into public.requests") &&
+          definition.includes("insert into public.request_events") &&
+          definition.includes("'request.create'") &&
+          definition.includes('\'{"origin":"staff"}\'') &&
+          !definition.includes("notification_outbox"),
+        "portal_create_staff_request must serialize idempotency, atomically create staff provenance, and omit outbox work",
       );
     }
     if (rpc.proname === "portal_undo_call_outcome") {
@@ -1203,7 +2074,8 @@ async function main() {
           definition.includes("'call_outcome_undo'") &&
           definition.includes("'request.call_outcome_undo'") &&
           definition.includes("is distinct from") &&
-          definition.includes("set status = 'undone'") &&
+          (definition.includes("set status='undone'") ||
+            definition.includes("set status = 'undone'")) &&
           definition.includes("'restored_lifecycle'"),
         "portal_undo_call_outcome must lock, reject stale state, restore atomically, preserve history, and audit lifecycle-only metadata",
       );
@@ -1299,8 +2171,21 @@ async function main() {
         definition.includes("pg_advisory_xact_lock") &&
           definition.includes("for update skip locked") &&
           definition.includes("retention_hold_at is null") &&
-          definition.includes("request.retention_delete"),
+          definition.includes("request.retention_delete") &&
+          definition.includes("legacy_review_required") &&
+          definition.includes("status = 'booked'"),
         "portal_run_data_lifecycle must serialize runs, lock candidates, exclude holds, and audit deletion",
+      );
+    }
+    if (
+      rpc.proname === "portal_preview_data_lifecycle" ||
+      rpc.proname === "portal_run_data_lifecycle"
+    ) {
+      const definition = rpc.definition.toLowerCase();
+      assert(
+        definition.includes("record_handoff_at <= p_now - interval '1 year'") &&
+          definition.includes("appointment_at <= p_now - interval '1 year'"),
+        "Lifecycle preview and deletion must retain bookings until both confirmation and known appointment times are at least one year old",
       );
     }
   }
@@ -1344,8 +2229,7 @@ async function main() {
         anonKey: config.anonKey,
         accessToken: session.accessToken,
         table,
-        query:
-          table === "portal_release_states" ? "select=staff_user_id&limit=1" : "select=id&limit=1",
+        query: "select=*&limit=1",
       }),
     ),
   );
@@ -1355,6 +2239,9 @@ async function main() {
     url: config.url,
     serviceKey: config.serviceKey,
   });
+  if (target === "branch") {
+    await assertStaffRequestCreation({ url: config.url, serviceKey: config.serviceKey });
+  }
 
   const encodedEmail = encodeURIComponent(email);
   const [staffRows, recipientRows] = await Promise.all([
@@ -1362,7 +2249,7 @@ async function main() {
       url: config.url,
       serviceKey: config.serviceKey,
       table: "staff_profiles",
-      query: `select=id,user_id,email,role,active,onboarded_at,portal_tour_dismissed_at&email=eq.${encodedEmail}`,
+      query: `select=id,user_id,email,role,active,onboarded_at,staff_tours(tour,status)&email=eq.${encodedEmail}`,
     }),
     selectRows({
       url: config.url,
@@ -1380,6 +2267,12 @@ async function main() {
       staffRow.data.role === "admin" &&
       staffRow.data.active === true,
     "Seed admin staff profile is missing or incorrect",
+  );
+  const seedTours = z.array(staffTourRowSchema).safeParse(staffRows[0]?.staff_tours);
+  assert(
+    seedTours.success &&
+      seedTours.data.some((row) => row.tour === "admin" && row.status === "finished"),
+    "Seed admin must have finished the admin tour so the suite's pages open without a tip",
   );
   assert(
     recipientRows.length === 1 && recipientRows[0].active === true,
@@ -1437,7 +2330,25 @@ async function main() {
     `Verified ${target} migration: ${RECIPIENT_MUTATIONS_MIGRATION.version}_${RECIPIENT_MUTATIONS_MIGRATION.name}`,
   );
   console.log(
-    `Verified ${target} appointment-request lifecycle: nullable legacy-safe columns, constraints, preview, hold-aware deletion`,
+    `Verified ${target} migration: ${APPOINTMENT_WORKFLOW_AUTHORITY_MIGRATION.version}_${APPOINTMENT_WORKFLOW_AUTHORITY_MIGRATION.name}`,
+  );
+  console.log(
+    `Verified ${target} migration: ${NEW_REQUEST_PRINT_PACKET_MIGRATION.version}_${NEW_REQUEST_PRINT_PACKET_MIGRATION.name}`,
+  );
+  console.log(
+    `Verified ${target} migration: ${PRINT_PACKET_COALESCE_REPAIR_MIGRATION.version}_${PRINT_PACKET_COALESCE_REPAIR_MIGRATION.name}`,
+  );
+  console.log(
+    `Verified ${target} migration: ${PRINT_PACKET_RETURN_STATEMENT_FIX_MIGRATION.version}_${PRINT_PACKET_RETURN_STATEMENT_FIX_MIGRATION.name}`,
+  );
+  console.log(
+    `Verified ${target} migration: ${STAFF_REQUEST_CREATION_MIGRATION.version}_${STAFF_REQUEST_CREATION_MIGRATION.name}`,
+  );
+  console.log(
+    `Verified ${target} migration: ${RECEIPT_SERVICE_GRANT_MIGRATION.version}_${RECEIPT_SERVICE_GRANT_MIGRATION.name}`,
+  );
+  console.log(
+    `Verified ${target} appointment-request workflow: versioned state shape, legacy-review safety, immutable command evidence, outbox, and hold-aware deletion`,
   );
   console.log(`Verified ${target} intake limiter: persistent private table, RLS, service-only ACL`);
   console.log(
@@ -1448,7 +2359,7 @@ async function main() {
   );
   console.log(`Verified ${target} staff_profiles.onboarded_at: nullable timestamptz, no default`);
   console.log(
-    `Verified ${target} staff_profiles.portal_tour_dismissed_at: nullable timestamptz, no default`,
+    `Verified ${target} staff_tours: per-account tour key, tour and status vocabulary, RLS, service-only ACL; portal_tour_dismissed_at retired`,
   );
   console.log(
     `Verified ${target} audit provenance: nullable historical columns, constrained source vocabulary, correlated classified writes`,
@@ -1469,7 +2380,7 @@ async function main() {
   console.log(
     `Verified ${target} seed rows: staff_profiles=${staffRows.length}, notification_recipients=${recipientRows.length}`,
   );
-  console.log(`Verified ${target} seed admin sign-in: ${user.id}`);
+  console.log(`Verified ${target} seed admin sign-in`);
 }
 
 main().catch((error) => {

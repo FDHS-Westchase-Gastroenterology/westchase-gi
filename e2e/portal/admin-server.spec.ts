@@ -1,0 +1,1232 @@
+import { randomUUID } from "node:crypto";
+
+import { expect, test } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
+import { z } from "zod";
+
+import { asJsonString, jsonObjectSchema } from "../../src/lib/json";
+import type { JsonObject } from "../../src/lib/json";
+import type { PasswordAuthFlow } from "../../src/lib/portal/contracts";
+import { expectDenied, requireDecoded } from "../harness/assert";
+import { publishableDb, runId, seedAdmin, serviceDb } from "../harness/env";
+import { signIn } from "../harness/session";
+
+const inviteDetailSchema = z.looseObject({
+  resend: z.boolean().optional(),
+  link_type: z.string().optional(),
+});
+const idRowSchema = z.object({ id: z.string() });
+const cleanupProfileSchema = z.object({
+  id: z.string(),
+  user_id: z.string().nullable(),
+});
+const staffProfileRowSchema = z.object({
+  id: z.string(),
+  user_id: z.string(),
+  email: z.string(),
+  role: z.string(),
+  active: z.boolean(),
+  onboarded_at: z.string().nullable(),
+});
+const recipientRowSchema = z.object({
+  id: z.string(),
+  active: z.boolean(),
+});
+const auditRowSchema = z.object({
+  actor_email: z.string(),
+  action: z.string(),
+  entity: z.string(),
+  entity_id: z.string(),
+  source: z.string(),
+  correlation_id: z.string(),
+  at: z.string(),
+  detail: z.unknown().optional(),
+});
+
+const { email: SEED_ADMIN_EMAIL } = seedAdmin();
+const GENERIC_LOGIN_ERROR = "Unable to sign in. Check your credentials and try again.";
+const db = serviceDb();
+const staffEmail = `portal-staff-${runId}@example.test`;
+const targetEmail = `portal-target-${runId}@example.test`;
+const recipientEmail = `portal-recipient-${runId}@example.test`;
+const deniedRecipientEmail = `portal-denied-${runId}@example.test`;
+
+let adminContext: BrowserContext | null = null;
+let staffContext: BrowserContext | null = null;
+let adminPage: Page | null = null;
+let staffPage: Page | null = null;
+let staffUserId: string | null = null;
+let targetUserId: string | null = null;
+let staffProfileId: string | null = null;
+let targetProfileId: string | null = null;
+let recipientId: string | null = null;
+const auditEntityIds = new Set<string>();
+
+interface MutationResponse {
+  status: number;
+  body: JsonObject;
+}
+
+async function mutate(page: Page, operation: string, input: JsonObject): Promise<MutationResponse> {
+  const raw = await page.evaluate(async (body) => {
+    const response = await fetch("/admin/settings/mutations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    });
+    return { status: response.status, bodyText: await response.text() };
+  }, JSON.stringify({ operation, input }));
+  return {
+    status: raw.status,
+    body: requireDecoded(
+      jsonObjectSchema.safeParse(JSON.parse(raw.bodyText)),
+      "Settings mutation response was not a JSON object",
+    ),
+  };
+}
+
+function fallbackSetupUrl(
+  response: Readonly<MutationResponse>,
+  expectedStatus = 201,
+  expectedType: PasswordAuthFlow = "invite",
+): string {
+  expect(response.status).toBe(expectedStatus);
+  expect(response.body.ok).toBe(true);
+  expect(response.body.delivery).toBe("failed");
+  expect(Object.prototype.hasOwnProperty.call(response.body, "tempPassword")).toBe(false);
+  const setupUrl = response.body.fallbackSetupUrl;
+  expect(z.string().safeParse(setupUrl).success).toBe(true);
+  const setupUrlString = asJsonString(setupUrl);
+  if (setupUrlString === null) {
+    throw new Error("expected fallbackSetupUrl string");
+  }
+  expect(URL.canParse(setupUrlString)).toBe(true);
+  const parsed = new URL(setupUrlString);
+  const fragment = new URLSearchParams(parsed.hash.slice(1));
+  expect(parsed.pathname).toBe("/admin/auth/confirm");
+  expect(fragment.get("type")).toBe(expectedType);
+  expect(Boolean(fragment.get("token_hash"))).toBe(true);
+  return setupUrlString;
+}
+
+test.use({ trace: "off" });
+
+test.describe("portal management server boundaries", () => {
+  test.describe.configure({ mode: "serial" });
+
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium", "Credential and role checks run once.");
+  });
+
+  test.afterAll(async () => {
+    await Promise.allSettled([
+      adminContext?.close() ?? Promise.resolve(),
+      staffContext?.close() ?? Promise.resolve(),
+    ]);
+
+    const [profiles, recipients] = await Promise.all([
+      db.from("staff_profiles").select("id, user_id").in("email", [staffEmail, targetEmail]),
+      db
+        .from("notification_recipients")
+        .select("id")
+        .in("email", [recipientEmail, deniedRecipientEmail]),
+    ]);
+
+    const cleanupProfiles = requireDecoded(
+      z.array(cleanupProfileSchema).safeParse(profiles.data ?? []),
+      "Cleanup staff profiles could not be decoded",
+    );
+    for (const profile of cleanupProfiles) {
+      auditEntityIds.add(profile.id);
+      if (profile.user_id !== null && profile.user_id !== "") {
+        if (staffUserId === null || staffUserId === "") {
+          staffUserId = profile.user_id;
+        } else if (profile.user_id !== staffUserId) {
+          targetUserId = profile.user_id;
+        }
+      }
+    }
+    const cleanupRecipients = requireDecoded(
+      z.array(idRowSchema).safeParse(recipients.data ?? []),
+      "Cleanup recipients could not be decoded",
+    );
+    for (const recipient of cleanupRecipients) {
+      auditEntityIds.add(recipient.id);
+    }
+
+    await db
+      .from("notification_recipients")
+      .update({ active: false })
+      .in("email", [recipientEmail, deniedRecipientEmail]);
+    await db
+      .from("notification_recipients")
+      .delete()
+      .in("email", [recipientEmail, deniedRecipientEmail]);
+    await db
+      .from("audit_log")
+      .delete()
+      .eq("action", "requests.export")
+      .eq("actor_email", staffEmail);
+
+    if (auditEntityIds.size > 0) {
+      await db
+        .from("audit_log")
+        .delete()
+        .in("entity_id", [...auditEntityIds]);
+    }
+
+    await db.from("staff_profiles").delete().in("email", [staffEmail, targetEmail]);
+    for (const userId of new Set(
+      [staffUserId, targetUserId].filter((value): value is string => value !== null),
+    )) {
+      await db.auth.admin.deleteUser(userId);
+    }
+  });
+
+  test("VAL-ADMIN-009: staff is rejected from admin-only mutations at the network boundary", async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000);
+
+    adminContext = await browser.newContext();
+    adminPage = await adminContext.newPage();
+    await signIn(adminPage);
+
+    const staffInvite = await mutate(adminPage, "staff.invite", {
+      email: staffEmail,
+      displayName: `TEST Portal Staff ${runId}`,
+      role: "staff",
+    });
+    const staffSetupUrl = fallbackSetupUrl(staffInvite);
+
+    const targetInvite = await mutate(adminPage, "staff.invite", {
+      email: targetEmail,
+      displayName: `TEST Portal Target ${runId}`,
+      role: "staff",
+    });
+    const targetSetupUrl = fallbackSetupUrl(targetInvite);
+    expect(targetSetupUrl !== staffSetupUrl).toBe(true);
+
+    const { data: profiles, error: profileError } = await db
+      .from("staff_profiles")
+      .select("id, user_id, email, role, active, onboarded_at")
+      .in("email", [staffEmail, targetEmail]);
+    expect(profileError).toBeNull();
+    const profileRows = requireDecoded(
+      z.array(staffProfileRowSchema).safeParse(profiles ?? []),
+      "Throwaway staff profiles could not be decoded",
+    );
+    expect(profileRows).toHaveLength(2);
+
+    const staffProfile = profileRows.find((profile) => profile.email === staffEmail);
+    const targetProfile = profileRows.find((profile) => profile.email === targetEmail);
+    if (staffProfile === undefined || targetProfile === undefined) {
+      throw new Error("Throwaway staff profiles were not created");
+    }
+
+    staffUserId = staffProfile.user_id;
+    targetUserId = targetProfile.user_id;
+    staffProfileId = staffProfile.id;
+    targetProfileId = targetProfile.id;
+    auditEntityIds.add(staffProfile.id);
+    auditEntityIds.add(targetProfile.id);
+    expect(staffProfile.onboarded_at).toBeNull();
+    expect(targetProfile.onboarded_at).toBeNull();
+
+    const renewedTargetInvite = await mutate(adminPage, "staff.invite.resend", {
+      id: targetProfile.user_id,
+    });
+    const renewedTargetSetupUrl = fallbackSetupUrl(renewedTargetInvite, 200);
+    expect(renewedTargetSetupUrl !== targetSetupUrl).toBe(true);
+    const { data: stillPendingTarget, error: pendingTargetError } = await db
+      .from("staff_profiles")
+      .select("role, onboarded_at")
+      .eq("user_id", targetProfile.user_id)
+      .single();
+    expect(pendingTargetError).toBeNull();
+    expect(stillPendingTarget?.role).toBe("staff");
+    expect(stillPendingTarget?.onboarded_at).toBeNull();
+
+    // Simulate an invite link that verified the address but was abandoned
+    // Before password setup. Reissuing must use recovery while preserving the
+    // Pending profile and its assigned role.
+    const confirmedTarget = await db.auth.admin.updateUserById(targetProfile.user_id, {
+      email_confirm: true,
+    });
+    expect(confirmedTarget.error).toBeNull();
+    const recoveredTargetInvite = await mutate(adminPage, "staff.invite.resend", {
+      id: targetProfile.user_id,
+    });
+    const recoverySetupUrl = fallbackSetupUrl(recoveredTargetInvite, 200, "recovery");
+    expect(recoverySetupUrl !== renewedTargetSetupUrl).toBe(true);
+    const { data: recoveryPendingTarget, error: recoveryPendingError } = await db
+      .from("staff_profiles")
+      .select("role, onboarded_at")
+      .eq("user_id", targetProfile.user_id)
+      .single();
+    expect(recoveryPendingError).toBeNull();
+    expect(recoveryPendingTarget?.role).toBe("staff");
+    expect(recoveryPendingTarget?.onboarded_at).toBeNull();
+
+    // This suite exercises network roles rather than the setup UI. Give both
+    // Throwaway accounts known passwords and mark them onboarded directly;
+    // VAL-ADMIN-008 covers the one-time browser setup flow.
+    const staffPassword = `Wgi!${runId}Staff7`;
+    const targetPassword = `Wgi!${runId}Target7`;
+    const onboardedAt = new Date().toISOString();
+    const [staffAuthUpdate, targetAuthUpdate, staffProfileUpdate, targetProfileUpdate] =
+      await Promise.all([
+        db.auth.admin.updateUserById(staffProfile.user_id, {
+          password: staffPassword,
+          email_confirm: true,
+        }),
+        db.auth.admin.updateUserById(targetProfile.user_id, {
+          password: targetPassword,
+          email_confirm: true,
+        }),
+        db
+          .from("staff_profiles")
+          .update({ onboarded_at: onboardedAt })
+          .eq("user_id", staffProfile.user_id),
+        db
+          .from("staff_profiles")
+          .update({ onboarded_at: onboardedAt })
+          .eq("user_id", targetProfile.user_id),
+      ]);
+    expect(staffAuthUpdate.error).toBeNull();
+    expect(targetAuthUpdate.error).toBeNull();
+    expect(staffProfileUpdate.error).toBeNull();
+    expect(targetProfileUpdate.error).toBeNull();
+
+    const { data: targetAuth, error: targetAuthError } = await db.auth.admin.getUserById(
+      targetProfile.user_id,
+    );
+    expect(targetAuthError).toBeNull();
+    expect(targetAuth.user?.app_metadata.role).toBe("staff");
+
+    staffContext = await browser.newContext();
+    staffPage = await staffContext.newPage();
+    await signIn(staffPage, { email: staffEmail, password: staffPassword });
+
+    const deniedAdd = await mutate(staffPage, "recipient.add", {
+      email: deniedRecipientEmail,
+      label: "TEST denied recipient",
+      active: false,
+    });
+    expect(deniedAdd.status).toBe(403);
+
+    const deniedRole = await mutate(staffPage, "staff.role", {
+      userId: targetProfile.user_id,
+      role: "admin",
+    });
+    expect(deniedRole.status).toBe(403);
+
+    const deniedDeactivate = await mutate(staffPage, "staff.deactivate", {
+      id: targetProfile.user_id,
+    });
+    expect(deniedDeactivate.status).toBe(403);
+
+    const deniedResend = await mutate(staffPage, "staff.invite.resend", {
+      id: targetProfile.user_id,
+    });
+    expect(deniedResend.status).toBe(403);
+
+    const { count: maintainerAuditsBefore, error: maintainerAuditReadError } = await db
+      .from("audit_log")
+      .select("id", { count: "exact", head: true })
+      .like("action", "maintainers.%");
+    expect(maintainerAuditReadError).toBeNull();
+
+    for (const [operation, input] of [
+      ["maintainer.invite", { username: "denied-maintainer" }],
+      ["maintainer.invite.cancel", { invitationId: 1 }],
+      ["maintainer.revoke", { userId: 1 }],
+    ] as const) {
+      const denied = await mutate(staffPage, operation, input);
+      expect(denied.status).toBe(403);
+    }
+
+    const anonymousContext = await browser.newContext();
+    try {
+      const anonymousPage = await anonymousContext.newPage();
+      await anonymousPage.goto("/en");
+      for (const [operation, input] of [
+        ["maintainer.invite", { username: "anonymous-maintainer" }],
+        ["maintainer.invite.cancel", { invitationId: 1 }],
+        ["maintainer.revoke", { userId: 1 }],
+      ] as const) {
+        const denied = await mutate(anonymousPage, operation, input);
+        expect(denied.status).toBe(401);
+      }
+    } finally {
+      await anonymousContext.close();
+    }
+
+    const injected = await mutate(adminPage, "maintainer.invite", {
+      username: "ASTXRTYS",
+      repository: "attacker/selected",
+      path: "/repos/attacker/selected",
+      method: "DELETE",
+      permission: "admin",
+    });
+    expect(injected.status).toBe(400);
+    const ownerRevoke = await mutate(adminPage, "maintainer.revoke", {
+      userId: 305283597,
+    });
+    expect(ownerRevoke.status).toBe(400);
+
+    const { count: maintainerAuditsAfter, error: maintainerAuditAfterError } = await db
+      .from("audit_log")
+      .select("id", { count: "exact", head: true })
+      .like("action", "maintainers.%");
+    expect(maintainerAuditAfterError).toBeNull();
+    expect(maintainerAuditsAfter).toBe(maintainerAuditsBefore);
+
+    const addedRecipient = await mutate(adminPage, "recipient.add", {
+      email: recipientEmail,
+      label: `TEST recipient ${runId}`,
+      active: true,
+    });
+    expect(addedRecipient.status).toBe(201);
+    expect(addedRecipient.body.ok).toBe(true);
+    expect(addedRecipient.body.delivery).toBe("failed");
+
+    const duplicateRecipient = await mutate(adminPage, "recipient.add", {
+      email: recipientEmail.toUpperCase(),
+      label: "TEST duplicate recipient",
+      active: true,
+    });
+    expect(duplicateRecipient.status).toBe(409);
+    expect(duplicateRecipient.body).toMatchObject({
+      ok: false,
+      code: "conflict",
+    });
+
+    const missingRecipientId = randomUUID();
+    const missingToggle = await mutate(adminPage, "recipient.toggle", {
+      recipientId: missingRecipientId,
+      active: false,
+    });
+    expect(missingToggle.status).toBe(404);
+    expect(missingToggle.body).toMatchObject({
+      ok: false,
+      code: "not_found",
+    });
+    const missingRemove = await mutate(adminPage, "recipient.remove", {
+      id: missingRecipientId,
+    });
+    expect(missingRemove.status).toBe(404);
+    expect(missingRemove.body).toMatchObject({
+      ok: false,
+      code: "not_found",
+    });
+
+    const { data: recipient, error: recipientError } = await db
+      .from("notification_recipients")
+      .select("id, active")
+      .eq("email", recipientEmail)
+      .single();
+    expect(recipientError).toBeNull();
+    const recipientRow = requireDecoded(
+      recipientRowSchema.safeParse(recipient),
+      "Throwaway recipient was not created",
+    );
+    recipientId = recipientRow.id;
+    auditEntityIds.add(recipientRow.id);
+
+    // Pausing an address is a settings change, so it is admin-only like adding and removing.
+    const deniedToggle = await mutate(staffPage, "recipient.toggle", {
+      recipientId: recipientRow.id,
+      active: false,
+    });
+    expect(deniedToggle.status).toBe(403);
+    expect(recipientRow.active).toBe(true);
+    const recipientAfterDeniedToggle = await db
+      .from("notification_recipients")
+      .select("active")
+      .eq("id", recipientRow.id)
+      .single();
+    expect(recipientAfterDeniedToggle.data?.active).toBe(true);
+
+    const deniedTestSend = await mutate(staffPage, "recipient.test", {});
+    expect(deniedTestSend.status).toBe(403);
+
+    const toggledRecipient = await mutate(adminPage, "recipient.toggle", {
+      recipientId: recipientRow.id,
+      active: false,
+    });
+    expect(toggledRecipient.status).toBe(200);
+    expect(toggledRecipient.body.ok).toBe(true);
+
+    const deniedRemove = await mutate(staffPage, "recipient.remove", {
+      id: recipientRow.id,
+    });
+    expect(deniedRemove.status).toBe(403);
+    const recipientAfterDeniedRemove = await db
+      .from("notification_recipients")
+      .select("active")
+      .eq("id", recipientRow.id)
+      .single();
+    expect(recipientAfterDeniedRemove.error).toBeNull();
+    expect(recipientAfterDeniedRemove.data?.active).toBe(false);
+
+    const staffRest = publishableDb();
+    const staffSignIn = await staffRest.auth.signInWithPassword({
+      email: staffEmail,
+      password: staffPassword,
+    });
+    expect(staffSignIn.error).toBeNull();
+
+    const profileWrite = await staffRest
+      .from("staff_profiles")
+      .update({ display_name: `TEST denied change ${runId}` })
+      .eq("user_id", targetProfile.user_id)
+      .select("id");
+    expectDenied(profileWrite);
+    await staffRest.auth.signOut({ scope: "local" });
+
+    const promoted = await mutate(adminPage, "staff.role", {
+      userId: targetProfile.user_id,
+      role: "admin",
+    });
+    expect(promoted.status).toBe(200);
+    expect(promoted.body.ok).toBe(true);
+
+    const [promotedProfile, promotedAuth] = await Promise.all([
+      db.from("staff_profiles").select("role").eq("user_id", targetProfile.user_id).single(),
+      db.auth.admin.getUserById(targetProfile.user_id),
+    ]);
+    expect(promotedProfile.error).toBeNull();
+    expect(promotedProfile.data?.role).toBe("admin");
+    expect(promotedAuth.error).toBeNull();
+    expect(promotedAuth.data.user?.app_metadata.role).toBe("admin");
+
+    const restoredRole = await mutate(adminPage, "staff.role", {
+      userId: targetProfile.user_id,
+      role: "staff",
+    });
+    expect(restoredRole.status).toBe(200);
+    expect(restoredRole.body.ok).toBe(true);
+
+    const deactivated = await mutate(adminPage, "staff.deactivate", {
+      id: targetProfile.user_id,
+    });
+    expect(deactivated.status).toBe(200);
+    expect(deactivated.body.ok).toBe(true);
+
+    const [deactivatedProfile, deactivatedAuth] = await Promise.all([
+      db.from("staff_profiles").select("active").eq("user_id", targetProfile.user_id).single(),
+      db.auth.admin.getUserById(targetProfile.user_id),
+    ]);
+    expect(deactivatedProfile.error).toBeNull();
+    expect(deactivatedProfile.data?.active).toBe(false);
+    expect(deactivatedAuth.error).toBeNull();
+    expect(deactivatedAuth.data.user?.banned_until).toBeTruthy();
+
+    const lockedContext = await browser.newContext();
+    try {
+      const lockedPage = await lockedContext.newPage();
+      await lockedPage.goto("/admin/login");
+      await lockedPage.getByLabel("Email").fill(targetEmail);
+      await lockedPage.getByLabel("Password").fill(targetPassword);
+      await lockedPage.getByRole("button", { name: "Sign in" }).click();
+      await expect(lockedPage).toHaveURL(/\/admin\/login\/?$/);
+      await expect(lockedPage.locator("#login-error")).toHaveText(GENERIC_LOGIN_ERROR);
+    } finally {
+      await lockedContext.close();
+    }
+
+    const removedRecipient = await mutate(adminPage, "recipient.remove", {
+      id: recipientRow.id,
+    });
+    expect(removedRecipient.status).toBe(200);
+    expect(removedRecipient.body.ok).toBe(true);
+
+    const recipientAfterRemove = await db
+      .from("notification_recipients")
+      .select("id")
+      .eq("id", recipientRow.id)
+      .maybeSingle();
+    expect(recipientAfterRemove.error).toBeNull();
+    expect(recipientAfterRemove.data).toBeNull();
+  });
+
+  test("VAL-ADMIN-010: management mutations write actor, action, entity, and time", async () => {
+    if (
+      staffProfileId === null ||
+      staffProfileId === "" ||
+      targetProfileId === null ||
+      targetProfileId === "" ||
+      recipientId === null ||
+      recipientId === ""
+    ) {
+      throw new Error("Role-enforcement setup did not complete");
+    }
+
+    const { data: rows, error } = await db
+      .from("audit_log")
+      .select("actor_email, action, entity, entity_id, source, correlation_id, at, detail")
+      .in("entity_id", [staffProfileId, targetProfileId, recipientId]);
+    expect(error).toBeNull();
+    const auditRows = requireDecoded(
+      z.array(auditRowSchema).safeParse(rows ?? []),
+      "Management audit rows could not be decoded",
+    );
+
+    function assertAudit(action: string, entityId: string, actorEmail: string): void {
+      const row = auditRows.find(
+        (candidate) =>
+          candidate.action === action &&
+          candidate.entity_id === entityId &&
+          candidate.actor_email.toLowerCase() === actorEmail.toLowerCase(),
+      );
+      expect(row).toBeTruthy();
+      expect(row?.entity).toBe(
+        action.startsWith("staff.") ? "staff_profiles" : "notification_recipients",
+      );
+      expect(Number.isNaN(Date.parse(row?.at ?? ""))).toBe(false);
+      expect(row?.source).toBe("staff");
+      expect(row?.correlation_id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      );
+    }
+
+    assertAudit("staff.invite", staffProfileId, SEED_ADMIN_EMAIL);
+    assertAudit("staff.invite", targetProfileId, SEED_ADMIN_EMAIL);
+    const resendAudits = auditRows.filter((candidate) => {
+      if (candidate.action !== "staff.invite" || candidate.entity_id !== targetProfileId) {
+        return false;
+      }
+      const detail = inviteDetailSchema.safeParse(candidate.detail);
+      return detail.success && detail.data.resend === true;
+    });
+    expect(resendAudits).toHaveLength(2);
+    const resendLinkTypes = resendAudits
+      .map((row) => inviteDetailSchema.safeParse(row.detail).data?.link_type)
+      .sort((left, right) => (left ?? "").localeCompare(right ?? ""));
+    expect(resendLinkTypes).toEqual(["invite", "recovery"]);
+    assertAudit("staff.role", targetProfileId, SEED_ADMIN_EMAIL);
+    assertAudit("staff.deactivate", targetProfileId, SEED_ADMIN_EMAIL);
+    assertAudit("recipients.add", recipientId, SEED_ADMIN_EMAIL);
+    assertAudit("recipients.toggle", recipientId, SEED_ADMIN_EMAIL);
+    assertAudit("recipients.remove", recipientId, SEED_ADMIN_EMAIL);
+
+    if (!adminPage) throw new Error("Admin session is unavailable");
+    const targetLogin = `audit-${runId}`;
+    const { data: externalAudit, error: externalAuditError } = await db
+      .from("audit_log")
+      .insert({
+        actor_email: SEED_ADMIN_EMAIL,
+        action: "maintainers.invite",
+        entity: "repository_maintainers",
+        entity_id: null,
+        source: "acceptance",
+        correlation_id: randomUUID(),
+        detail: {
+          provider: "github",
+          target_login: targetLogin,
+          outcome: "pending",
+        },
+      })
+      .select("id")
+      .single();
+    expect(externalAuditError).toBeNull();
+    const externalAuditRow = requireDecoded(
+      idRowSchema.safeParse(externalAudit),
+      "External audit fixture was not created",
+    );
+    try {
+      await adminPage.goto("/admin/audit");
+      const auditRow = adminPage
+        .getByTestId("audit-table")
+        .getByRole("row")
+        .filter({ hasText: targetLogin });
+      await expect(auditRow).toContainText(targetLogin);
+      await expect(auditRow).toContainText("Outcome unconfirmed");
+    } finally {
+      await db.from("audit_log").delete().eq("id", externalAuditRow.id);
+    }
+  });
+
+  test("VAL-ADMIN-023: cancelling a pending invite removes the account, and a cancelled address can be invited again", async () => {
+    test.setTimeout(90_000);
+    if (adminPage === null) throw new Error("VAL-ADMIN-009 did not leave an admin page");
+    const page = adminPage;
+    const legacyEmail = `portal-legacy-${runId}@example.test`;
+    const profileIds = new Set<string>();
+    const userIds = new Set<string>();
+
+    async function profilesFor(email: string) {
+      const { data, error } = await db
+        .from("staff_profiles")
+        .select("id, user_id, email, role, active, onboarded_at")
+        .eq("email", email);
+      expect(error).toBeNull();
+      return requireDecoded(
+        z.array(staffProfileRowSchema).safeParse(data ?? []),
+        "Legacy invite profiles could not be decoded",
+      );
+    }
+
+    async function authUserExists(userId: string) {
+      const { data } = await db.auth.admin.getUserById(userId);
+      return data.user !== null;
+    }
+
+    try {
+      // An invite cancelled before cancelling removed accounts left an
+      // Inactive, never-onboarded profile holding the address.
+      const legacy = await db.auth.admin.createUser({ email: legacyEmail, email_confirm: false });
+      expect(legacy.error).toBeNull();
+      const legacyUserId = z.string().parse(legacy.data.user?.id);
+      userIds.add(legacyUserId);
+      const legacyProfile = await db
+        .from("staff_profiles")
+        .insert({
+          user_id: legacyUserId,
+          email: legacyEmail,
+          display_name: "TEST Legacy Invite",
+          role: "staff",
+          active: false,
+          onboarded_at: null,
+        })
+        .select("id")
+        .single();
+      expect(legacyProfile.error).toBeNull();
+      profileIds.add(z.string().parse(legacyProfile.data?.id));
+
+      // Inviting the address again clears that leftover instead of conflicting.
+      fallbackSetupUrl(await mutate(page, "staff.invite", { email: legacyEmail, role: "staff" }));
+      const reinvited = (await profilesFor(legacyEmail)).at(0);
+      if (reinvited === undefined) throw new Error("The re-invite left no profile");
+      profileIds.add(reinvited.id);
+      userIds.add(reinvited.user_id);
+      expect(reinvited.user_id).not.toBe(legacyUserId);
+      expect(reinvited.active).toBe(true);
+      expect(reinvited.onboarded_at).toBeNull();
+      expect(await authUserExists(legacyUserId)).toBe(false);
+
+      // Cancelling the pending invite deletes the account outright and audits
+      // It as a cancelled invite.
+      const cancelled = await mutate(page, "staff.deactivate", { id: reinvited.user_id });
+      expect(cancelled.status).toBe(200);
+      expect(cancelled.body.ok).toBe(true);
+      expect(await profilesFor(legacyEmail)).toHaveLength(0);
+      expect(await authUserExists(reinvited.user_id)).toBe(false);
+      const { data: audits, error: auditError } = await db
+        .from("audit_log")
+        .select("actor_email, action, detail")
+        .eq("entity_id", reinvited.id)
+        .eq("action", "staff.deactivate");
+      expect(auditError).toBeNull();
+      const cancelAudits = requireDecoded(
+        z.array(auditRowSchema.pick({ actor_email: true, detail: true })).safeParse(audits ?? []),
+        "Cancelled-invite audit rows could not be decoded",
+      );
+      expect(cancelAudits).toHaveLength(1);
+      expect(cancelAudits[0]?.actor_email.toLowerCase()).toBe(SEED_ADMIN_EMAIL.toLowerCase());
+      expect(cancelAudits[0]?.detail).toEqual({
+        from: true,
+        to: false,
+        onboarded: false,
+        invite_cancelled: true,
+      });
+
+      // The freed address takes a fresh invite.
+      fallbackSetupUrl(await mutate(page, "staff.invite", { email: legacyEmail, role: "staff" }));
+      const fresh = (await profilesFor(legacyEmail)).at(0);
+      if (fresh === undefined) throw new Error("The fresh invite left no profile");
+      profileIds.add(fresh.id);
+      userIds.add(fresh.user_id);
+
+      // Someone who finished setup keeps their address after deactivation.
+      const kept = await mutate(page, "staff.invite", { email: targetEmail, role: "staff" });
+      expect(kept.status).toBe(409);
+      expect(kept.body.ok).toBe(false);
+    } finally {
+      await db
+        .from("audit_log")
+        .delete()
+        .in("entity_id", [...profileIds]);
+      await db.from("staff_profiles").delete().eq("email", legacyEmail);
+      for (const userId of userIds) {
+        await db.auth.admin.deleteUser(userId);
+      }
+    }
+  });
+
+  test("VAL-ADMIN-019: the Activity log renders the audit record in plain language", async () => {
+    if (!adminPage) throw new Error("Admin session is unavailable");
+    const token = `activitylog-${runId}`;
+    const { data: staged, error: stageError } = await db
+      .from("requests")
+      .insert({
+        name: `TEST Activity Log ${runId}`,
+        phone: "8135550111",
+        email: `${token}@example.test`,
+        location: "tampa",
+        preferred_time: "morning",
+        message: "TEST activity-log fixture.",
+        locale: "en",
+        source_path: "/e2e/activity-log",
+        // Durable workflow shape: the staff-facing Scheduled presentation
+        // Rides on the `booked` state (DEC-04); the historic audit rows
+        // Staged below keep their as-recorded legacy vocabulary.
+        status: "booked",
+        record_handoff_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single();
+    expect(stageError).toBeNull();
+    const requestId = requireDecoded(
+      idRowSchema.safeParse(staged),
+      "Activity-log fixture was not created",
+    ).id;
+
+    // An hour ahead of the run clock, so the day's other work cannot push them off the first page.
+    const anchor = Date.now() + 60 * 60_000;
+    const { error: auditError } = await db.from("audit_log").insert([
+      {
+        actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+        action: "request.status_change",
+        entity: "requests",
+        entity_id: requestId,
+        detail: { from: "new", to: "scheduled" },
+        at: new Date(anchor).toISOString(),
+      },
+      {
+        actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+        action: "request.call_outcome",
+        entity: "requests",
+        entity_id: requestId,
+        detail: {
+          from: "scheduled",
+          to: "contacted",
+          outcome: "voicemail",
+          follow_up_at: new Date(Date.now() + 3 * 86_400_000).toISOString(),
+          note_attached: false,
+        },
+        at: new Date(anchor - 1000).toISOString(),
+      },
+      {
+        actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+        action: "requests.export",
+        entity: "requests",
+        entity_id: null,
+        detail: { row_count: 42, status_filter: "all", has_search: false },
+        at: new Date(anchor - 2000).toISOString(),
+      },
+    ]);
+    expect(auditError).toBeNull();
+
+    const { data: profile } = await db
+      .from("staff_profiles")
+      .select("display_name")
+      .eq("email", SEED_ADMIN_EMAIL.toLowerCase())
+      .single();
+    const actorName = String(profile?.display_name ?? "");
+
+    try {
+      await adminPage.goto("/admin/audit");
+      const feed = adminPage.getByTestId("activity-feed");
+      await expect(feed).toBeVisible();
+      await expect(feed).toContainText(actorName);
+      await expect(feed).toContainText("marked a request Scheduled");
+      await expect(feed).toContainText("left a voicemail on a request");
+      await expect(feed).toContainText("exported the request list (42 requests)");
+      // Storage vocabulary never reaches the human view.
+      await expect(feed).not.toContainText("request.status_change");
+      await expect(feed).not.toContainText("requests.export");
+      const statusEntry = feed
+        .locator("li[data-activity-row]", { hasText: "marked a request Scheduled" })
+        .first();
+      await statusEntry.getByTestId("activity-row-summary").click();
+      await expect(statusEntry.getByRole("link", { name: "Open record" })).toHaveAttribute(
+        "href",
+        `/admin/schedule?request=${requestId}`,
+      );
+
+      // The exact technical record stays beneath for administrators.
+      const technical = adminPage.getByTestId("audit-table");
+      await expect(technical).toContainText("request.status_change");
+      await expect(technical).toContainText("requests.export");
+    } finally {
+      await db.from("audit_log").delete().eq("entity_id", requestId);
+      await db
+        .from("audit_log")
+        .delete()
+        .eq("action", "requests.export")
+        .eq("actor_email", SEED_ADMIN_EMAIL.toLowerCase())
+        .contains("detail", { row_count: 42 });
+      await db.from("requests").delete().eq("id", requestId);
+    }
+  });
+
+  test("VAL-ADMIN-020: Activity log search stays in the page, chips narrow it, and Clear all recovers", async () => {
+    if (!adminPage) throw new Error("Admin session is unavailable");
+    // Four print-packet events plus one request action, dated an hour ahead
+    // Of the run clock so they lead the newest-first first page.
+    const anchor = new Date(Date.now() + 60 * 60_000);
+    const { data: stagedRows, error: stageError } = await db
+      .from("audit_log")
+      .insert([
+        ...Array.from({ length: 4 }, (_, index) => ({
+          actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+          action: "requests.print_new",
+          entity: "requests",
+          entity_id: null,
+          detail: { row_count: 3 },
+          at: new Date(anchor.getTime() - index * 60_000).toISOString(),
+        })),
+        {
+          actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+          action: "request.create",
+          entity: "requests",
+          entity_id: null,
+          detail: {},
+          at: new Date(anchor.getTime() - 10 * 60_000).toISOString(),
+        },
+      ])
+      .select("id");
+    expect(stageError).toBeNull();
+    const fixtureIds = requireDecoded(
+      z.array(idRowSchema).safeParse(stagedRows ?? []),
+      "Activity fixtures were not created",
+    ).map((row) => row.id);
+
+    try {
+      await adminPage.goto("/admin/audit?category=requests");
+      const feed = adminPage.getByTestId("activity-feed");
+      // The fixtures lead the list. The shared database may hold other packets of three,
+      // So the check reads the first rows rather than counting every match.
+      const rows = feed.locator("li[data-activity-row]");
+      const expectPacketsLead = async () => {
+        for (const index of [0, 1, 2, 3]) {
+          await expect(rows.nth(index)).toContainText(
+            "prepared the New-request print packet (3 requests)",
+          );
+        }
+      };
+      // One sentence per stored event: four packets are four rows, never a compacted group.
+      await expectPacketsLead();
+      await expect(rows.nth(4)).toContainText("added an appointment request");
+
+      // A search narrows the list in place and never reaches the address.
+      const search = adminPage.getByTestId("activity-search");
+      expect(await search.count()).toBe(1);
+      await search.fill("print");
+      await expect(feed).not.toContainText("added an appointment request");
+      await expectPacketsLead();
+      await expect(adminPage).toHaveURL(/\/admin\/audit\?category=requests$/);
+
+      // The exact technical record keeps every underlying event.
+      const technical = adminPage.getByTestId("audit-table");
+      expect(await technical.getByText("requests.print_new").count()).toBeGreaterThanOrEqual(4);
+
+      // A chip that leaves nothing says so and offers the way back.
+      await adminPage
+        .getByTestId("activity-categories")
+        .getByRole("button", { name: "Sign-ins", exact: true })
+        .click();
+      await expect(adminPage).toHaveURL(/\/admin\/audit\?category=sign_ins$/);
+      const empty = adminPage.getByTestId("activity-empty-filtered");
+      await expect(empty).toBeVisible();
+      await expect(empty).toContainText("Nothing matches");
+      await empty.getByTestId("activity-clear-all").click();
+      await expect(adminPage).toHaveURL(/\/admin\/audit$/);
+      await expect(search).toHaveValue("");
+      await expectPacketsLead();
+    } finally {
+      for (const id of fixtureIds) {
+        await db.from("audit_log").delete().eq("id", id);
+      }
+    }
+  });
+
+  test("VAL-ADMIN-021: workflow-command vocabulary, category chips, and settings rows", async () => {
+    if (!adminPage) throw new Error("Admin session is unavailable");
+    const token = `slice8-${runId}`;
+    // Dated an hour ahead of the run clock, like VAL-ADMIN-020: at the top of
+    // The fifty-row first page whatever the day has written.
+    const anchor = new Date(Date.now() + 60 * 60_000);
+    const { data: staged, error: stageError } = await db
+      .from("requests")
+      .insert({
+        name: `TEST Slice8 ${runId}`,
+        phone: "8135550112",
+        email: `${token}@example.test`,
+        location: "tampa",
+        preferred_time: "morning",
+        message: "TEST slice8 workflow fixture.",
+        locale: "en",
+        source_path: "/e2e/slice8",
+        status: "contacted",
+      })
+      .select("id")
+      .single();
+    expect(stageError).toBeNull();
+    const requestId = requireDecoded(
+      idRowSchema.safeParse(staged),
+      "Slice 8 request fixture was not created",
+    ).id;
+    const chosenPrintIds = [requestId, randomUUID(), randomUUID()];
+    const commands = [
+      ["record_contact_attempt", "new", "contacted", "recorded a contact attempt on a request"],
+      ["confirm_booking_handoff", "contacted", "booked", "marked a request Scheduled"],
+      ["close_request", "contacted", "closed", "closed a request"],
+      ["reopen_request", "closed", "contacted", "reopened a request"],
+      ["set_call_again", "contacted", "contacted", "corrected the call-again time on a request"],
+      [
+        "undo_latest_transition",
+        "contacted",
+        "booked",
+        "undid the last change on a request — back to Scheduled",
+      ],
+      ["classify_legacy_closure", "closed", "closed", "classified a closed request"],
+    ] as const;
+    const { data: stagedRows, error: auditError } = await db
+      .from("audit_log")
+      .insert([
+        ...commands.map(([command, from, to], index) => ({
+          actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+          action: "request.workflow_command",
+          entity: "requests",
+          entity_id: requestId,
+          detail: { command, from, to, resulting_version: index + 1 },
+          at: new Date(anchor.getTime() - index * 1000).toISOString(),
+        })),
+        {
+          actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+          action: "requests.print_new",
+          entity: "requests",
+          entity_id: null,
+          detail: { row_count: 17 },
+          at: new Date(anchor.getTime() - 20 * 60_000).toISOString(),
+        },
+        {
+          actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+          action: "request.note",
+          entity: "requests",
+          entity_id: requestId,
+          detail: {},
+          at: new Date(anchor.getTime() - 21 * 60_000).toISOString(),
+        },
+        {
+          actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+          action: "requests.print_new",
+          entity: "requests",
+          entity_id: null,
+          detail: { row_count: 17 },
+          at: new Date(anchor.getTime() - 22 * 60_000).toISOString(),
+        },
+        {
+          actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+          action: "recipients.add",
+          entity: "notification_recipients",
+          entity_id: null,
+          detail: {},
+          at: new Date(anchor.getTime() - 30 * 60_000).toISOString(),
+        },
+        {
+          // A packet of chosen requests: no status filter, its ids in print order.
+          actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+          action: "requests.print_new",
+          entity: "requests",
+          entity_id: null,
+          detail: { row_count: 3, status_filter: null, request_ids: chosenPrintIds },
+          at: new Date(anchor.getTime() - 35 * 60_000).toISOString(),
+        },
+        {
+          actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+          action: "maintainers.invite",
+          entity: "maintainers",
+          entity_id: null,
+          detail: { target_login: `${token}-maintainer` },
+          at: new Date(anchor.getTime() - 40 * 60_000).toISOString(),
+        },
+      ])
+      .select("id");
+    expect(auditError).toBeNull();
+    const fixtureIds = requireDecoded(
+      z.array(idRowSchema).safeParse(stagedRows ?? []),
+      "Slice 8 activity fixtures were not created",
+    ).map((row) => row.id);
+
+    try {
+      await adminPage.goto("/admin/audit");
+      const feed = adminPage.getByTestId("activity-feed");
+      for (const [, , , phrase] of commands) {
+        await expect(feed).toContainText(phrase);
+      }
+      await expect(feed).not.toContainText("request.workflow_command");
+      await expect(feed).not.toContainText("record_contact_attempt");
+      await expect(feed).not.toContainText("set_call_again");
+      await expect(feed).not.toContainText("undo_latest_transition");
+      await expect(feed).not.toContainText("resulting_version");
+      await expect(feed).toContainText("prepared a print packet of 3 requests");
+      for (const id of chosenPrintIds.slice(1)) await expect(feed).not.toContainText(id);
+      const attempt = feed
+        .locator("li[data-activity-row]", { hasText: "recorded a contact attempt on a request" })
+        .first();
+      await attempt.getByTestId("activity-row-summary").click();
+      await expect(attempt.getByRole("link", { name: "Open record" })).toHaveAttribute(
+        "href",
+        `/admin/schedule?request=${requestId}`,
+      );
+      await expect(adminPage.getByTestId("audit-table")).toContainText("request.workflow_command");
+
+      // Every chip is single-choice and writes its category into the address.
+      const chips = [
+        ["appointments", "Appointments"],
+        ["requests", "Requests"],
+        ["schedule", "Schedule and hours"],
+        ["sign_ins", "Sign-ins"],
+        ["settings", "Settings"],
+        [null, "Everything"],
+      ] as const;
+      const categories = adminPage.getByTestId("activity-categories");
+      for (const [category, label] of chips) {
+        const chip = categories.getByRole("button", { name: label, exact: true });
+        await chip.click();
+        await expect(chip).toHaveAttribute("aria-pressed", "true");
+        await expect(categories.locator("[aria-pressed='true']")).toHaveCount(1);
+        await expect(adminPage).toHaveURL(
+          category === null ? /\/admin\/audit$/ : new RegExp(`\\?category=${category}$`),
+        );
+      }
+
+      await adminPage.goto("/admin/audit?category=requests");
+      await expect(feed).toContainText("contact attempt");
+      await expect(
+        feed.getByText("prepared the New-request print packet (17 requests)"),
+      ).toHaveCount(2);
+      await expect(feed).not.toContainText(`${token}-maintainer`);
+      await adminPage.goto("/admin/audit?category=settings");
+      await expect(feed).toContainText("notification emails");
+      await expect(feed).toContainText(`${token}-maintainer`);
+      await expect(feed).not.toContainText("contact attempt");
+
+      await adminPage.getByTestId("activity-clear-all").first().click();
+      await expect(adminPage).toHaveURL(/\/admin\/audit$/);
+    } finally {
+      for (const id of fixtureIds) {
+        await db.from("audit_log").delete().eq("id", id);
+      }
+      await db.from("requests").delete().eq("id", requestId);
+    }
+  });
+
+  test("VAL-ADMIN-022: the log reads on with Load more beside the Technical record's pager, and keeps focus", async () => {
+    if (!adminPage) throw new Error("Admin session is unavailable");
+    test.setTimeout(120_000);
+    const actor = `lens-${runId}@example.test`;
+    const oldestId = randomUUID();
+    const { data: staged, error: stageError } = await db
+      .from("requests")
+      .insert({
+        id: oldestId,
+        name: `TEST Lens ${runId}`,
+        phone: "8135550113",
+        email: actor,
+        location: "tampa",
+        preferred_time: "morning",
+        message: "TEST activity-log paging fixture.",
+        locale: "en",
+        source_path: "/e2e/activity-log-paging",
+        status: "contacted",
+      })
+      .select("id")
+      .single();
+    expect(stageError).toBeNull();
+    expect(requireDecoded(idRowSchema.safeParse(staged), "Lens request was not created").id).toBe(
+      oldestId,
+    );
+
+    // 120 notes dated in 2042, ahead of everything else the log holds: two and a half pages.
+    const base = Date.UTC(2042, 5, 1, 12, 0, 0);
+    const rows = Array.from({ length: 120 }, (_, index) => ({
+      actor_email: actor,
+      action: "request.note",
+      entity: "requests",
+      entity_id: index === 119 ? oldestId : null,
+      detail: {},
+      at: new Date(base - index * 1000).toISOString(),
+    }));
+    const fixtureIds: string[] = [];
+    try {
+      const { data, error } = await db.from("audit_log").insert(rows).select("id");
+      expect(error).toBeNull();
+      fixtureIds.push(
+        ...requireDecoded(
+          z.array(idRowSchema).safeParse(data ?? []),
+          "Lens audit rows were not created",
+        ).map((row) => row.id),
+      );
+      expect(fixtureIds).toHaveLength(120);
+
+      await adminPage.goto("/admin/audit?category=requests");
+      const lensRows = adminPage
+        .getByTestId("activity-feed")
+        .locator("li[data-activity-row]", { hasText: actor });
+      await expect(lensRows).toHaveCount(50);
+      // Something follows the list for an administrator, so it grows on Load more, not on scroll.
+      const more = adminPage.getByTestId("activity-load-more");
+      await more.click();
+      await expect(lensRows).toHaveCount(100);
+      await more.click();
+      await expect(lensRows).toHaveCount(120);
+      const oldest = lensRows.last();
+      await oldest.getByTestId("activity-row-summary").click();
+      await expect(oldest.getByRole("link", { name: "Open record" })).toHaveAttribute(
+        "href",
+        `/admin/schedule?request=${oldestId}`,
+      );
+
+      // The Technical record's pager carries the log's filters and moves focus to its summary.
+      const technicalNext = adminPage
+        .getByTestId("audit-pagination")
+        .getByRole("link", { name: "Next" });
+      const technicalNextUrl = new URL(
+        (await technicalNext.getAttribute("href")) ?? "",
+        adminPage.url(),
+      );
+      expect(technicalNextUrl.searchParams.get("page")).toBe("2");
+      expect(technicalNextUrl.searchParams.get("category")).toBe("requests");
+      await technicalNext.click();
+      await expect(adminPage).toHaveURL(/page=2/);
+      await expect(adminPage).toHaveURL(/category=requests/);
+      await expect(adminPage.getByTestId("audit-page-summary")).toContainText("101–200 of");
+      await expect(
+        adminPage.getByTestId("audit-pagination").getByText(/Page 2 of \d+/, {
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(adminPage.getByTestId("audit-page-summary")).toBeFocused();
+
+      const technicalPrevious = adminPage
+        .getByTestId("audit-pagination")
+        .getByRole("link", { name: "Previous" });
+      await technicalPrevious.click();
+      await expect(adminPage).toHaveURL(/category=requests/);
+      await expect(adminPage).not.toHaveURL(/page=/);
+      await expect(adminPage.getByTestId("audit-page-summary")).toHaveText(/^Showing 1–100 of/);
+      await expect(adminPage.getByTestId("audit-page-summary")).toBeFocused();
+
+      // A chip change rewrites the log's filters and leaves the Technical record's page alone.
+      await adminPage.goto("/admin/audit?category=requests&page=2");
+      await adminPage
+        .getByTestId("activity-categories")
+        .getByRole("button", { name: "Everything", exact: true })
+        .click();
+      await expect(adminPage).toHaveURL(/\/admin\/audit\?page=2$/);
+      await expect(adminPage.getByTestId("audit-page-summary")).toContainText("101–200 of");
+    } finally {
+      if (fixtureIds.length > 0) {
+        const { error } = await db.from("audit_log").delete().in("id", fixtureIds);
+        expect(error).toBeNull();
+      }
+      await db.from("audit_log").delete().eq("actor_email", actor);
+      await db.from("requests").delete().eq("id", oldestId);
+    }
+  });
+});

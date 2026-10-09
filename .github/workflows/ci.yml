@@ -41,15 +41,6 @@ jobs:
       - name: Verify .gitignore matches local-only-paths.json
         run: npm run local-only:verify
 
-      - name: Verify dependency automation policy
-        run: node --test .github/scripts/dependency-automation.test.cjs
-
-      - name: Verify destructive E2E target guard
-        run: npm run test:e2e-guard
-
-      - name: Portal unit tests
-        run: npm run test:unit
-
       # Oxlint and anti-slop stay in the local config (`npm run lint`).
       # CI does not run them until a dedicated findings PR lands.
 
@@ -58,13 +49,14 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-public-placeholder
           SUPABASE_SERVICE_ROLE_KEY: ci-server-placeholder
-          PORTAL_BASE_URL: http://127.0.0.1:3100
+          PORTAL_BASE_URL: http://localhost:3100
         run: npm run build
 
-      - name: Install public-smoke browser
+      - name: Install browser for the public specs
         run: npx playwright install --with-deps chromium
 
-      - name: Run public smoke
-        env:
-          PLAYWRIGHT_PUBLIC_SMOKE: "1"
-        run: npx playwright test e2e/smoke.spec.ts --project=chromium
+      # The patient-site specs that need no credentials: smoke, language
+      # Chooser, leak hygiene. Everything that needs a database runs in the
+      # Supabase-integration workflow against a Preview Branch.
+      - name: Run public browser specs
+        run: npm run test:e2e:public

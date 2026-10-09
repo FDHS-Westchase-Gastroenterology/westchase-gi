@@ -25,20 +25,46 @@ export const REQUEST_FIELD_LIMITS = {
   message: 2000,
 } as const;
 
-const REQUEST_LOCATIONS = ["any", "tampa", "lutz"] as const;
+export const REQUEST_LOCATIONS = ["any", "tampa", "lutz"] as const;
 export type RequestLocation = (typeof REQUEST_LOCATIONS)[number];
 
-const REQUEST_TIMES = ["any", "morning", "afternoon"] as const;
+export const REQUEST_TIMES = ["any", "morning", "afternoon"] as const;
 export type RequestTime = (typeof REQUEST_TIMES)[number];
 
-export const REQUEST_STATUSES = ["new", "contacted", "scheduled", "closed"] as const;
-export type RequestStatus = (typeof REQUEST_STATUSES)[number];
+export const STAFF_ROLES = ["admin", "staff"] as const;
+export type StaffRole = (typeof STAFF_ROLES)[number];
 
-// The closure outcomes the database's close paths validate
-// ('unconverted' / 'converted').
-export type RequestClosureOutcome = "unconverted" | "converted";
+export function parseStaffRole(raw: string): StaffRole | null {
+  return STAFF_ROLES.find((role) => role === raw) ?? null;
+}
 
-export type StaffRole = "admin" | "staff";
+/** The first-sign-in tours (staff_tours.tour). Front desk accounts take only their own. */
+export const STAFF_TOURS = ["front_desk", "admin"] as const;
+export type StaffTour = (typeof STAFF_TOURS)[number];
+export const STAFF_TOUR_STATUSES = ["pending", "finished", "skipped"] as const;
+export type StaffTourStatus = (typeof STAFF_TOUR_STATUSES)[number];
+
+/** The tour that starts on a role's first sign-in. */
+export function roleTour(role: StaffRole): StaffTour {
+  return role === "admin" ? "admin" : "front_desk";
+}
+
+/** The tours a role may take: an admin may take both. Mirrors portal_set_staff_tour. */
+export function toursForRole(role: StaffRole): readonly StaffTour[] {
+  return role === "admin" ? STAFF_TOURS : ["front_desk"];
+}
+
+export function parseStaffTour(raw: string): StaffTour | null {
+  return STAFF_TOURS.find((tour) => tour === raw) ?? null;
+}
+
+/** The two one-time-link flows that may set a password (spec: staff onboarding and recovery). */
+export const PASSWORD_AUTH_FLOWS = ["invite", "recovery"] as const;
+export type PasswordAuthFlow = (typeof PASSWORD_AUTH_FLOWS)[number];
+
+export function parsePasswordAuthFlow(raw: string): PasswordAuthFlow | null {
+  return PASSWORD_AUTH_FLOWS.find((flow) => flow === raw) ?? null;
+}
 
 export const RESET_REQUEST_MESSAGE =
   "If an active staff account exists for that email, you’ll receive a password reset link.";
@@ -76,16 +102,52 @@ export const requestInputSchema = z.object({
   sourcePath: z.string().trim().min(1).max(300).startsWith("/"),
 });
 
-export type RequestInput = z.infer<typeof requestInputSchema>;
+export const staffRequestInputSchema = requestInputSchema.omit({
+  locale: true,
+  sourcePath: true,
+});
 
-export type IntakeFailureCode = "validation" | "rate_limited" | "unavailable";
+/** The fields a patient or staff member fills in; also the query params a stale GET could carry. */
+export const INTAKE_FIELDS = ["name", "phone", "email", "location", "time", "message"] as const;
+
+export type IntakeField = (typeof INTAKE_FIELDS)[number];
+
+export interface StaffRequestDraft {
+  readonly name: string;
+  readonly phone: string;
+  readonly email: string;
+  readonly location: string;
+  readonly time: string;
+  readonly message: string;
+}
+
+export type CreateStaffRequestActionState =
+  | { status: "idle" }
+  /**
+   * The request exists and the caller stays where it was: the add dialog
+   * remains open so staff return to the line they were working rather than
+   * a new page.
+   */
+  | { status: "created"; requestId: string; name: string }
+  | {
+      status: "error";
+      code: "validation" | "conflict" | "unavailable";
+      /** Submitted values survive validation and ambiguous failures. */
+      values: StaffRequestDraft;
+      /** Reuse on every retry so an ambiguous response cannot duplicate work. */
+      idempotencyKey: string | null;
+      fieldErrors?: Partial<Record<IntakeField, string>>;
+    };
+
+export const INTAKE_FAILURE_CODES = ["validation", "rate_limited", "unavailable"] as const;
+export type IntakeFailureCode = (typeof INTAKE_FAILURE_CODES)[number];
 
 /** The only response shapes POST /api/requests may produce. */
 export const intakeResponseSchema = z.union([
   z.object({ ok: z.literal(true), id: z.string() }),
   z.object({
     ok: z.literal(false),
-    code: z.enum(["validation", "rate_limited", "unavailable"]),
+    code: z.enum(INTAKE_FAILURE_CODES),
     fieldErrors: z.record(z.string(), z.string()).optional(),
   }),
 ]);
@@ -104,9 +166,11 @@ export function zodFieldErrors(error: z.ZodError) {
 
 /** Every staff-visible mutation writes one of these audit_log actions. */
 export const AUDIT_ACTIONS = {
+  AUTH_SIGN_IN: "auth.sign_in",
   RECIPIENTS_ADD: "recipients.add",
   RECIPIENTS_REMOVE: "recipients.remove",
   RECIPIENTS_TOGGLE: "recipients.toggle",
+  RECIPIENTS_TEST_SEND: "recipients.test_send",
   STAFF_INVITE: "staff.invite",
   STAFF_ONBOARD: "staff.onboard",
   STAFF_PASSWORD_RESET: "staff.password_reset",
@@ -118,10 +182,18 @@ export const AUDIT_ACTIONS = {
   MAINTAINERS_INVITE: "maintainers.invite",
   MAINTAINERS_CANCEL: "maintainers.cancel",
   MAINTAINERS_REVOKE: "maintainers.revoke",
+  REQUEST_CREATE: "request.create",
   REQUESTS_EXPORT: "requests.export",
+  REQUESTS_PRINT_NEW: "requests.print_new",
   ...RELEASE_AUDIT_ACTIONS,
 } as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
+
+/** How often one admin may send the test new-request email from Settings › Notifications. */
+export const NOTIFICATION_TEST_RATE_LIMIT = {
+  limit: 3,
+  windowSeconds: 10 * 60,
+} as const;
 
 /** JS-enabled submissions POST JSON here. */
 export const INTAKE_API = "/api/requests";

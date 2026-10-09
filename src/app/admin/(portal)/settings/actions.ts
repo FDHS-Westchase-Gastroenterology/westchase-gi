@@ -14,6 +14,7 @@ import {
   inviteStaffMutation,
   removeNotificationRecipientMutation,
   resendStaffInviteMutation,
+  sendTestNotificationMutation,
   toggleNotificationRecipientMutation,
   updateRecipientLabelMutation,
 } from "@/lib/portal/management";
@@ -28,18 +29,23 @@ export async function addNotificationRecipient(input: Json) {
 }
 
 export async function toggleNotificationRecipient(input: Json) {
-  await requireRole("staff", { unauthenticated: "throw" });
+  await requireRole("admin", { unauthenticated: "throw" });
   return toggleNotificationRecipientMutation(input);
 }
 
 export async function updateRecipientLabel(input: Json) {
-  const session = await requireRole("staff", { unauthenticated: "throw" });
+  const session = await requireRole("admin", { unauthenticated: "throw" });
   return updateRecipientLabelMutation(input, session.email);
 }
 
 export async function removeNotificationRecipient(input: Json) {
   await requireRole("admin", { unauthenticated: "throw" });
   return removeNotificationRecipientMutation(input);
+}
+
+export async function sendTestNotification(input: Json = null) {
+  await requireRole("admin", { unauthenticated: "throw" });
+  return sendTestNotificationMutation(input);
 }
 
 export async function inviteStaff(input: Json) {

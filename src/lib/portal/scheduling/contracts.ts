@@ -1,0 +1,363 @@
+import { z } from "zod";
+
+import { REQUEST_LOCATIONS } from "@/lib/portal/contracts";
+import { REQUEST_STATES } from "@/lib/portal/workflow/contracts";
+
+import type {
+  canPlaceOutcomeSchema,
+  dayScheduleOutcomeSchema,
+  rememberWeekProviderOutcomeSchema,
+  weekProviderOutcomeSchema,
+  weekScheduleOutcomeSchema,
+} from "./grid-contracts";
+import type {
+  schedulingCatalogOutcomeSchema,
+  schedulingConfigReadOutcomeSchema,
+  appointmentListOutcomeSchema,
+  appointmentReadOutcomeSchema,
+  appointmentAvailabilityOutcomeSchema,
+  monthSummaryOutcomeSchema,
+  monthAvailabilityOutcomeSchema,
+} from "./read-contracts";
+import { appointmentStartSchema } from "./time";
+
+export const schedulingVersionSchema = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
+export const schedulingTimestampSchema = z.iso.datetime({ offset: true });
+export const schedulingEntitySchema = z.enum(["provider", "location", "appointment_type"]);
+export const appointmentStatusSchema = z.enum([
+  "scheduled",
+  "checked_in",
+  "completed",
+  "no_show",
+  "cancelled",
+]);
+export const dateSchema = z.iso.date().refine((date) => !date.startsWith("0000-"));
+// A practice month, YYYY-MM, within the years the summary reads.
+export const monthSchema = z.string().regex(/^2[01]\d{2}-(0[1-9]|1[0-2])$/);
+// A practice week starts on Sunday, within the years the week read accepts.
+export const weekStartSchema = dateSchema.refine(
+  (date) => /^2[01]/.test(date) && new Date(`${date}T00:00:00Z`).getUTCDay() === 0,
+);
+const reasonSchema = z.string().trim().min(1).max(500);
+/* The Lucide icons an appointment type can wear on the schedule's blocks. Icons, not colors:
+   a block's color means its status. */
+export const APPOINTMENT_TYPE_ICONS = [
+  "user-plus",
+  "history",
+  "stethoscope",
+  "clipboard-check",
+  "syringe",
+  "droplet",
+  "microscope",
+  "pill",
+  "activity",
+  "file-text",
+] as const;
+export type AppointmentTypeIcon = (typeof APPOINTMENT_TYPE_ICONS)[number];
+export const appointmentTypeIconSchema = z.enum(APPOINTMENT_TYPE_ICONS);
+
+const providerHoursFields = {
+  locationId: z.uuid(),
+  weekday: z.number().int().min(0).max(6),
+  openMinute: z.number().int().min(0).max(1439),
+  closeMinute: z.number().int().min(1).max(1440),
+  validFrom: dateSchema,
+  validTo: dateSchema.nullable(),
+};
+export const providerHoursSchema = z
+  .strictObject(providerHoursFields)
+  .refine(
+    (hours) =>
+      hours.closeMinute > hours.openMinute &&
+      (hours.validTo === null || hours.validTo >= hours.validFrom),
+  );
+
+export const providerExceptionSchema = z
+  .strictObject({
+    locationId: z.uuid().nullable(),
+    kind: z.enum(["available", "unavailable"]),
+    startsAt: schedulingTimestampSchema,
+    endsAt: schedulingTimestampSchema,
+  })
+  .refine(
+    (exception) =>
+      Date.parse(exception.endsAt) > Date.parse(exception.startsAt) &&
+      (exception.kind === "unavailable" || exception.locationId !== null),
+  );
+
+const configFields = {
+  id: z.uuid().nullable().default(null),
+  expectedVersion: schedulingVersionSchema.nullable().default(null),
+  name: z.string().trim().min(1).max(120),
+  active: z.boolean().default(true),
+};
+export const schedulingConfigCommandSchema = z
+  .discriminatedUnion("kind", [
+    z.strictObject({ kind: z.literal("save_location"), ...configFields }),
+    z.strictObject({
+      kind: z.literal("save_appointment_type"),
+      ...configFields,
+      durationMinutes: z.number().int().min(1).max(1440),
+      bufferBeforeMinutes: z.number().int().min(0).max(720).default(0),
+      bufferAfterMinutes: z.number().int().min(0).max(720).default(0),
+    }),
+    z.strictObject({
+      kind: z.literal("save_provider"),
+      ...configFields,
+      hours: z
+        .array(
+          z
+            .strictObject({ ...providerHoursFields, validTo: dateSchema.nullable().default(null) })
+            .pipe(providerHoursSchema),
+        )
+        .max(100),
+      exceptions: z.array(providerExceptionSchema).max(100),
+    }),
+  ])
+  .refine((command) => (command.id === null) === (command.expectedVersion === null));
+
+const existingAppointment = { id: z.uuid(), expectedVersion: schedulingVersionSchema };
+export const appointmentCommandSchema = z.discriminatedUnion("kind", [
+  z
+    .strictObject({
+      kind: z.literal("book"),
+      patientId: z.uuid(),
+      providerId: z.uuid(),
+      locationId: z.uuid(),
+      appointmentTypeId: z.uuid(),
+      expectedTypeVersion: schedulingVersionSchema,
+      sourceRequestId: z.uuid().nullable().default(null),
+      start: appointmentStartSchema,
+      requestVersion: schedulingVersionSchema.nullable().default(null),
+    })
+    .refine((command) => (command.sourceRequestId === null) === (command.requestVersion === null)),
+  z
+    .strictObject({
+      kind: z.literal("reschedule"),
+      ...existingAppointment,
+      providerId: z.uuid(),
+      locationId: z.uuid(),
+      appointmentTypeId: z.uuid().nullable().default(null),
+      expectedTypeVersion: schedulingVersionSchema.nullable().default(null),
+      start: appointmentStartSchema,
+      reason: reasonSchema.nullable().default(null),
+      requestVersion: schedulingVersionSchema.nullable().default(null),
+    })
+    .refine(
+      (command) => (command.appointmentTypeId === null) === (command.expectedTypeVersion === null),
+    ),
+  z
+    .strictObject({
+      kind: z.literal("cancel"),
+      ...existingAppointment,
+      reason: reasonSchema,
+      requestVersion: schedulingVersionSchema.nullable().default(null),
+      callAgainOn: dateSchema.nullable().default(null),
+      requestOutcome: z.enum(["call_again", "close"]).nullable().default(null),
+    })
+    // A request-linked cancel says what becomes of the request: a call-again date, or closed.
+    .refine((command) =>
+      command.requestVersion === null
+        ? command.callAgainOn === null && command.requestOutcome === null
+        : command.requestOutcome === "close"
+          ? command.callAgainOn === null
+          : command.callAgainOn !== null,
+    ),
+  z.strictObject({ kind: z.literal("check_in"), ...existingAppointment }),
+  z.strictObject({ kind: z.literal("complete"), ...existingAppointment }),
+  z.strictObject({ kind: z.literal("no_show"), ...existingAppointment }),
+  z.strictObject({
+    kind: z.literal("undo"),
+    ...existingAppointment,
+    requestVersion: schedulingVersionSchema.nullable().default(null),
+  }),
+]);
+
+const historyBefore = schedulingVersionSchema.nullable().default(null);
+export const schedulingInputSchema = z.discriminatedUnion("action", [
+  z
+    .strictObject({
+      action: z.literal("availability"),
+      providerId: z.uuid(),
+      locationId: z.uuid(),
+      date: dateSchema,
+      appointmentTypeId: z.uuid().nullable().default(null),
+      patientId: z.uuid().nullable().default(null),
+      appointmentId: z.uuid().nullable().default(null),
+      intervalMinutes: z
+        .union([z.literal(5), z.literal(10), z.literal(15), z.literal(30), z.literal(60)])
+        .default(15),
+    })
+    .refine((input) => input.appointmentTypeId !== null || input.appointmentId !== null),
+  z.strictObject({
+    action: z.literal("configure"),
+    idempotencyKey: z.uuid(),
+    command: schedulingConfigCommandSchema,
+  }),
+  z.strictObject({
+    action: z.literal("command"),
+    idempotencyKey: z.uuid(),
+    command: appointmentCommandSchema,
+  }),
+  z.strictObject({
+    action: z.literal("catalog"),
+    entity: schedulingEntitySchema,
+    query: z.string().trim().max(120).default(""),
+    active: z.boolean().nullable().default(true),
+    limit: z.number().int().min(1).max(100).default(50),
+    after: z
+      .strictObject({ name: z.string().min(1).max(120), id: z.uuid() })
+      .nullable()
+      .default(null),
+  }),
+  z.strictObject({
+    action: z.literal("read_config"),
+    entity: schedulingEntitySchema,
+    id: z.uuid(),
+    historyBefore,
+  }),
+  z
+    .strictObject({
+      action: z.literal("appointments"),
+      from: schedulingTimestampSchema.nullable().default(null),
+      to: schedulingTimestampSchema.nullable().default(null),
+      patientId: z.uuid().nullable().default(null),
+      providerId: z.uuid().nullable().default(null),
+      locationId: z.uuid().nullable().default(null),
+      statuses: z.array(appointmentStatusSchema).min(1).max(5).nullable().default(null),
+      limit: z.number().int().min(1).max(100).default(100),
+      after: z
+        .strictObject({ startsAt: schedulingTimestampSchema, id: z.uuid() })
+        .nullable()
+        .default(null),
+    })
+    .refine((input) => {
+      if (input.from === null || input.to === null)
+        return input.from === null && input.to === null && input.patientId !== null;
+      const duration = Date.parse(input.to) - Date.parse(input.from);
+      return duration > 0 && duration <= 93 * 86_400_000;
+    }),
+  z.strictObject({ action: z.literal("read_appointment"), id: z.uuid(), historyBefore }),
+  z.strictObject({
+    action: z.literal("month_summary"),
+    month: monthSchema,
+    locationId: z.uuid().nullable().default(null),
+    appointmentTypeId: z.uuid().nullable().default(null),
+  }),
+  z.strictObject({
+    action: z.literal("month_availability"),
+    month: monthSchema,
+    appointmentTypeId: z.uuid(),
+    location: z.enum(REQUEST_LOCATIONS),
+    patientId: z.uuid().nullable().default(null),
+  }),
+  z.strictObject({
+    action: z.literal("week_schedule"),
+    weekStart: weekStartSchema,
+    providerIds: z
+      .array(z.uuid())
+      .min(1)
+      .max(3)
+      .refine((ids) => new Set(ids).size === ids.length),
+    locationId: z.uuid().nullable().default(null),
+    appointmentTypeId: z.uuid().nullable().default(null),
+  }),
+  z.strictObject({
+    action: z.literal("day_schedule"),
+    date: dateSchema.refine((date) => /^2[01]/.test(date)),
+    appointmentTypeId: z.uuid().nullable().default(null),
+  }),
+  z.strictObject({
+    action: z.literal("can_place"),
+    appointmentId: z.uuid(),
+    providerId: z.uuid(),
+    locationId: z.uuid(),
+    startsAt: schedulingTimestampSchema,
+  }),
+  z.strictObject({ action: z.literal("week_provider") }),
+  z.strictObject({ action: z.literal("remember_week_provider"), providerId: z.uuid() }),
+]);
+type ReadonlyFields<T> = T extends readonly (infer Item)[]
+  ? readonly ReadonlyFields<Item>[]
+  : T extends object
+    ? { readonly [Key in keyof T]: ReadonlyFields<T[Key]> }
+    : T;
+export type SchedulingInput = ReadonlyFields<z.input<typeof schedulingInputSchema>>;
+
+export const SCHEDULING_FAILURE_CODES = [
+  "invalid_command",
+  "unauthorized",
+  "forbidden",
+  "not_found",
+  "unavailable",
+  "stale_version",
+  "idempotency_conflict",
+  "schedule_in_use",
+  "location_unavailable",
+  "provider_unavailable",
+  "type_unavailable",
+  "type_changed",
+  "time_unavailable",
+  "patient_not_found",
+  "patient_archived",
+  "provider_conflict",
+  "patient_conflict",
+  "request_link_conflict",
+  "request_already_booked",
+  "request_version_required",
+  "request_stale_version",
+  "request_not_actionable",
+  "request_follow_up_required",
+  "request_undo_unavailable",
+  "request_transition_rejected",
+  "appointment_in_past",
+  "illegal_transition",
+  "undo_unavailable",
+  "invalid_local_time",
+  "provider_not_bookable",
+  "provider_not_eligible",
+  "location_closed",
+  "outside_office_hours",
+  "type_in_use",
+  "already_closed",
+  "hours_in_past",
+  "last_location",
+] as const;
+export type SchedulingFailureCode = (typeof SCHEDULING_FAILURE_CODES)[number];
+export const schedulingFailureSchema = z.object({
+  ok: z.literal(false),
+  code: z.enum(SCHEDULING_FAILURE_CODES),
+  currentVersion: schedulingVersionSchema.optional(),
+});
+export const schedulingRequestSchema = z.object({
+  id: z.uuid(),
+  state: z.enum(REQUEST_STATES),
+  version: schedulingVersionSchema,
+  callAgainAt: schedulingTimestampSchema.nullable(),
+  appointmentAt: schedulingTimestampSchema.nullable(),
+});
+export const schedulingCommandOutcomeSchema = z.union([
+  z.object({
+    ok: z.literal(true),
+    entity: z.enum([...schedulingEntitySchema.options, "appointment"]),
+    id: z.uuid(),
+    version: schedulingVersionSchema,
+    request: schedulingRequestSchema.optional(),
+  }),
+  schedulingFailureSchema,
+]);
+
+export type SchedulingOutcome =
+  | z.output<typeof appointmentAvailabilityOutcomeSchema>
+  | z.output<typeof schedulingCommandOutcomeSchema>
+  | z.output<typeof schedulingCatalogOutcomeSchema>
+  | z.output<typeof schedulingConfigReadOutcomeSchema>
+  | z.output<typeof appointmentListOutcomeSchema>
+  | z.output<typeof appointmentReadOutcomeSchema>
+  | z.output<typeof monthSummaryOutcomeSchema>
+  | z.output<typeof monthAvailabilityOutcomeSchema>
+  | z.output<typeof weekScheduleOutcomeSchema>
+  | z.output<typeof weekProviderOutcomeSchema>
+  | z.output<typeof rememberWeekProviderOutcomeSchema>
+  | z.output<typeof dayScheduleOutcomeSchema>
+  | z.output<typeof canPlaceOutcomeSchema>;

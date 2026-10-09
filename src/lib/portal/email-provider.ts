@@ -7,6 +7,19 @@ import type { PortalEmailTransport } from "@/lib/portal/email";
 
 const FALLBACK_SENDER = "onboarding@resend.dev";
 
+function sender(): string {
+  const from = process.env.RESEND_FROM?.trim();
+  return from !== undefined && from !== "" ? from : FALLBACK_SENDER;
+}
+
+/** What a recipient's mail app shows as the sender: the display name of `RESEND_FROM`, or its
+    address when it has none. */
+export function portalSenderName(): string {
+  const from = sender();
+  const named = /^\s*"?([^"<]+?)"?\s*<[^>]+>\s*$/.exec(from);
+  return named?.[1] ?? from;
+}
+
 const resendTransport: PortalEmailTransport = {
   provider: "resend",
   async send(message) {
@@ -18,10 +31,9 @@ const resendTransport: PortalEmailTransport = {
       };
     }
 
-    const from = process.env.RESEND_FROM?.trim();
     const result = await new Resend(apiKey).emails.send(
       {
-        from: from !== undefined && from !== "" ? from : FALLBACK_SENDER,
+        from: sender(),
         to: message.to,
         subject: message.subject,
         text: message.text,

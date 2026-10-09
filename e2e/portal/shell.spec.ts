@@ -1,0 +1,419 @@
+import { test, expect } from "@playwright/test";
+
+import { seedAdmin, serviceDb } from "../harness/env";
+import { signIn } from "../harness/session";
+
+// VAL-ADMIN-002: the seed admin can log in and out through the UI.
+// VAL-ADMIN-014 (shell scope): no horizontal overflow at 390/1440, nav
+// And utility targets >= 44px, and the chrome uses the repo's design tokens
+// (not ad-hoc hex).
+
+const { email: SEED_EMAIL } = seedAdmin();
+
+test.beforeEach(({}, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "JS portal UI");
+});
+
+test("VAL-ADMIN-002: seed admin logs in and out through the UI", async ({ page }) => {
+  await page.goto("/admin");
+  await expect(page).toHaveURL(/\/admin\/login\/?$/);
+
+  await signIn(page);
+  const { data: profile } = await serviceDb()
+    .from("staff_profiles")
+    .select("display_name")
+    .eq("email", SEED_EMAIL.toLowerCase())
+    .single();
+  await expect(page.getByTestId("session-user")).toHaveText(String(profile?.display_name ?? ""));
+
+  await page.reload();
+  await expect(page).toHaveURL(/\/admin\/?$/);
+  await expect(page.getByTestId("session-user")).toBeVisible();
+
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page).toHaveURL(/\/admin\/login\/?$/);
+
+  await page.goto("/admin");
+  await expect(page).toHaveURL(/\/admin\/login\/?$/);
+});
+
+const VIEWPORTS = [
+  { name: "390", width: 390, height: 844 },
+  { name: "1440", width: 1440, height: 900 },
+] as const;
+
+const PORTAL_PAGES = [
+  { name: "home", path: "/admin" },
+  { name: "review-flyers", path: "/admin/review-flyers" },
+  { name: "settings-providers", path: "/admin/settings/providers" },
+  { name: "settings-appointment-types", path: "/admin/settings/appointment-types" },
+  { name: "settings-locations", path: "/admin/settings/locations" },
+  { name: "settings-staff", path: "/admin/settings/staff" },
+  { name: "settings-notifications", path: "/admin/settings/notifications" },
+  { name: "settings-software", path: "/admin/settings/software" },
+  { name: "audit", path: "/admin/audit" },
+  { name: "help", path: "/admin/help" },
+] as const;
+
+test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", async ({ page }) => {
+  test.setTimeout(120_000);
+  await signIn(page);
+
+  for (const viewport of VIEWPORTS) {
+    await page.setViewportSize({
+      width: viewport.width,
+      height: viewport.height,
+    });
+
+    // Login page (fresh context not needed: measure it logged out later).
+    for (const portalPage of PORTAL_PAGES) {
+      await page.goto(portalPage.path);
+      await expect(page).toHaveURL(new RegExp(`${portalPage.path}/?$`));
+
+      const overflow = await page.evaluate(() => {
+        const el = document.documentElement;
+        return el.scrollWidth - el.clientWidth;
+      });
+      expect(
+        overflow,
+        `${portalPage.path} horizontal overflow at ${viewport.name}`,
+      ).toBeLessThanOrEqual(0);
+
+      // Every primary destination is a real 44px target AND fully on
+      // Screen — reachability must never depend on unmarked horizontal
+      // Scrolling (a destination that starts offscreen does not exist
+      // For staff who don't know to swipe a nav bar). Each layout renders
+      // Its own list; the other is removed whole, so exactly one shows.
+      // From 960 the Settings window swaps the sidebar for its own list,
+      // Led by the link that leaves it (issue #352).
+      const settingsWindow =
+        viewport.width >= 960 && portalPage.path.startsWith("/admin/settings/");
+      const visibleNav = page.locator(
+        settingsWindow
+          ? 'nav[aria-label="Settings"]:visible'
+          : 'nav[aria-label="Portal sections"]:visible',
+      );
+      await expect(visibleNav).toHaveCount(1);
+      await expect(visibleNav.locator("a")).toHaveText(
+        settingsWindow
+          ? [
+              /^Settings$/,
+              /^Providers$/,
+              /^Appointment types$/,
+              /^Locations$/,
+              /^Staff access$/,
+              /^Notifications$/,
+              /^Software$/,
+            ]
+          : viewport.width < 960
+            ? [/^Home$/, /^Schedule$/, /^Settings$/, /^Help$/]
+            : [/^Home$/, /^Schedule$/, /^Activity log$/, /^Review flyers$/],
+        { useInnerText: true },
+      );
+      const navBoxes = await visibleNav.locator("a").evaluateAll((links) =>
+        links.map((link) => {
+          const rect = link.getBoundingClientRect();
+          return { height: rect.height, left: rect.left, right: rect.right };
+        }),
+      );
+      expect(navBoxes).toHaveLength(settingsWindow ? 7 : 4);
+      for (const box of navBoxes) {
+        expect(box.height, "nav target height").toBeGreaterThanOrEqual(44);
+        expect(box.left, "nav item starts on screen").toBeGreaterThanOrEqual(0);
+        expect(box.right, `nav item fully visible at ${viewport.name}`).toBeLessThanOrEqual(
+          viewport.width,
+        );
+      }
+
+      if (viewport.width < 960) {
+        await page.getByRole("button", { name: "Open account menu" }).click();
+      } else {
+        // Settings and Help sit in the account footer, above View website
+        // And Sign out, each a 44px target.
+        const account = page.locator(".portal-sidebar-account-actions");
+        await expect(account.locator("a, button")).toHaveText([
+          "Settings",
+          "Help",
+          "View website",
+          "Sign out",
+        ]);
+        for (const box of await account
+          .locator("a, button")
+          .evaluateAll((controls) => controls.map((c) => c.getBoundingClientRect().height))) {
+          expect(box, "account footer target height").toBeGreaterThanOrEqual(44);
+        }
+      }
+
+      const websiteLink = page.getByRole("link", { name: "View website" });
+      await expect(websiteLink).toBeVisible();
+      await expect(websiteLink).toHaveAttribute("href", "/");
+      expect((await websiteLink.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+
+      const signOutBox = await page.getByRole("button", { name: "Sign out" }).boundingBox();
+      expect(signOutBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+
+      const utilityCollision = await page.evaluate(() => {
+        const website = Array.from(document.querySelectorAll("a"))
+          .find((link) => link.textContent.trim() === "View website")
+          ?.getBoundingClientRect();
+        const signOut = Array.from(
+          document.querySelectorAll<HTMLButtonElement>('button[type="submit"]'),
+        )
+          .map((button) => button.getBoundingClientRect())
+          .find((rect) => rect.width > 0 && rect.height > 0);
+        const identity = document
+          .querySelector('[data-testid="session-user"]')
+          ?.parentElement?.getBoundingClientRect();
+        const overlaps = (a: Readonly<DOMRect>, b: Readonly<DOMRect>) =>
+          a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+        return {
+          signOut: Boolean(website && signOut && overlaps(website, signOut)),
+          identity: Boolean(
+            website &&
+            identity &&
+            identity.width > 0 &&
+            identity.height > 0 &&
+            overlaps(website, identity),
+          ),
+        };
+      });
+      expect(utilityCollision).toEqual({ signOut: false, identity: false });
+
+      if (viewport.width < 960) {
+        await page.getByRole("button", { name: "Open account menu" }).click();
+
+        const bottomClearance = await page.evaluate(() => {
+          document.documentElement.style.scrollBehavior = "auto";
+          window.scrollTo(0, document.documentElement.scrollHeight);
+          const navigation = document.querySelector(".portal-sidebar");
+          const lastContent = document.querySelector(".portal-content")?.lastElementChild;
+          if (!(navigation instanceof HTMLElement) || !(lastContent instanceof HTMLElement)) {
+            return null;
+          }
+          return (
+            navigation.getBoundingClientRect().top - lastContent.getBoundingClientRect().bottom
+          );
+        });
+        expect(
+          bottomClearance,
+          `${portalPage.path} final content clears mobile navigation`,
+        ).not.toBeNull();
+        expect(
+          bottomClearance ?? -1,
+          `${portalPage.path} final content clears mobile navigation`,
+        ).toBeGreaterThanOrEqual(0);
+      }
+
+      // Settings is current on both of its sub-pages: in the phone bar,
+      // And in the account footer on desktop.
+      if (portalPage.path.startsWith("/admin/settings")) {
+        await expect(
+          page.locator(
+            viewport.width < 960
+              ? 'nav[aria-label="Portal sections"]:visible a[aria-current="page"]'
+              : '.portal-sidebar-account-actions a[aria-current="page"]',
+          ),
+        ).toHaveText("Settings");
+      }
+    }
+
+    // Token discipline: the task rail carries navy and the active location
+    // Carries teal. Amber remains reserved for requests that need attention.
+    await page.goto("/admin");
+    const tokenCheck = await page.evaluate(() => {
+      const probe = document.createElement("div");
+      probe.style.backgroundColor = "var(--color-navy-2)";
+      probe.style.borderColor = "var(--color-teal)";
+      document.body.appendChild(probe);
+      const probeStyles = getComputedStyle(probe);
+      const expectedNavy = probeStyles.backgroundColor;
+      const expectedAmber = probeStyles.borderColor;
+      probe.remove();
+
+      const rail = document.querySelector(".portal-sidebar");
+      const active = Array.from(
+        document.querySelectorAll('nav[aria-label="Portal sections"] a[aria-current="page"]'),
+      ).find((link) => link.getBoundingClientRect().width > 0);
+      return {
+        expectedNavy,
+        expectedAmber,
+        railBg: rail ? getComputedStyle(rail).backgroundColor : null,
+        activeIndicator: active ? getComputedStyle(active, "::before").backgroundColor : null,
+      };
+    });
+    expect(tokenCheck.railBg).toBe(tokenCheck.expectedNavy);
+    expect(tokenCheck.activeIndicator).toBe(tokenCheck.expectedAmber);
+  }
+
+  // Logged-out login page measurements.
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page).toHaveURL(/\/admin\/login\/?$/);
+  for (const viewport of VIEWPORTS) {
+    await page.setViewportSize({
+      width: viewport.width,
+      height: viewport.height,
+    });
+    await page.goto("/admin/login");
+    const overflow = await page.evaluate(() => {
+      const el = document.documentElement;
+      return el.scrollWidth - el.clientWidth;
+    });
+    expect(overflow, `login overflow at ${viewport.name}`).toBeLessThanOrEqual(0);
+
+    await page.getByLabel("Email").fill("recovery-layout@example.test");
+    const forgotButton = page.getByRole("button", {
+      name: "Forgot password?",
+    });
+    expect((await forgotButton.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+    await forgotButton.click();
+    await expect(page.getByLabel("Email")).toBeFocused();
+    await expect(page.getByLabel("Email")).toHaveValue("recovery-layout@example.test");
+    const recoveryOverflow = await page.evaluate(() => {
+      const el = document.documentElement;
+      return el.scrollWidth - el.clientWidth;
+    });
+    expect(recoveryOverflow, `recovery overflow at ${viewport.name}`).toBeLessThanOrEqual(0);
+    for (const control of [
+      page.getByRole("button", { name: "Send reset link" }),
+      page.getByRole("button", { name: "Back to sign in" }),
+    ]) {
+      expect((await control.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+    }
+    await page.getByRole("button", { name: "Back to sign in" }).click();
+    await expect(page.getByLabel("Email")).toHaveValue("recovery-layout@example.test");
+  }
+});
+
+test("the compact rail opens over the canvas with focus inside and returns it to the toggle", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await signIn(page);
+  await page.goto("/admin/schedule");
+
+  const sidebar = page.locator("#portal-sidebar");
+  const show = page.getByRole("button", { name: "Show sidebar" });
+  const current = sidebar.locator(
+    'nav[data-layout="sidebar"] a[aria-current="page"][data-sidebar="menu-button"]',
+  );
+  await expect(sidebar).toHaveAttribute("data-collapsible", "icon");
+  expect((await sidebar.boundingBox())?.width).toBe(72);
+
+  // Folded, each destination is named by a tooltip beside it.
+  await sidebar.getByRole("link", { name: "Activity log" }).first().hover();
+  await expect(page.locator('[data-slot="tooltip-content"]')).toHaveText("Activity log");
+
+  // Return opens it at once and moves focus to the current destination;
+  // Escape puts it away and gives focus back to the toggle.
+  await show.focus();
+  await page.keyboard.press("Enter");
+  await expect(sidebar).toHaveAttribute("data-expanded");
+  await expect(sidebar).toHaveAttribute("data-instant");
+  await expect(page.getByRole("button", { name: "Hide sidebar" })).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
+  await expect(current).toBeFocused();
+  await expect(current).toHaveAccessibleName("Schedule");
+  await page.keyboard.press("Escape");
+  await expect(sidebar).not.toHaveAttribute("data-expanded");
+  await expect(show).toBeFocused();
+  await expect(show).toHaveAttribute("aria-expanded", "false");
+
+  // A press outside on nothing focusable puts it away and returns focus.
+  await show.click();
+  await expect(sidebar).toHaveAttribute("data-expanded");
+  await expect(sidebar).not.toHaveAttribute("data-instant");
+  await expect(current).toBeFocused();
+  await page.mouse.click(1272, 400);
+  await expect(sidebar).not.toHaveAttribute("data-expanded");
+  await expect(show).toBeFocused();
+
+  // Moving to another page puts it away and returns focus.
+  await page.keyboard.press("Enter");
+  await expect(current).toBeFocused();
+  await sidebar.getByRole("link", { name: "Activity log" }).first().click();
+  await expect(page).toHaveURL(/\/admin\/audit\/?$/);
+  await expect(sidebar).not.toHaveAttribute("data-expanded");
+  await expect(show).toBeFocused();
+});
+
+test("staff can view the locale-negotiated website and return with their session", async ({
+  page,
+}) => {
+  await page.context().addCookies([
+    {
+      name: "wgi-locale",
+      value: "es",
+      url: "http://localhost:3100",
+      sameSite: "Lax",
+    },
+  ]);
+  await signIn(page);
+
+  const wordmark = page.getByRole("link", {
+    name: "Westchase Gastroenterology",
+  });
+  await expect(wordmark).toHaveAttribute("href", "/admin");
+  const websiteLink = page.getByRole("link", { name: "View website" });
+  await wordmark.focus();
+  await page.keyboard.press("Tab");
+  const homeLink = page
+    .locator('nav[aria-label="Portal sections"]')
+    .getByRole("link", { name: "Home", exact: true });
+  await expect(homeLink).toBeFocused();
+  expect(await homeLink.evaluate((link) => getComputedStyle(link).outlineStyle)).not.toBe("none");
+  await websiteLink.click();
+  await expect(page).toHaveURL(/\/es\/?$/);
+
+  await page.goto("/admin");
+  await expect(page).toHaveURL(/\/admin\/?$/);
+  await expect(page.getByTestId("session-user")).toBeVisible();
+});
+
+// VAL-REG-005 (revised 2026-07-26): the portal ships no assistant placeholder.
+// A floating control that completes no job obstructs real work; when an
+// Assistant lands it will be a docked widget with no page and no nav entry
+// (PRODUCT.md, "The assistant seam is reserved, not occupied").
+const ASSISTANT_SEAM_PAGES = [
+  "/admin",
+  "/admin/settings/providers",
+  "/admin/settings/appointment-types",
+  "/admin/settings/locations",
+  "/admin/settings/staff",
+  "/admin/settings/notifications",
+  "/admin/settings/software",
+  "/admin/audit",
+  "/admin/help",
+];
+
+test("VAL-REG-005: no assistant placeholder ships before the assistant works", async ({ page }) => {
+  test.setTimeout(120_000);
+  await signIn(page);
+
+  // No floating placeholder covers content on any portal page.
+  for (const path of ASSISTANT_SEAM_PAGES) {
+    await page.goto(path);
+    await expect(page.locator("main")).toBeVisible();
+    await expect(
+      page.getByTestId("assistant-launcher"),
+      `placeholder launcher present on ${path}`,
+    ).toHaveCount(0);
+    await expect(
+      page.getByTestId("assistant-panel"),
+      `placeholder panel present on ${path}`,
+    ).toHaveCount(0);
+  }
+
+  // No dedicated assistant page or nav entry exists.
+  await page.goto("/admin");
+  await expect(
+    page.locator('nav[aria-label="Portal sections"] a', {
+      hasText: "Assistant",
+    }),
+  ).toHaveCount(0);
+  const assistantPage = await page.request.get("/admin/assistant", {
+    maxRedirects: 0,
+  });
+  expect([404, 307]).toContain(assistantPage.status());
+});

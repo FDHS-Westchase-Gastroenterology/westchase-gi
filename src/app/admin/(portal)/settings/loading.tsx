@@ -1,15 +1,20 @@
-// Loading boundary for the Settings sub-pages. The heading and tab row
-// Live in layout.tsx above this boundary, so switching tabs commits
-// Navigation immediately (the underline moves on click) while only the
-// Content area shows this placeholder until the server payload arrives.
-// The global reduced-motion rule freezes animate-pulse, so the skeleton
-// Is static under prefers-reduced-motion with no extra handling here.
+// Loading boundary for the Settings panes. The Settings sidebar sits above
+// It in the portal shell, so choosing a pane commits at once while only the
+// Pane shows this placeholder. No recurring pulse on a route staff visit often.
 
 export default function SettingsSectionLoading() {
   return (
-    <div aria-busy="true" className="space-y-5">
-      <div className="h-40 animate-pulse rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white" />
-      <div className="h-40 animate-pulse rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white" />
+    <div aria-busy="true" aria-live="polite" className="portal-loading">
+      <span className="sr-only">Loading settings</span>
+      <div className="portal-loading-workbench" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
+      <div className="portal-loading-workbench" aria-hidden="true">
+        <span />
+        <span />
+      </div>
     </div>
   );
 }

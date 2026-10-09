@@ -1,0 +1,1857 @@
+@layer components {
+  /* The Front Desk Ledger shell: a persistent desktop index that becomes the
+     same four thumb-reachable destinations on narrow screens. */
+  .portal-scope {
+    font-synthesis: none;
+  }
+
+  .portal-scope ::selection {
+    background: var(--color-amber-soft);
+    color: var(--color-navy-2);
+  }
+
+  .portal-scope :where(a, button, input, select, textarea, summary):focus-visible {
+    outline: 3px solid var(--color-amber-deep);
+    outline-offset: 3px;
+  }
+
+  .portal-workspace {
+    min-height: 100dvh;
+    --portal-surface-muted: oklch(0.975 0.006 220);
+    background: var(--portal-canvas);
+  }
+
+  /* The Display P3 layer (issue #327; globals.css beside .portal-scope). */
+  @media (color-gamut: p3) {
+    .portal-workspace {
+      --portal-surface-muted: color(display-p3 0.953 0.973 0.98);
+    }
+  }
+
+  .portal-stage {
+    min-width: 0;
+  }
+
+  .portal-stage .portal-release-utility {
+    top: 3.6rem;
+  }
+
+  .portal-content {
+    margin-inline: auto;
+    width: 100%;
+    max-width: 92rem;
+    padding: 1.5rem 1rem 6.5rem;
+  }
+
+  /* The rail's own parts, the sidebar button and the avatar, show only
+     on the compact rail below. */
+  .portal-sidebar-toggle,
+  .portal-sidebar-initials {
+    display: none;
+  }
+
+  .portal-sidebar {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 60;
+    border-top: 1px solid rgb(255 255 255 / 14%);
+    background: var(--color-navy-2);
+    color: var(--color-on-dark);
+    box-shadow: 0 -10px 30px rgb(19 40 56 / 12%);
+  }
+
+  /* One list per layout: the phone bar shows its own, and the rail's list
+     is removed whole, so none of its links holds a tab stop. */
+  .portal-sidebar-brand,
+  .portal-primary-nav[data-layout="sidebar"],
+  .portal-sidebar-account {
+    display: none;
+  }
+
+  .portal-primary-nav > ul {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .portal-nav-link {
+    position: relative;
+    display: flex;
+    min-height: 4.25rem;
+    min-width: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.28rem;
+    padding: 0.45rem 0.2rem max(0.45rem, env(safe-area-inset-bottom));
+    color: var(--color-on-dark-muted);
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    transition:
+      background-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+      color 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-nav-link:hover {
+    background: rgb(255 255 255 / 7%);
+    color: white;
+  }
+
+  .portal-nav-link[aria-current="page"] {
+    background: var(--portal-nav-current);
+    color: white;
+  }
+
+  .portal-nav-link[aria-current="page"]::before {
+    position: absolute;
+    inset: 0.15rem 1.1rem auto;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--color-teal);
+    content: "";
+  }
+
+  .portal-nav-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    stroke-width: 1.9;
+  }
+
+  .portal-mobile-header {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 40;
+    display: flex;
+    min-height: 3.6rem;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--color-line-2);
+    background: rgb(255 255 255 / 96%);
+    padding-inline: 1rem;
+  }
+
+  .portal-mobile-brand {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.65rem;
+    color: var(--color-navy-2);
+  }
+
+  .portal-mobile-brand > span {
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    place-items: center;
+    border-radius: 0.55rem;
+    background: var(--color-navy-2);
+    color: white;
+    font-family: var(--font-display), Georgia, serif;
+    font-size: 1.05rem;
+  }
+
+  .portal-mobile-brand strong {
+    font-size: 0.95rem;
+    font-weight: 850;
+  }
+
+  .portal-account-menu {
+    position: relative;
+  }
+
+  .portal-account-menu > summary {
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    cursor: pointer;
+    list-style: none;
+    place-items: center;
+    border: 1px solid var(--color-line-2);
+    border-radius: 0.7rem;
+    color: var(--color-navy);
+  }
+
+  .portal-account-menu > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .portal-account-menu[open] > summary {
+    border-color: var(--color-teal-ink);
+    background: var(--color-mint);
+  }
+
+  .portal-account-menu > div {
+    position: absolute;
+    inset: calc(100% + 0.5rem) 0 auto auto;
+    z-index: 70;
+    width: min(18rem, calc(100vw - 2rem));
+    overflow: hidden;
+    border: 1px solid var(--color-line-2);
+    border-radius: var(--radius);
+    background: white;
+    box-shadow: 0 16px 40px rgb(23 51 71 / 16%);
+  }
+
+  .portal-account-menu p {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    border-bottom: 1px solid var(--color-line-2);
+    padding: 1rem;
+  }
+
+  .portal-account-menu p strong {
+    color: var(--color-ink);
+  }
+
+  .portal-account-menu p span {
+    color: var(--color-muted-ink);
+    font-size: 0.82rem;
+  }
+
+  .portal-account-menu a,
+  .portal-account-menu button {
+    display: flex;
+    width: 100%;
+    min-height: 2.75rem;
+    align-items: center;
+    padding-inline: 1rem;
+    color: var(--color-body);
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-align: start;
+  }
+
+  .portal-account-menu a:hover,
+  .portal-account-menu button:hover {
+    background: var(--portal-surface-muted);
+    color: var(--color-navy-2);
+  }
+
+  .portal-page-header {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin-block-end: 1.5rem;
+  }
+
+  .portal-page-title {
+    max-width: 20ch;
+    color: var(--color-ink);
+    font-family: var(--font-body), Arial, sans-serif;
+    font-size: clamp(1.75rem, 5vw, 2.4rem);
+    font-weight: 900;
+    line-height: 1.08;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+  }
+
+  .portal-page-description {
+    max-width: 68ch;
+    margin-block-start: 0.55rem;
+    color: var(--color-muted-ink);
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+
+  .portal-page-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem 1rem;
+    margin-block-start: 0.75rem;
+    color: var(--color-muted-ink);
+    font-size: 0.82rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .portal-page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem;
+  }
+
+  .portal-back-link {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.3rem;
+    margin-block-end: 0.55rem;
+    color: var(--color-teal-ink);
+    font-size: 0.88rem;
+    font-weight: 780;
+  }
+
+  .portal-loading {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .portal-loading-heading {
+    display: grid;
+    max-width: 42rem;
+    gap: 0.65rem;
+    padding-block: 0.35rem 0.75rem;
+  }
+
+  .portal-loading-heading > span,
+  .portal-loading-heading > i,
+  .portal-loading-workbench > span {
+    display: block;
+    border-radius: 0.35rem;
+    background: color-mix(in oklch, var(--color-line-2) 72%, white);
+  }
+
+  .portal-loading-heading > span {
+    width: min(18rem, 62vw);
+    height: 2.35rem;
+  }
+
+  .portal-loading-heading > i {
+    width: min(31rem, 78vw);
+    height: 0.85rem;
+  }
+
+  .portal-loading-workbench {
+    display: grid;
+    min-height: 10rem;
+    gap: 1rem;
+    align-content: start;
+    border: 1px solid var(--color-line-2);
+    border-radius: var(--radius);
+    background: var(--portal-surface);
+    padding: 1.25rem;
+  }
+
+  .portal-loading-workbench > span {
+    width: 100%;
+    height: 1rem;
+  }
+
+  .portal-loading-workbench > span:first-child {
+    width: min(13rem, 52vw);
+    height: 1.2rem;
+  }
+
+  .portal-loading-workbench > span:last-child {
+    width: min(25rem, 78vw);
+  }
+
+  @media (min-width: 48rem) {
+    .portal-content {
+      padding: 2.4rem 2rem 4rem;
+    }
+
+    .portal-page-header {
+      flex-direction: row;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 2rem;
+      margin-block-end: 2rem;
+    }
+
+    .portal-page-actions {
+      justify-content: flex-end;
+    }
+  }
+
+  @media (min-width: 60rem) {
+    .portal-sidebar {
+      inset: 0 auto 0 0;
+      display: flex;
+      width: 17rem;
+      flex-direction: column;
+      border-top: 0;
+      box-shadow: none;
+    }
+
+    /* The inset canvas (issue #327, section 05): the navy runs on from the
+       sidebar and frames the work on the other three sides, 16px deep, and
+       the stage is the canvas inside it, with a 16px radius. The page
+       keeps document scroll, so the top inset scrolls away with a long
+       page and the release bar still sticks to the viewport; overflow clip
+       rounds the corners without making the stage a scroll container. */
+    .portal-workspace {
+      padding: 1rem 1rem 1rem 0;
+      background: var(--color-navy-2);
+    }
+
+    .portal-stage {
+      min-height: calc(100dvh - 2rem);
+      margin-inline-start: 17rem;
+      overflow: clip;
+      border-radius: 1rem;
+      background: var(--portal-canvas);
+    }
+
+    .portal-mobile-header {
+      display: none;
+    }
+
+    .portal-stage .portal-release-utility {
+      top: 0;
+    }
+
+    .portal-content {
+      padding: 3rem clamp(2.5rem, 4vw, 4.5rem) 5rem;
+    }
+
+    .portal-sidebar-brand {
+      display: flex;
+      min-height: 6.6rem;
+      align-items: center;
+      gap: 0.8rem;
+      border-bottom: 1px solid rgb(255 255 255 / 10%);
+      padding: 1.35rem 1.5rem;
+      color: white;
+    }
+
+    .portal-sidebar-mark {
+      display: grid;
+      width: 2.55rem;
+      height: 2.55rem;
+      flex: none;
+      place-items: center;
+      border: 1px solid rgb(255 255 255 / 25%);
+      border-radius: 0.7rem;
+      background: rgb(255 255 255 / 8%);
+      color: var(--color-amber);
+      font-family: var(--font-display), Georgia, serif;
+      font-size: 1.35rem;
+    }
+
+    .portal-sidebar-brand > span:last-child {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 0.14rem;
+    }
+
+    .portal-sidebar-brand strong {
+      font-size: 0.98rem;
+      font-weight: 600;
+      letter-spacing: -0.015em;
+    }
+
+    .portal-sidebar-brand small {
+      color: var(--color-on-dark-muted);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .portal-primary-nav[data-layout="sidebar"] {
+      display: block;
+      padding: 1.35rem 1rem;
+    }
+
+    .portal-primary-nav[data-layout="bar"] {
+      display: none;
+    }
+
+    .portal-primary-nav > ul {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .portal-nav-link {
+      min-height: 3rem;
+      flex-direction: row;
+      justify-content: flex-start;
+      gap: 0.75rem;
+      border-radius: 0.65rem;
+      padding: 0.65rem 0.8rem;
+      color: var(--color-on-dark-muted);
+      font-size: 0.9rem;
+    }
+
+    .portal-nav-link[aria-current="page"]::before {
+      inset: 0.72rem auto 0.72rem 0;
+      width: 2px;
+      height: auto;
+    }
+
+    .portal-nav-icon {
+      width: 1.15rem;
+      height: 1.15rem;
+    }
+
+    /* The Settings window's sidebar (issue #352, Figma St1): "‹ Settings"
+       as its title, then the Schedule, Practice and About groups. Labels
+       are 11px bold in the rows' ink; a hairline sits above each later
+       group with 12px on either side. The rows are the portal's. */
+    .portal-settings-nav {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .portal-settings-back {
+      display: flex;
+      min-height: 2.75rem;
+      align-items: center;
+      gap: 0.35rem;
+      margin-bottom: 0.75rem;
+      border-radius: 0.65rem;
+      padding: 0.5rem 0.8rem 0.5rem 0.55rem;
+      color: white;
+      font-size: var(--pt-lg);
+      font-weight: 600;
+      letter-spacing: -0.015em;
+      transition:
+        background-color var(--motion-micro-duration) var(--motion-exit),
+        transform var(--motion-micro-duration) var(--motion-exit);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .portal-settings-back:hover {
+        background: rgb(255 255 255 / 7%);
+      }
+    }
+
+    .portal-settings-back:active {
+      transform: scale(0.98);
+    }
+
+    .portal-settings-back-icon {
+      width: 1.1rem;
+      height: 1.1rem;
+      flex: none;
+      color: var(--color-on-dark-muted);
+    }
+
+    .portal-settings-group-label,
+    .portal-nav-group-label {
+      padding: 0.25rem 0.8rem 0.5rem;
+      color: var(--color-on-dark-muted);
+      font-size: var(--pt-2xs);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .portal-settings-group > ul,
+    .portal-nav-group > ul {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .portal-settings-separator {
+      margin-block: 0.75rem;
+    }
+
+    /* The main rail's later groups (issue #357): a step of air above each
+       heading, the Settings window's heading type. */
+    .portal-nav-group {
+      margin-top: 1.25rem;
+    }
+
+    .portal-sidebar-account {
+      display: block;
+      margin: auto 1rem 1rem;
+      border-top: 1px solid rgb(255 255 255 / 12%);
+      padding-top: 1rem;
+    }
+
+    .portal-sidebar-person {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 0.2rem;
+      padding-inline: 0.45rem;
+    }
+
+    .portal-sidebar-person > span {
+      color: white;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .portal-sidebar-person small {
+      overflow: hidden;
+      color: var(--color-on-dark-muted);
+      font-size: 0.72rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .portal-sidebar-person-meta {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 0.32rem;
+    }
+
+    .portal-sidebar-person-meta > span:first-child,
+    .portal-sidebar-person-meta > span:nth-child(2) {
+      flex: none;
+    }
+
+    .portal-sidebar-person-meta > span:last-child {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Settings and Help above View website and Sign out: two rows of two,
+       each a 44px target, their icons on the name's left edge. */
+    .portal-sidebar-account-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      column-gap: 0.35rem;
+      margin-top: 0.75rem;
+    }
+
+    .portal-sidebar-account-actions a,
+    .portal-sidebar-account-actions button {
+      display: flex;
+      min-height: 2.75rem;
+      width: 100%;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 0.4rem;
+      border-radius: 0.55rem;
+      padding-inline: 0.45rem;
+      color: var(--color-on-dark-muted);
+      font-size: 0.75rem;
+      font-weight: 400;
+    }
+
+    .portal-sidebar-account-actions a:hover,
+    .portal-sidebar-account-actions button:hover {
+      background: rgb(255 255 255 / 8%);
+      color: white;
+    }
+
+    /* Settings or Help on its own page: the ink brightens, with no fill. */
+    .portal-sidebar-account-actions a[aria-current="page"] {
+      color: var(--color-on-dark);
+    }
+  }
+
+  /* ---- The compact rail (issue #351) ----
+     Below 1366px wide the sidebar folds to a 72px rail: every icon keeps
+     its place, centered on the rail's 36px line, and the labels fold away
+     into tooltips (portal-sidebar.tsx). The sidebar button lays the whole
+     sidebar back over the canvas, which keeps its width; opening and
+     closing it moves only the sidebar's edge, so the icons hold still and
+     the labels are uncovered from under them. The edge moves on the staff
+     home's base beat opening and its fast beat closing, on
+     --motion-standard. Reduced motion: the blanket reset in globals.css,
+     so it opens and closes at once. */
+  @media (min-width: 60rem) and (max-width: 85.3125rem) {
+    .portal-sidebar {
+      width: 4.5rem;
+      overflow: clip auto;
+      overscroll-behavior: contain;
+      transition:
+        width var(--motion-fast-duration) var(--motion-standard),
+        box-shadow var(--motion-fast-duration) var(--motion-standard);
+    }
+
+    .portal-sidebar[data-expanded] {
+      width: 17rem;
+      box-shadow: 1rem 0 2.5rem rgb(16 20 58 / 28%);
+      transition-duration: var(--motion-base-duration);
+    }
+
+    /* Opened or put away from the keyboard: no transition. */
+    .portal-sidebar[data-instant] {
+      transition-duration: 0ms;
+    }
+
+    .portal-stage {
+      margin-inline-start: 4.5rem;
+    }
+
+    .portal-sidebar-brand {
+      min-height: 5.5rem;
+      border-bottom: 0;
+      padding-inline: 0.975rem;
+      white-space: nowrap;
+    }
+
+    .portal-primary-nav[data-layout="sidebar"] {
+      padding: 0.5rem 0.75rem;
+    }
+
+    .portal-nav-link {
+      padding-inline: 0.95rem;
+      white-space: nowrap;
+    }
+
+    .portal-settings-back {
+      padding-inline: 0.95rem;
+      white-space: nowrap;
+    }
+
+    .portal-sidebar-toggle {
+      display: grid;
+      width: 3rem;
+      height: 3rem;
+      flex: none;
+      place-items: center;
+      margin: auto 0.75rem 0.25rem;
+      border-radius: 0.65rem;
+      color: var(--color-on-dark-muted);
+      transition:
+        background-color var(--motion-fast-duration) var(--motion-standard),
+        color var(--motion-fast-duration) var(--motion-standard),
+        transform var(--motion-fast-duration) var(--motion-standard);
+    }
+
+    .portal-sidebar-toggle:hover {
+      background: rgb(255 255 255 / 8%);
+      color: white;
+    }
+
+    .portal-sidebar-toggle:active {
+      transform: scale(0.98);
+    }
+
+    .portal-sidebar-account {
+      margin: 0 0.75rem 1rem;
+      white-space: nowrap;
+    }
+
+    /* Folded: the brand is its mark, each link its icon, the account a
+       column of icons over the avatar. The labels stay in the
+       accessibility tree, so every control keeps its name. */
+    .portal-sidebar:not([data-expanded]) {
+      & .portal-rail-hidden {
+        display: none;
+      }
+
+      /* The group labels fold away; the hairlines keep the groups apart. */
+      & .portal-settings-group-label,
+      & .portal-nav-group-label {
+        display: none;
+      }
+
+      & .portal-rail-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
+      & .portal-sidebar-account {
+        display: flex;
+        flex-direction: column;
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      & .portal-sidebar-person {
+        order: 1;
+        padding: 0.5rem 0 0 0.375rem;
+      }
+
+      & .portal-sidebar-person > span:not(.portal-sidebar-initials),
+      & .portal-sidebar-person-meta {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+      }
+
+      & .portal-sidebar-initials {
+        display: grid;
+        width: 2.25rem;
+        height: 2.25rem;
+        place-items: center;
+        border: 1px solid rgb(255 255 255 / 18%);
+        border-radius: 999px;
+        background: rgb(255 255 255 / 8%);
+        color: var(--color-on-dark);
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+
+      & .portal-sidebar-account-actions {
+        grid-template-columns: 3rem;
+        row-gap: 0.25rem;
+        margin-top: 0;
+      }
+
+      & .portal-sidebar-account-actions a,
+      & .portal-sidebar-account-actions button {
+        justify-content: center;
+        padding-inline: 0;
+      }
+
+      & .portal-sidebar-account-actions svg {
+        width: 1.15rem;
+        height: 1.15rem;
+      }
+    }
+  }
+
+  .portal-inline-link {
+    display: inline-flex;
+    min-height: 2.75rem;
+    flex: none;
+    align-items: center;
+    gap: 0.3rem;
+    color: var(--color-teal-ink);
+    font-size: 0.84rem;
+    font-weight: 800;
+  }
+
+  /* ---- Home: The Line ----
+     The practice's daily call sheet: its title block, the stamp, the notice
+     for a read that failed, and the operational alerts. The filter bar, the
+     line list, its empty state and the record card live with the route in
+     (home)/home.css, which restyles this title block under .wgi-home. */
+  .portal-sheet {
+    max-width: 68rem;
+  }
+
+  /* Title block on a form, not a hero: identity as small print, the day set
+     large, the print command opposite, and a rule that closes the header. */
+  .portal-sheet-head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ps-4);
+    border-block-end: 2px solid var(--color-navy);
+    padding-block-end: var(--ps-4);
+  }
+
+  .portal-sheet-title {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ps-1);
+  }
+
+  .portal-sheet-greeting {
+    color: var(--color-muted-ink);
+    font-size: var(--pt-sm);
+    font-weight: 400;
+    line-height: 1.3;
+  }
+
+  .portal-sheet-day {
+    color: var(--color-ink);
+    font-size: var(--pt-xl);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+
+  /* Attention, and the only amber on the sheet: a rubber stamp on one line,
+     never a wash over a region. It always carries a word, so color is never
+     the sole carrier of state. */
+  .portal-stamp {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid color-mix(in oklch, var(--color-amber-deep) 45%, white);
+    border-radius: var(--radius-sm);
+    background: color-mix(in oklch, var(--color-amber-soft) 55%, white);
+    padding: 0.1rem 0.34rem;
+    color: var(--portal-attention-ink);
+    font-size: var(--pt-2xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .portal-sheet-commands {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ps-2);
+  }
+
+  /* A read that failed is not an empty day, so it reads differently: plain
+     paper with a way to reload Home, where an empty day is the list's own
+     quiet message (.wgi-empty in (home)/home.css). */
+  .portal-sheet-notice {
+    margin-block-start: var(--ps-8);
+    border: 1px solid var(--color-line-2);
+    border-radius: var(--radius);
+    background: var(--portal-surface);
+    padding: var(--ps-6);
+  }
+
+  .portal-sheet-notice h2 {
+    color: var(--color-ink);
+    font-size: var(--pt-lg);
+    font-weight: 800;
+    letter-spacing: -0.015em;
+  }
+
+  .portal-sheet-notice p {
+    max-width: 68ch;
+    margin-block-start: var(--ps-2);
+    color: var(--color-body);
+    font-size: var(--pt-sm);
+    line-height: 1.6;
+  }
+
+  .portal-sheet-notice-action {
+    min-height: 2.75rem;
+    margin-block-start: var(--ps-4);
+    font-size: var(--pt-sm);
+    font-weight: 600;
+  }
+
+  /* Operational trouble is about the machine, not the day, so it sits below
+     the sheet as one quiet line. */
+  .portal-sheet-alert {
+    max-width: 68ch;
+    margin-block-start: var(--ps-4);
+    border-inline-start: 1px solid var(--color-amber-deep);
+    padding-inline-start: var(--ps-3);
+    color: var(--color-body);
+    font-size: var(--pt-xs);
+    line-height: 1.6;
+  }
+
+  .portal-sheet-alert strong {
+    color: var(--color-ink);
+    font-weight: 600;
+  }
+
+  .portal-sheet-alert a {
+    color: var(--color-teal-ink);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  @media (min-width: 48rem) {
+    .portal-sheet-head {
+      flex-direction: row;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: var(--ps-6);
+    }
+
+    .portal-sheet-commands {
+      flex: none;
+      padding-block-end: 0.15rem;
+    }
+  }
+
+  .portal-request-form {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .portal-request-form-well {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    border: 1px solid var(--color-line-2);
+    border-radius: var(--radius-lg);
+    background: var(--portal-surface);
+    padding: 1.25rem;
+  }
+
+  .portal-request-form-pair {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  @media (min-width: 30rem) {
+    .portal-request-form-pair {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+    }
+  }
+
+  .portal-request-field {
+    min-width: 0;
+  }
+
+  .portal-request-field-optional {
+    color: var(--color-muted-ink);
+    font-size: 0.8125rem;
+    font-weight: 400;
+  }
+
+  /* A field's one note line: the hint at rest, the fix once refused. When a
+     fix arrives under a field that had no hint, the line opens its row on
+     the base beat and the words fade in on the fast one, so the fields
+     below make room before the fix is read. Swapping hint for fix, or one
+     fix for another, keeps the row and fades only the words (the fix is
+     keyed on its text). Under reduced motion the row opens at once and the
+     words keep the cross-fade (globals.css, beside the blanket reset). */
+  .portal-request-field-note {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows var(--motion-base-duration) var(--motion-standard);
+  }
+
+  /* Only a line born with a fix opens; a hint is simply there when the
+     form mounts, so nothing grows while the sheet arrives. */
+  @starting-style {
+    .portal-request-field-note:has(> [data-slot="field-error"]) {
+      grid-template-rows: 0fr;
+    }
+  }
+
+  .portal-request-field-note > * {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .portal-request-field-note > [data-slot="field-error"] {
+    opacity: 1;
+    transition: opacity var(--motion-fast-duration) var(--motion-standard);
+  }
+
+  @starting-style {
+    .portal-request-field-note > [data-slot="field-error"] {
+      opacity: 0;
+    }
+  }
+
+  /* The guard against clinical detail, kept word for word: a quiet amber
+     panel on the well, directly above the scheduling note it governs. */
+  .portal-request-form-boundary {
+    border: 1px solid var(--color-amber-300);
+    border-radius: var(--radius-sm);
+    background: var(--color-amber-50);
+    padding: 0.75rem 0.875rem;
+    color: var(--color-slate-900);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+
+  .portal-request-form-boundary strong {
+    color: var(--color-slate-950);
+    font-weight: 700;
+  }
+
+  .portal-request-form-boundary p {
+    max-width: 62ch;
+    margin-top: 0.125rem;
+  }
+
+  /* A4: the coral alert at the top of the well. Its row opens on the base
+     beat so the fields step down rather than jump, and its paint fades in
+     on the fast one. It takes focus, so it wears the teal ring then. */
+  .portal-request-form-alert-reveal {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows var(--motion-base-duration) var(--motion-standard);
+  }
+
+  @starting-style {
+    .portal-request-form-alert-reveal {
+      grid-template-rows: 0fr;
+    }
+  }
+
+  .portal-request-form-alert {
+    display: grid;
+    min-height: 0;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 0.625rem;
+    overflow: hidden;
+    border: 1px solid var(--color-coral-300);
+    border-radius: 0.75rem;
+    background: linear-gradient(var(--color-coral-50), var(--color-coral-100));
+    padding: 0.75rem 0.875rem;
+    color: var(--color-coral-800);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    opacity: 1;
+    transition: opacity var(--motion-fast-duration) var(--motion-standard);
+  }
+
+  @starting-style {
+    .portal-request-form-alert {
+      opacity: 0;
+    }
+  }
+
+  .portal-request-form-alert > svg {
+    width: 1rem;
+    height: 1rem;
+    margin-top: 0.125rem;
+    color: var(--color-coral-700);
+  }
+
+  .portal-request-form-alert strong {
+    display: block;
+    color: var(--color-coral-900);
+    font-size: 0.875rem;
+    font-weight: 700;
+  }
+
+  .portal-request-form-alert p {
+    margin-top: 0.125rem;
+  }
+
+  .portal-request-form-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding-block-start: 1rem;
+  }
+
+  .portal-request-form-footer a[aria-disabled="true"] {
+    pointer-events: none;
+    opacity: 0.55;
+  }
+
+  /* A5: the discard question, asked in place of the footer on solid coral
+     paper. It crossfades in on the fast beat. */
+  .portal-request-discard {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    margin-block-start: 0.75rem;
+    border-radius: 1rem;
+    background: var(--color-coral-50);
+    padding: 0.75rem 0.75rem 0.75rem 1rem;
+    opacity: 1;
+    transition: opacity var(--motion-fast-duration) var(--motion-standard);
+  }
+
+  @starting-style {
+    .portal-request-discard {
+      opacity: 0;
+    }
+  }
+
+  .portal-request-discard-copy strong {
+    display: block;
+    color: var(--color-slate-950);
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+
+  .portal-request-discard-copy p {
+    color: var(--color-slate-800);
+    font-size: 0.8125rem;
+  }
+
+  .portal-request-discard-actions {
+    display: flex;
+    gap: 0.625rem;
+  }
+
+  .portal-output-feedback {
+    width: 100%;
+    margin-block-end: 1rem;
+    border: 1px solid color-mix(in oklch, var(--color-teal-ink) 25%, white);
+    border-radius: var(--radius-sm);
+    background: color-mix(in oklch, var(--color-mint) 72%, white);
+    padding: 0.8rem 1rem;
+    color: var(--color-ink);
+    font-size: 0.9rem;
+    font-weight: 800;
+    line-height: 1.5;
+  }
+
+  .portal-output-feedback[role="alert"] {
+    border-color: color-mix(in oklch, var(--color-amber) 40%, white);
+    background: var(--color-amber-soft);
+  }
+
+  .portal-settings-form-summary {
+    margin-top: 0.75rem;
+    border-left: 3px solid var(--color-amber-deep);
+    border-radius: var(--radius-sm);
+    background: var(--color-amber-soft);
+    padding: 0.65rem 0.8rem;
+    color: var(--color-ink);
+    font-size: 0.85rem;
+    font-weight: 800;
+    line-height: 1.4;
+  }
+
+  .portal-settings-list-heading:focus-visible {
+    outline: 3px solid var(--color-amber-deep);
+    outline-offset: 4px;
+  }
+
+  .portal-recipient-state {
+    display: inline-flex;
+    min-height: 2.5rem;
+    align-items: center;
+    border: 1px solid var(--color-line-2);
+    border-radius: 999px;
+    background: white;
+    padding-inline: 0.85rem;
+    color: var(--color-muted-ink);
+    font-size: 0.85rem;
+    font-weight: 800;
+  }
+
+  .portal-recipient-state[data-active="true"] {
+    border-color: var(--color-teal-ink);
+    background: var(--color-mint);
+    color: var(--color-teal-ink);
+  }
+
+  /* The portal's one modal grammar. Every dialog arrives the same way: it
+     rises 12px and grows from 97% on the registry spring (--pm-spring), one
+     4.6% overshoot, settled well inside half a second. The fade rides the
+     exit curve instead — opacity clamps at 1, so a spring's overshoot is
+     wasted on it, and the quick fade finishes "it's here" while the spring
+     settles the travel. It leaves faster than it came, along a shorter
+     version of the same path. Transitions rather than keyframes, so a close
+     during the entrance reverses from wherever the surface is, and
+     `allow-discrete` holds the dialog in the top layer while it leaves.
+     Modals stay centered — they answer the whole sheet, not one trigger. */
+  .portal-confirm-dialog {
+    width: min(92vw, 28rem);
+    max-height: min(90dvh, 32rem);
+    margin: auto;
+    overflow: auto;
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: white;
+    padding: 0;
+    color: var(--color-ink);
+    box-shadow: var(--shadow-card);
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity var(--pm-exit-duration) var(--pm-exit),
+      transform var(--pm-exit-duration) var(--pm-exit),
+      display var(--pm-exit-duration) allow-discrete,
+      overlay var(--pm-exit-duration) allow-discrete;
+  }
+
+  .portal-confirm-dialog:not([open]) {
+    display: none;
+    opacity: 0;
+    transform: translateY(0.4rem) scale(0.985);
+  }
+
+  .portal-confirm-dialog[open] {
+    transition:
+      opacity var(--pm-exit-duration) var(--pm-exit),
+      transform var(--pm-spring-duration) var(--pm-spring),
+      display var(--pm-spring-duration) allow-discrete,
+      overlay var(--pm-spring-duration) allow-discrete;
+  }
+
+  @starting-style {
+    .portal-confirm-dialog[open] {
+      opacity: 0;
+      transform: translateY(0.75rem) scale(0.97);
+    }
+  }
+
+  /* The scrim is plain dim: focus comes from the paper rising, not glass. */
+  .portal-confirm-dialog::backdrop {
+    background: rgba(20, 32, 45, 0.48);
+    opacity: 0;
+    transition:
+      opacity var(--pm-exit-duration) var(--pm-exit),
+      display var(--pm-exit-duration) allow-discrete,
+      overlay var(--pm-exit-duration) allow-discrete;
+  }
+
+  .portal-confirm-dialog[open]::backdrop {
+    opacity: 1;
+    transition:
+      opacity var(--pm-scrim-duration) var(--pm-exit),
+      display var(--pm-scrim-duration) allow-discrete,
+      overlay var(--pm-scrim-duration) allow-discrete;
+  }
+
+  @starting-style {
+    .portal-confirm-dialog[open]::backdrop {
+      opacity: 0;
+    }
+  }
+
+  /* Set before opening or in click capture before a descendant closes the
+     dialog. Removing the transition properties also skips the backdrop and
+     stays instant when reduced-motion rules override transition-duration. */
+  .portal-confirm-dialog[data-instant],
+  .portal-confirm-dialog[data-instant]::backdrop {
+    transition: none;
+  }
+
+  .portal-confirm-dialog-body {
+    padding: 1.5rem 1.5rem 1.15rem;
+  }
+
+  .portal-confirm-dialog-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .portal-confirm-dialog-close {
+    display: inline-flex;
+    min-height: 2.75rem;
+    flex: none;
+    align-items: center;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    padding-inline: 0.65rem;
+    color: var(--color-muted-ink);
+    font-size: 0.85rem;
+    font-weight: 800;
+  }
+
+  .portal-confirm-dialog-title {
+    min-width: 0;
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .portal-confirm-dialog-body p {
+    margin-top: 0.65rem;
+    color: var(--color-body);
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  .portal-confirm-dialog-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0 1.5rem 1.5rem;
+  }
+
+  .portal-confirm-dialog-actions [data-slot="button"],
+  .portal-confirm-dialog-actions .portal-confirm-dialog-destructive {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .portal-confirm-dialog-destructive {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--color-amber-deep);
+    border-radius: var(--radius-sm);
+    background: white;
+    padding-inline: 1rem;
+    color: var(--portal-attention-ink);
+    font-size: 0.9rem;
+    font-weight: 800;
+  }
+
+  @media (min-width: 40rem) {
+    .portal-confirm-dialog-actions {
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 1.25rem;
+    }
+
+    .portal-confirm-dialog-actions [data-slot="button"],
+    .portal-confirm-dialog-actions .portal-confirm-dialog-destructive {
+      width: auto;
+    }
+  }
+
+  /* Reduced motion keeps the fade that says "something opened" and drops
+     every translation and scale: no rise, no spring, no travel. Reduced
+     motion is a temperament here, not a kill switch.
+     These durations only reach the screen because globals.css hands this
+     family an opt-out from its blanket reduced-motion reset; see the note
+     beside that reset. Do not add !important here — it cannot win from this
+     layer, and it reads as a fix that is doing nothing. */
+  @media (prefers-reduced-motion: reduce) {
+    .portal-confirm-dialog,
+    .portal-confirm-dialog[open],
+    .portal-confirm-dialog:not([open]) {
+      transform: none;
+      transition-duration: 120ms;
+      transition-timing-function: ease-out;
+    }
+
+    @starting-style {
+      .portal-confirm-dialog[open] {
+        transform: none;
+      }
+    }
+  }
+
+  .portal-empty-state {
+    display: flex;
+    min-height: 19rem;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    border-block: 1px solid var(--color-line-2);
+    padding: 2.5rem 0;
+  }
+
+  .portal-empty-state > svg {
+    margin-bottom: 1rem;
+    color: var(--color-teal-ink);
+  }
+
+  .portal-empty-state h2 {
+    color: var(--color-ink);
+    font-size: 1.2rem;
+    font-weight: 850;
+  }
+
+  .portal-empty-state p {
+    max-width: 58ch;
+    margin-top: 0.55rem;
+    color: var(--color-muted-ink);
+    line-height: 1.65;
+  }
+
+  .portal-empty-state > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin-top: 1.4rem;
+  }
+
+  .portal-print-guidance {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    border-block: 1px solid var(--color-line-2);
+    background: color-mix(in oklch, var(--color-amber-soft) 55%, white);
+    padding: 1rem 1.1rem;
+    color: var(--color-body);
+    font-size: 0.9rem;
+    line-height: 1.55;
+  }
+
+  .portal-print-guidance strong {
+    color: var(--color-ink);
+  }
+
+  .portal-print-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding-block: 1.25rem 1.75rem;
+  }
+
+  .portal-print-controls p {
+    max-width: 64ch;
+    color: var(--color-muted-ink);
+    font-size: 0.85rem;
+    line-height: 1.55;
+  }
+
+  .portal-print-controls .portal-output-feedback {
+    max-width: 64ch;
+    margin-block-end: 0;
+    color: var(--color-ink);
+    font-size: 0.9rem;
+  }
+
+  /* Each sheet keeps its printed 8.5in width on screen; a window narrower
+     than the paper pans the packet instead of the page. */
+  .portal-print-packet {
+    display: grid;
+    gap: 1.5rem;
+    overflow-x: auto;
+  }
+
+  .portal-print-follow-up {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-top: 1.75rem;
+    border-top: 1px solid var(--color-line-2);
+    padding-top: 1.25rem;
+  }
+
+  .portal-print-follow-up p {
+    max-width: 58ch;
+    color: var(--color-muted-ink);
+    font-size: 0.86rem;
+    line-height: 1.55;
+  }
+
+  @media (min-width: 40rem) {
+    .portal-print-controls,
+    .portal-print-follow-up {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+  }
+
+  /* Settings' panes on the phone (issue #352): the bar keeps its four
+     destinations, so the panes sit in a scrolling row of links above the
+     page. From 60rem the sidebar lists them. */
+  .portal-settings-panes {
+    margin: -0.5rem 0 1.25rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .portal-settings-panes > ul {
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  .portal-settings-panes a {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    border: 1px solid var(--color-line-2);
+    border-radius: 999px;
+    padding-inline: 0.9rem;
+    color: var(--color-muted-ink);
+    font-size: var(--pt-xs);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .portal-settings-panes a[aria-current="page"] {
+    border-color: var(--color-navy);
+    background: var(--color-navy);
+    color: white;
+  }
+
+  @media (min-width: 60rem) {
+    .portal-settings-panes {
+      display: none;
+    }
+  }
+}
+
+@media print {
+  html,
+  body.portal-scope {
+    width: auto !important;
+    min-height: auto !important;
+    background: white !important;
+  }
+
+  .portal-workspace {
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  .portal-stage {
+    min-height: auto !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    border-radius: 0 !important;
+  }
+
+  .portal-scope main {
+    background: white !important;
+  }
+
+  .portal-content {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  .portal-print-packet {
+    display: block !important;
+    overflow: visible !important;
+  }
+}
+
+/* ---------- Glass sheets (issue #332, section 1) ----------
+   Add request, Print requests and the type editor are native dialogs wearing the confirm
+   dialog's motion grammar (portal-workbench.css) and this material: a lit,
+   frosted slab rather than paper. The slab runs glass-top at 76% to
+   glass-bottom at 66% under a 36px frost, a 1px rim brightest at the top,
+   and two shadows in the navy-slate it floats over. Everything a person
+   reads closely (fields, rows, alerts) sits on the solid well, so a patient
+   name is never on glass; the header and footer sit on the glass, aligned
+   with the well's content (12px inset + 16px padding = 28px). Scoped here,
+   not on .portal-confirm-dialog, because the recipients manager keeps its
+   paper and 48% scrim. The frost is
+   one surface, briefly open: never reuse it on a large or long-lived one. */
+/* The glass inks (design-system/tokens.md "Recorded exceptions"): the slab runs top to
+   bottom under the frost; solid is its Reduce Transparency stand-in; the
+   shadow and scrim are the navy-slate the sheet floats over. Declared on the
+   backdrop too, which does not inherit from its dialog in every browser. */
+.wgi-glass-sheet,
+.wgi-glass-sheet::backdrop {
+  --wgi-glass-top: #fafcfd;
+  --wgi-glass-bottom: #eef3f7;
+  --wgi-glass-solid: #eef2f5;
+  --wgi-glass-shadow: #1b2a3a;
+  --wgi-glass-scrim: #14202d;
+}
+
+@media (color-gamut: p3) {
+  .wgi-glass-sheet,
+  .wgi-glass-sheet::backdrop {
+    --wgi-glass-top: color(display-p3 0.98 0.988 0.992);
+    --wgi-glass-bottom: color(display-p3 0.933 0.953 0.969);
+    --wgi-glass-solid: color(display-p3 0.933 0.949 0.961);
+    --wgi-glass-shadow: color(display-p3 0.106 0.165 0.227);
+    --wgi-glass-scrim: color(display-p3 0.078 0.125 0.176);
+  }
+}
+
+.wgi-glass-sheet {
+  --wgi-glass-frost: blur(36px) saturate(185%) brightness(106%);
+  --wgi-glass-edge:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 1px 2px color-mix(in srgb, var(--wgi-glass-shadow) 10%, transparent),
+    0 24px 64px -12px color-mix(in srgb, var(--wgi-glass-shadow) 34%, transparent);
+  --btn-radius: 999px;
+  --btn-lift: 0px;
+  --btn-hover-shadow: none;
+  width: min(92vw, 35rem);
+  max-height: min(94dvh, 52rem);
+  overflow: hidden;
+  border-radius: 28px;
+  background: linear-gradient(
+    color-mix(in srgb, var(--wgi-glass-top) 76%, transparent),
+    color-mix(in srgb, var(--wgi-glass-bottom) 66%, transparent)
+  );
+  box-shadow: var(--wgi-glass-edge);
+  color: var(--color-slate-950);
+  -webkit-backdrop-filter: var(--wgi-glass-frost);
+  backdrop-filter: var(--wgi-glass-frost);
+}
+
+/* Only while open: the closed dialog keeps the grammar's display: none. */
+.wgi-glass-sheet[open] {
+  display: flex;
+  flex-direction: column;
+  /* The frost forms on the same spring as the rise, so the sheet reads as
+     a material arriving rather than a pane fading in. */
+  transition:
+    opacity var(--pm-exit-duration) var(--pm-exit),
+    transform var(--pm-spring-duration) var(--pm-spring),
+    backdrop-filter var(--pm-spring-duration) var(--pm-spring),
+    -webkit-backdrop-filter var(--pm-spring-duration) var(--pm-spring),
+    display var(--pm-spring-duration) allow-discrete,
+    overlay var(--pm-spring-duration) allow-discrete;
+}
+
+@starting-style {
+  .wgi-glass-sheet[open] {
+    -webkit-backdrop-filter: blur(0) saturate(100%) brightness(100%);
+    backdrop-filter: blur(0) saturate(100%) brightness(100%);
+  }
+}
+
+/* The rim: a 1px inside stroke with a vertical gradient, drawn as a masked
+   ring so the slab's own fill shows through its middle. */
+.wgi-glass-sheet::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    rgb(255 255 255 / 0.95),
+    rgb(255 255 255 / 0.12) 72%,
+    rgb(255 255 255 / 0.45)
+  );
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  pointer-events: none;
+}
+
+/* A light dim, no blur: the frost is the sheet's, never the scrim's. */
+.wgi-glass-sheet::backdrop {
+  background: color-mix(in srgb, var(--wgi-glass-scrim) 18%, transparent);
+}
+
+/* Restated beside the transition above, which outranks the grammar's. */
+.wgi-glass-sheet[data-instant],
+.wgi-glass-sheet[data-instant]::backdrop {
+  transition: none;
+}
+
+.wgi-glass-sheet-header {
+  flex: none;
+  padding: 1.5rem 1.75rem 0.875rem;
+}
+
+.wgi-glass-sheet-header h2 {
+  margin: 0;
+  color: var(--color-slate-950);
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.wgi-glass-sheet-header p {
+  margin: 0.25rem 0 0;
+  color: var(--color-slate-800);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+/* The well: solid surface, 12px in from the slab, 16px corners. It is the
+   one part that scrolls, so a short window keeps the header and footer in
+   place. */
+.wgi-glass-sheet .portal-request-form {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.wgi-glass-sheet :is(.portal-request-form-well, .wgi-glass-well) {
+  flex: 0 1 auto;
+  min-height: 0;
+  margin-inline: 12px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 0;
+  border-radius: 16px;
+  background: var(--wgi-surface);
+  padding: 16px;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--wgi-glass-shadow) 8%, transparent);
+}
+
+/* The footer sits on the glass under the well: no rule above it, the
+   well's edge separates them. */
+.wgi-glass-sheet :is(.portal-request-form-footer, .wgi-glass-footer) {
+  flex: none;
+  padding: 14px 16px 16px;
+}
+
+/* A5: the question replaces the footer on a solid coral panel inset under
+   the well, with the well's corners. */
+.wgi-glass-sheet .portal-request-discard {
+  flex: none;
+  margin: 12px;
+  border-radius: 16px;
+}
+
+/* Capsules on the glass (section 1, "Buttons"). The footer's buttons name
+   their role and the sheet paints them. This file outranks
+   the recipe's utilities, so the lift and hover shadow are off and each
+   paint restates the focus ring beside its own shadow. */
+.wgi-glass-sheet [data-glass] {
+  --wgi-glass-button-edge: none;
+  min-height: 2.75rem;
+  border-radius: 999px;
+  padding-inline: 1.375rem;
+  font-weight: 600;
+  box-shadow: var(--wgi-glass-button-edge);
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    box-shadow var(--motion-fast-duration) var(--motion-standard),
+    opacity var(--motion-fast-duration) var(--motion-standard),
+    scale var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-glass-sheet [data-glass]:focus-visible {
+  outline: none;
+  box-shadow:
+    var(--wgi-glass-button-edge),
+    0 0 0 2px var(--portal-surface, #fff),
+    0 0 0 4px var(--color-teal);
+}
+
+.wgi-glass-sheet [data-glass="secondary"] {
+  --wgi-glass-button-edge: inset 0 0 0 1px rgb(255 255 255 / 0.95), 0 1px 2px rgb(27 42 58 / 0.08);
+  background: rgb(255 255 255 / 0.72);
+  color: var(--color-slate-950);
+}
+
+@media (hover: hover) {
+  .wgi-glass-sheet [data-glass="secondary"]:hover {
+    background: rgb(255 255 255 / 0.92);
+  }
+}
+
+.wgi-glass-sheet [data-glass="primary"] {
+  --wgi-glass-button-edge:
+    inset 0 0 0 1px var(--color-navy-950), inset 0 2px 0 -1px rgb(255 255 255 / 0.16),
+    0 4px 12px -4px rgb(6 35 60 / 0.45);
+  background: linear-gradient(var(--color-navy-800), var(--color-navy-900));
+  color: var(--color-on-dark);
+}
+
+@media (hover: hover) {
+  .wgi-glass-sheet [data-glass="primary"]:hover:not(:disabled, [aria-disabled="true"]) {
+    background: linear-gradient(var(--color-navy-700), var(--color-navy-800));
+  }
+}
+
+.wgi-glass-sheet [data-glass="primary"]:active:not(:disabled) {
+  background: linear-gradient(var(--color-navy-900), var(--color-navy-950));
+}
+
+/* A dimmed primary casts no lift shadow: it cannot be pressed. */
+.wgi-glass-sheet [data-glass="primary"]:is(:disabled, [aria-disabled="true"]) {
+  --wgi-glass-button-edge:
+    inset 0 0 0 1px var(--color-navy-950), inset 0 2px 0 -1px rgb(255 255 255 / 0.16);
+}
+
+.wgi-glass-sheet [data-glass="destructive"] {
+  --wgi-glass-button-edge:
+    inset 0 0 0 1px var(--color-coral-800), inset 0 2px 0 -1px rgb(255 255 255 / 0.2),
+    0 4px 12px -4px rgb(125 37 23 / 0.4);
+  background: linear-gradient(var(--color-coral-600), var(--color-coral-700));
+  color: #fff;
+}
+
+@media (hover: hover) {
+  .wgi-glass-sheet [data-glass="destructive"]:hover {
+    background: linear-gradient(var(--color-coral-700), var(--color-coral-800));
+  }
+}
+
+/* Reduce Transparency: the same slab and rim, solid, no frost. */
+@media (prefers-reduced-transparency: reduce) {
+  .wgi-glass-sheet,
+  .wgi-glass-sheet[open] {
+    background: var(--wgi-glass-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .wgi-glass-sheet [data-glass="secondary"] {
+    background: #fff;
+  }
+}
+
+/* Increase Contrast: the rim becomes a solid chip-stroke border. */
+@media (prefers-contrast: more) {
+  .wgi-glass-sheet::before {
+    background: var(--wgi-chip-stroke);
+  }
+
+  .wgi-glass-sheet [data-glass="secondary"] {
+    --wgi-glass-button-edge: inset 0 0 0 1px var(--wgi-chip-stroke);
+    background: #fff;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @starting-style {
+    .wgi-glass-sheet[open] {
+      -webkit-backdrop-filter: var(--wgi-glass-frost);
+      backdrop-filter: var(--wgi-glass-frost);
+    }
+  }
+
+  .wgi-glass-sheet [data-glass]:active {
+    scale: none;
+  }
+}

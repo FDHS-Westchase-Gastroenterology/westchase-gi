@@ -1,0 +1,356 @@
+/* Review flyers (issue #357; Figma Ypf9ohpRcGWF5C9T9bSvWW, section 14,
+   516:9469 and the Download menu 516:9874). The --wgi-* paints come from
+   wgi-paints.css; the sizes are the frames'. Unlayered, like
+   activity-log.css, so it outranks the recipes' layered utilities where a
+   part restates its paint. The flyer's buttons keep the recipe's 44px
+   target (design-system/accessibility.md), taller than the frame's 36px.
+   Motion reads the registry: the actions over a card arrive and leave on
+   --motion-standard at the fast beat, and appear at once for the keyboard.
+   Reduced motion: the blanket reset in globals.css, so they appear and
+   leave at once. */
+
+.wgi-flyers {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 76rem;
+  margin: 0 auto;
+  color: var(--color-body);
+}
+
+/* The Schedule's canvas: 32px above the heading and 48px either side. */
+@media (min-width: 60rem) {
+  .portal-content:has(> .wgi-flyers) {
+    padding: 2rem 3rem 1.5rem;
+  }
+}
+
+.wgi-flyers :where(a, button, [tabindex]):focus-visible,
+.wgi-flyers-popover :where(a, button, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--portal-surface, #fff),
+    0 0 0 4px var(--color-teal);
+}
+
+/* ---------- Header: the Schedule's title and a lede, Print several on the right ---------- */
+
+.wgi-flyers-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
+}
+
+.wgi-flyers-heading {
+  display: flex;
+  max-width: 40rem;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.wgi-flyers-title {
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-family: var(--font-body), Arial, sans-serif;
+  font-size: 2.25rem;
+  font-weight: 700;
+  letter-spacing: -0.54px;
+  line-height: 1.1;
+}
+
+.wgi-flyers-lede {
+  margin: 0;
+  color: var(--wgi-muted-ink);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+/* The outline pill: white on the chip stroke, as the frame draws it. */
+.wgi-flyers-several,
+.wgi-flyer-download {
+  --btn-radius: 999px;
+  --btn-px: 1.125rem;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--wgi-chip-stroke);
+  color: var(--wgi-name-ink);
+  font-size: 0.875rem;
+}
+
+.wgi-flyer-download {
+  --btn-px: 1rem;
+  background: var(--color-navy-50);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wgi-flyers-several:hover,
+  .wgi-flyer-download:hover {
+    background: var(--color-navy-100);
+    box-shadow: inset 0 0 0 1px var(--color-navy-800);
+  }
+}
+
+.wgi-flyers-several[data-popup-open],
+.wgi-flyer-download[data-popup-open] {
+  background: var(--color-navy-100);
+  box-shadow: inset 0 0 0 1px var(--color-navy-800);
+}
+
+/* ---------- The grid of cards ---------- */
+
+.wgi-flyers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  gap: 1rem;
+}
+
+@media (min-width: 72rem) {
+  .wgi-flyers-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.wgi-flyer {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: clip;
+  border: 1px solid var(--wgi-rule);
+  border-radius: 1rem;
+  background: #fff;
+  transition:
+    border-color var(--motion-fast-duration) var(--motion-standard),
+    box-shadow var(--motion-fast-duration) var(--motion-standard);
+}
+
+/* The preview: a small sheet of the printed flyer, standing on the tint. */
+.wgi-flyer-preview {
+  display: flex;
+  height: 11.125rem;
+  align-items: flex-end;
+  justify-content: center;
+  padding-top: 1.125rem;
+  background: var(--color-navy-50);
+}
+
+.wgi-flyer-paper {
+  display: flex;
+  width: 7.75rem;
+  height: 10rem;
+  box-sizing: border-box;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0.75rem 0;
+  border-radius: 6px 6px 0 0;
+  background: #fff;
+  box-shadow: var(--wgi-card-shadow);
+  text-align: center;
+}
+
+.wgi-flyer-mark {
+  display: grid;
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  place-items: center;
+  border-radius: 4px;
+  background: var(--color-navy-900);
+  color: var(--color-amber-300);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.wgi-flyer-ask {
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.wgi-flyer-code {
+  width: 66px;
+  height: 66px;
+  flex: none;
+}
+
+.wgi-flyer-code-missing {
+  border: 1px dashed var(--wgi-chip-stroke);
+  border-radius: 4px;
+}
+
+.wgi-flyer-scan {
+  margin: 0;
+  color: var(--wgi-muted-ink);
+  font-size: 6px;
+  line-height: 1.3;
+}
+
+.wgi-flyer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.875rem 1.125rem 1rem;
+}
+
+.wgi-flyer-title {
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.wgi-flyer-credentials {
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.wgi-flyer-description {
+  margin: 0;
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+/* ---------- Print and Download over the preview ---------- */
+
+.wgi-flyer-actions {
+  position: absolute;
+  top: 7.375rem;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.82);
+  box-shadow:
+    0 24px 64px -12px rgb(27 42 58 / 0.34),
+    0 1px 2px rgb(27 42 58 / 0.1),
+    inset 0 1px 0 rgb(255 255 255 / 0.9);
+  transform: translateX(-50%);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  backdrop-filter: blur(12px) saturate(1.4);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .wgi-flyer-actions {
+    background: #fff;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+.wgi-flyer-print {
+  --btn-radius: 999px;
+  --btn-px: 1.125rem;
+  font-size: 0.875rem;
+}
+
+/* With a pointer, the actions wait for the card to be pointed at or
+   focused, and stay while one of its menus is open (the menu is portaled,
+   so focus leaves the card). On a touch screen they are always there. */
+@media (hover: hover) and (pointer: fine) {
+  .wgi-flyer-actions {
+    opacity: 0;
+    transform: translate(-50%, 4px);
+    transition:
+      opacity var(--motion-fast-duration) var(--motion-standard),
+      transform var(--motion-fast-duration) var(--motion-standard);
+  }
+
+  .wgi-flyer:hover .wgi-flyer-actions,
+  .wgi-flyer:focus-within .wgi-flyer-actions,
+  .wgi-flyer:has([data-popup-open]) .wgi-flyer-actions {
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+
+  /* Tabbing into a card shows its actions at once, the way a keyboard-opened
+     menu skips its transition (data-instant); they still leave on the beat. */
+  .wgi-flyer:has(:focus-visible) .wgi-flyer-actions {
+    transition-duration: 0s;
+  }
+
+  .wgi-flyer:hover,
+  .wgi-flyer:focus-within,
+  .wgi-flyer:has([data-popup-open]) {
+    border-color: var(--wgi-chip-stroke);
+    box-shadow: var(--wgi-card-shadow);
+  }
+}
+
+/* ---------- The Download and Print several menus ---------- */
+
+.wgi-flyer-menu {
+  width: 18rem;
+  border-color: var(--wgi-rule);
+  border-radius: 14px;
+  box-shadow: var(--wgi-card-shadow);
+}
+
+.wgi-flyer-menu [data-slot="menu-link-item"],
+.wgi-flyer-menu [data-slot="menu-item"],
+.wgi-flyer-menu [data-slot="menu-checkbox-item"] {
+  gap: 0.625rem;
+  border-radius: 9px;
+  font-size: 0.8125rem;
+}
+
+.wgi-flyer-menu [data-slot="menu-link-item"] {
+  padding: 0.5rem 0.625rem;
+  color: var(--wgi-name-ink);
+  text-decoration: none;
+}
+
+.wgi-flyer-menu [data-highlighted] {
+  background: var(--color-navy-50);
+}
+
+.wgi-flyer-menu [data-slot="menu-separator"] {
+  background: var(--wgi-rule);
+}
+
+/* The file-type tag: a square label, not a status badge. */
+.wgi-flyer-tag {
+  display: inline-grid;
+  min-width: 2.125rem;
+  flex: none;
+  place-items: center;
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: var(--color-slate-100);
+  color: var(--color-slate-700);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+.wgi-flyer-tag[data-kind="pdf"] {
+  background: var(--color-navy-900);
+  color: #fff;
+}
+
+.wgi-flyer-menu-text {
+  min-width: 0;
+}
+
+@media (forced-colors: active) {
+  .wgi-flyer,
+  .wgi-flyer-actions,
+  .wgi-flyer-tag {
+    border: 1px solid CanvasText;
+  }
+
+  .wgi-flyer-menu [data-highlighted] {
+    outline: 2px solid Highlight;
+  }
+}

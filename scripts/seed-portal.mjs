@@ -1,6 +1,6 @@
 import { asJsonObject, asJsonString, jsonSchema } from "../src/lib/json.ts";
 
-const TARGETS = new Set(["local", "dev", "prod"]);
+const TARGETS = new Set(["local", "branch", "prod"]);
 
 function providerErrorMessage(payload) {
   const parsed = jsonSchema.safeParse(payload);
@@ -22,7 +22,7 @@ function parseTarget(args) {
     inline?.slice("--target=".length) ?? (flagIndex >= 0 ? args[flagIndex + 1] : undefined);
 
   if (!value || !TARGETS.has(value)) {
-    throw new Error("Usage: node scripts/seed-portal.mjs --target local|dev|prod");
+    throw new Error("Usage: node scripts/seed-portal.mjs --target local|branch|prod");
   }
 
   return value;
@@ -41,8 +41,7 @@ function requireEnv(...names) {
 
 function projectConfig(target) {
   if (target === "local") {
-    // The disposable-stack target: refuses anything but a loopback Supabase,
-    // So it can never point at a hosted Development or Production project.
+    // Optional offline target; CI and PR verification use hosted branches.
     const url = requireEnv("NEXT_PUBLIC_SUPABASE_URL");
     if (!/^https?:\/\/(127\.0\.0\.1|localhost)([:/]|$)/.test(url)) {
       throw new Error(`--target local requires a loopback Supabase URL; got ${url}`);
@@ -50,10 +49,10 @@ function projectConfig(target) {
     return { url, serviceKey: requireEnv("SUPABASE_SERVICE_ROLE_KEY") };
   }
 
-  if (target === "dev") {
+  if (target === "branch") {
     return {
-      url: requireEnv("SUPABASE_DEV_URL", "NEXT_PUBLIC_SUPABASE_URL"),
-      serviceKey: requireEnv("SUPABASE_DEV_SERVICE_ROLE_KEY", "SUPABASE_SERVICE_ROLE_KEY"),
+      url: requireEnv("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"),
+      serviceKey: requireEnv("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY"),
     };
   }
 
@@ -205,7 +204,22 @@ async function main() {
         role: "admin",
         active: true,
         onboarded_at: new Date().toISOString(),
-        portal_tour_dismissed_at: new Date().toISOString(),
+      },
+    ],
+  });
+
+  // The fixture admin has finished its tour, so the suite's pages open without a tip.
+  const tourCount = await upsertRows({
+    url,
+    serviceKey,
+    table: "staff_tours",
+    onConflict: "staff_user_id,tour",
+    rows: [
+      {
+        staff_user_id: user.id,
+        tour: "admin",
+        status: "finished",
+        recorded_at: new Date().toISOString(),
       },
     ],
   });
@@ -224,9 +238,9 @@ async function main() {
     ],
   });
 
-  console.log(`Seeded ${target} auth user: ${user.id} (${user.email})`);
+  console.log(`Seeded ${target} Auth fixture`);
   console.log(
-    `Seeded ${target} rows: staff_profiles=${staffCount}, notification_recipients=${recipientCount}`,
+    `Seeded ${target} rows: staff_profiles=${staffCount}, staff_tours=${tourCount}, notification_recipients=${recipientCount}`,
   );
 }
 

@@ -112,6 +112,38 @@ function ZoomToolbar({ t }: Readonly<{ t: CardStrings }>) {
   );
 }
 
+function ProfileCardStatus({
+  loaded,
+  hintHidden,
+  coarse,
+  t,
+}: Readonly<{
+  loaded: boolean;
+  hintHidden: boolean;
+  coarse: boolean;
+  t: CardStrings;
+}>) {
+  return (
+    <>
+      {!loaded ? (
+        <div className="pc-loading" role="status">
+          <span className="pc-progress" aria-hidden="true">
+            <span />
+          </span>
+          <span className="pc-spinner" aria-hidden="true" />
+          <span className="sr-only">{t.loading}</span>
+        </div>
+      ) : null}
+
+      {loaded && !hintHidden ? (
+        <p className="pc-hint" aria-hidden="true">
+          {coarse ? t.hintTouch : t.hintPointer}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
 /**
  * The practice's official provider profile-card graphic, kept ON the page:
  * a real thumbnail in the profile itself, and a same-page full-screen
@@ -315,21 +347,7 @@ export function ProfileCardViewer({
                   </div>
                 </TransformComponent>
 
-                {!loaded ? (
-                  <div className="pc-loading" role="status">
-                    <span className="pc-progress" aria-hidden="true">
-                      <span />
-                    </span>
-                    <span className="pc-spinner" aria-hidden="true" />
-                    <span className="sr-only">{t.loading}</span>
-                  </div>
-                ) : null}
-
-                {loaded && !hintHidden ? (
-                  <p className="pc-hint" aria-hidden="true">
-                    {coarse ? t.hintTouch : t.hintPointer}
-                  </p>
-                ) : null}
+                <ProfileCardStatus loaded={loaded} hintHidden={hintHidden} coarse={coarse} t={t} />
 
                 <ZoomToolbar t={t} />
               </TransformWrapper>

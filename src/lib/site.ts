@@ -154,8 +154,6 @@ export const site = {
   },
 } as const;
 
-export type SiteLocation = (typeof site.locations)[number];
-
 /** Keyless Google Maps iframe embed, localized. Verified live 2026-07-07:
  *  resolves 200 to /maps/embed for both office queries in en and es. */
 export function mapEmbedUrl(query: string, locale: Locale): string {
@@ -164,6 +162,11 @@ export function mapEmbedUrl(query: string, locale: Locale): string {
 
 export function directionsUrl(query: string): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(query)}`;
+}
+
+/** The place itself in Google Maps (keyless), for staff checking an office's pin. */
+export function placeUrl(query: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
 export function localePath(locale: Locale, path: string): string {

@@ -1,0 +1,158 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
+import { toast } from "sonner";
+
+import { applySettingsCommand } from "@/app/admin/(portal)/settings/schedule-actions";
+import { settingsFailureMessage } from "@/app/admin/(portal)/settings/settings-model";
+import { showUndoToast } from "@/components/ui/undo-toast";
+import type {
+  SettingsCommand,
+  SettingsCommandOutcome,
+} from "@/lib/portal/scheduling/settings-contracts";
+
+/* Settings applies each change as it is made (issue #352), so a quick run of
+   edits must land in order on the versions they build on. Every command goes
+   through one queue: it waits for the one before it, and its expected version
+   is the newest this page has seen for the part it changes (a provider's
+   profile, hours or types, an office's details, a type, the practice), from
+   the server's last answer or the props, whichever is later. A change that
+   can be reversed confirms in the shared Undo toast, whose Undo is the inverse
+   command sent through the same queue. */
+
+export interface SettingsUndo {
+  /** "Infusion therapy is turned off". */
+  readonly headline: string;
+  /** What the change means, or null. */
+  readonly detail: string | null;
+  /** The command that puts it back. Its expected version is filled in when it is sent. */
+  readonly inverse: SettingsCommand;
+  /** A run of edits to one thing ("hours:<provider>"): a new toast in the slot replaces the
+      last one, whose Undo the new toast's inverse already covers one step back. */
+  readonly slot?: string;
+}
+
+export interface SendOptions {
+  readonly undo?: SettingsUndo;
+  /** Say failures in a toast (the default), or leave them to the caller. */
+  readonly quiet?: boolean;
+}
+
+const UNREACHABLE = "Settings couldn't be reached. Try again.";
+
+/** The part of an entity each command checks the version of. A new provider has no version
+    yet; time off and closed days are rows of their own and check none. */
+const PART = {
+  add_provider: null,
+  set_provider_profile: "profile",
+  retire_provider: "profile",
+  restore_provider: "profile",
+  set_provider_weekly_hours: "hours",
+  add_time_off: null,
+  remove_time_off: null,
+  set_provider_types: "types",
+  save_appointment_type: "type",
+  reorder_appointment_types: "type",
+  set_appointment_type_active: "type",
+  delete_appointment_type: "type",
+  save_location_details: "details",
+  retire_location: "details",
+  restore_location: "details",
+  add_location_closure: null,
+  remove_location_closure: null,
+  set_booking_interval: "practice",
+} as const satisfies Record<SettingsCommand["kind"], string | null>;
+
+function keyOf(command: SettingsCommand): string | null {
+  const part = PART[command.kind];
+  return part === null || !("id" in command) || command.id === null
+    ? null
+    : `${command.id}:${part}`;
+}
+
+function withVersion(command: SettingsCommand, known: ReadonlyMap<string, number>) {
+  const key = keyOf(command);
+  if (key === null || !("expectedVersion" in command) || command.expectedVersion === null)
+    return command;
+  const latest = known.get(key);
+  return latest !== undefined && latest > command.expectedVersion
+    ? { ...command, expectedVersion: latest }
+    : command;
+}
+
+export type SettingsSend = ReturnType<typeof useSettingsCommand>;
+
+export function useSettingsCommand() {
+  const router = useRouter();
+  const [known] = useState(() => new Map<string, number>());
+  const queue = useRef<Promise<unknown> | undefined>(undefined);
+  const [slots] = useState(() => new Map<string, string | number>());
+
+  async function run(command: SettingsCommand): Promise<SettingsCommandOutcome> {
+    const next = (queue.current ?? Promise.resolve()).then(
+      async (): Promise<SettingsCommandOutcome> => {
+        try {
+          const outcome = await applySettingsCommand({
+            idempotencyKey: crypto.randomUUID(),
+            command: withVersion(command, known),
+          });
+          const key = keyOf(command);
+          if (outcome.ok && outcome.dryRun !== true && key !== null)
+            known.set(key, outcome.version);
+          return outcome;
+        } catch {
+          return { ok: false, code: "unavailable" };
+        }
+      },
+    );
+    queue.current = next;
+    return next;
+  }
+
+  /** Sends one change; says a refusal and re-reads the page. */
+  async function send(
+    command: SettingsCommand,
+    options: Readonly<SendOptions> = {},
+  ): Promise<SettingsCommandOutcome> {
+    const outcome = await run(command);
+    if (!outcome.ok) {
+      if (options.quiet !== true)
+        toast.error(
+          outcome.code === "unavailable" ? UNREACHABLE : settingsFailureMessage(outcome.code),
+        );
+      router.refresh();
+      return outcome;
+    }
+    if (outcome.dryRun === true) return outcome;
+    const { undo } = options;
+    if (undo !== undefined) {
+      const previous = undo.slot === undefined ? undefined : slots.get(undo.slot);
+      if (previous !== undefined) toast.dismiss(previous);
+      const id = showUndoToast({
+        headline: undo.headline,
+        detail: undo.detail,
+        undo: async () => {
+          const reversed = await run(undo.inverse);
+          return reversed.ok
+            ? { ok: true, message: "Undone." }
+            : {
+                ok: false,
+                message:
+                  reversed.code === "unavailable"
+                    ? UNREACHABLE
+                    : settingsFailureMessage(reversed.code),
+              };
+        },
+        onSettled: () => {
+          router.refresh();
+        },
+      });
+      if (undo.slot !== undefined) slots.set(undo.slot, id);
+    }
+    router.refresh();
+    return outcome;
+  }
+
+  return send;
+}

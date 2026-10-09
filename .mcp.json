@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "terraform": {
+      "type": "stdio",
+      "command": "terraform-mcp-server",
+      "args": ["stdio"]
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@0.0.83",
+        "--browser",
+        "chrome",
+        "--headless",
+        "--isolated",
+        "--viewport-size",
+        "1440x900",
+        "--output-dir",
+        "screenshots/playwright-mcp"
+      ]
+    }
+  }
+}

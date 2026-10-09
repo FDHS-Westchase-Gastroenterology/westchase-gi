@@ -1,0 +1,95 @@
+import { test, expect } from "@playwright/test";
+
+import { requiredEnv, runId, serviceDb } from "../harness/env";
+import { signIn } from "../harness/session";
+
+const supabaseUrl = new URL(requiredEnv("NEXT_PUBLIC_SUPABASE_URL"));
+const isolatedTestDatabase =
+  process.env.SUPABASE_PREVIEW_BRANCH === "1" ||
+  (["127.0.0.1", "localhost", "[::1]"].includes(supabaseUrl.hostname) &&
+    requiredEnv("SUPABASE_PROJECT_REF") === "local");
+const searchToken = `scale-${runId}`;
+const actorEmail = `${searchToken}@example.test`;
+
+test.describe("isolated portal scale boundaries", () => {
+  test.describe.configure({ mode: "serial" });
+  test.skip(
+    !isolatedTestDatabase,
+    "bulk boundary coverage requires local Supabase or a Preview Branch",
+  );
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium", "portal scale coverage requires JavaScript");
+  });
+
+  const db = serviceDb();
+
+  test.beforeAll(async () => {
+    const { error: auditError } = await db.from("audit_log").insert(
+      Array.from({ length: 101 }, (_, index) => ({
+        actor_email: actorEmail,
+        action: "test.scale",
+        entity: "requests",
+        detail: {},
+        at: new Date(Date.UTC(2041, 0, 1) + index * 1000).toISOString(),
+      })),
+    );
+    expect(auditError).toBeNull();
+  });
+
+  test.afterAll(async () => {
+    const { error: auditCleanupError } = await db
+      .from("audit_log")
+      .delete()
+      .eq("actor_email", actorEmail);
+    expect(auditCleanupError).toBeNull();
+  });
+
+  test("paginates Activity beyond the first 100 rows", async ({ page }) => {
+    const technicalRows = page.getByTestId("audit-table").getByRole("row").filter({
+      hasText: actorEmail,
+    });
+    await signIn(page);
+    await page.goto("/admin/audit");
+    await expect(technicalRows).toHaveCount(100);
+
+    await page
+      .getByRole("navigation", { name: "Activity log pages" })
+      .getByRole("link", { name: "Next" })
+      .click();
+    await expect(page).toHaveURL(/\/admin\/audit\?page=2#audit-page-summary$/);
+    await expect(page.getByTestId("audit-page-summary")).toBeFocused();
+    await expect(technicalRows).toHaveCount(1);
+
+    const technicalSummary = page.getByTestId("audit-page-summary");
+    // Activity can grow between reads; keep the page while showing the new records.
+    const { error: appendedActivityError } = await db.from("audit_log").insert(
+      Array.from({ length: 2 }, (_, index) => ({
+        actor_email: actorEmail,
+        action: "test.scale",
+        entity: "requests",
+        detail: {},
+        at: new Date(Date.UTC(2041, 0, 1) + (101 + index) * 1000).toISOString(),
+      })),
+    );
+    expect(appendedActivityError).toBeNull();
+    // The log above changes its own filters in place: the Technical record keeps its page,
+    // And a search never reaches the address.
+    await page.getByTestId("activity-search").fill(actorEmail);
+    await page
+      .getByTestId("activity-categories")
+      .getByRole("button", { name: "Requests", exact: true })
+      .click();
+    await expect(page).toHaveURL(
+      (url) =>
+        url.pathname === "/admin/audit" &&
+        url.searchParams.get("page") === "2" &&
+        url.searchParams.get("category") === "requests" &&
+        !url.searchParams.has("q") &&
+        url.hash === "#audit-page-summary",
+    );
+    await page.reload();
+    await expect(technicalSummary).toHaveText(/^Showing 101–\d+ of \d+$/);
+    await expect(technicalRows).toHaveCount(3);
+    await expect(page.getByTestId("activity-search")).toHaveValue("");
+  });
+});

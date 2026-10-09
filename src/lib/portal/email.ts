@@ -1,5 +1,6 @@
 export type PortalEmailPurpose =
   | "appointment_notification"
+  | "appointment_notification_test"
   | "recipient_confirmation"
   | "staff_invite";
 
@@ -23,6 +24,9 @@ export type PortalEmailOutcome =
       reason: "unconfigured" | "rejected" | "rate_limited" | "timed_out" | "transport_failure";
       providerStatusCode: number | null;
     };
+
+/** Whether a provider accepted a message for delivery; the two words every delivery surface reports. */
+export type DeliveryOutcome = PortalEmailOutcome["status"];
 
 export type SendPortalEmail = (message: PortalEmailMessage) => Promise<PortalEmailOutcome>;
 

@@ -5,88 +5,54 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import type { Json } from "@/lib/json";
-import { recordAudit } from "@/lib/portal/audit";
-import type { PortalSessionUser } from "@/lib/portal/auth";
 import { requireRole } from "@/lib/portal/auth";
-import { AUDIT_ACTIONS } from "@/lib/portal/contracts";
+import { STAFF_TOURS } from "@/lib/portal/contracts";
+import type { StaffTour, StaffTourStatus } from "@/lib/portal/contracts";
 import { serviceClient } from "@/lib/portal/server";
+import { tourStartHref } from "@/lib/portal/tours";
 
-async function setTourDismissedRpc(
-  session: Readonly<PortalSessionUser>,
-  dismissed: boolean,
-): Promise<void> {
-  const { error } = await serviceClient().rpc("portal_set_staff_tour_dismissed", {
-    p_user_id: session.id,
-    p_dismissed: dismissed,
+const tourSchema = z.enum(STAFF_TOURS);
+const endTourSchema = z.object({
+  tour: tourSchema,
+  outcome: z.enum(["finished", "skipped"]),
+});
+
+/** What the tour runner sends when a tour ends: Done finishes it, Skip tour or Esc skips it. */
+export interface EndTourInput {
+  tour: Json;
+  outcome: Json;
+}
+
+export type EndTourResult = { ok: true } | { ok: false };
+
+/* The command refuses a tour the account's role cannot take (42501) and an account that is not
+   active and onboarded (P0002). Either refusal reaches the caller as an error. */
+async function setStaffTour(userId: string, tour: StaffTour, status: StaffTourStatus) {
+  const { error } = await serviceClient().rpc("portal_set_staff_tour", {
+    p_user_id: userId,
+    p_tour: tour,
+    p_status: status,
   });
-
-  if (error) {
-    throw new Error(`Portal tour update failed: ${error.code}`);
-  }
+  return error;
 }
 
-async function setTourDismissed(
-  session: Readonly<PortalSessionUser>,
-  dismissed: boolean,
-): Promise<never> {
-  await setTourDismissedRpc(session, dismissed);
-  revalidatePath("/admin");
-  redirect("/admin");
-}
-
-interface TourProgress {
-  stepReached: number;
-  totalSteps: number;
-}
-
-interface TourProgressInput {
-  stepReached: Json;
-  totalSteps: Json;
-}
-
-const tourProgressSchema = z
-  .object({
-    stepReached: z.number().int().min(1).max(20),
-    totalSteps: z.number().int().min(1).max(20),
-  })
-  .refine((value) => value.stepReached <= value.totalSteps);
-
-function parseTourProgress(input: Readonly<TourProgressInput>): TourProgress {
-  const parsed = tourProgressSchema.safeParse(input);
-  if (!parsed.success) {
-    throw new Error("Invalid tour progress");
-  }
-  return parsed.data;
-}
-
-export async function dismissPortalTourAction(): Promise<never> {
+/** Help's "Start the tour": records the tour as running and opens its first screen. */
+export async function startTourAction(rawTour: Json): Promise<never> {
   const session = await requireRole("staff", { unauthenticated: "throw" });
-  return setTourDismissed(session, true);
+  const tour = tourSchema.parse(rawTour);
+  const error = await setStaffTour(session.id, tour, "pending");
+  if (error) throw new Error(`Tour start failed: ${error.code}`);
+  revalidatePath("/admin", "layout");
+  redirect(tourStartHref(tour));
 }
 
-export async function restartPortalTourAction(): Promise<never> {
+/** Records a finished or skipped tour so it does not start again by itself. */
+export async function endTourAction(input: Readonly<EndTourInput>): Promise<EndTourResult> {
   const session = await requireRole("staff", { unauthenticated: "throw" });
-  return setTourDismissed(session, false);
-}
-
-export async function finishPortalTourAction(input: Readonly<TourProgressInput>): Promise<never> {
-  const session = await requireRole("staff", { unauthenticated: "throw" });
-  const progress = parseTourProgress(input);
-
-  await setTourDismissedRpc(session, true);
-
-  await recordAudit(serviceClient(), {
-    actorEmail: session.email,
-    action: AUDIT_ACTIONS.STAFF_TOUR_COMPLETE,
-    entity: "staff_profiles",
-    entityId: null,
-    detail: {
-      completed: true,
-      step_reached: progress.stepReached,
-      total_steps: progress.totalSteps,
-    },
-  });
-
-  revalidatePath("/admin");
-  redirect("/admin");
+  const parsed = endTourSchema.safeParse(input);
+  if (!parsed.success) return { ok: false };
+  const error = await setStaffTour(session.id, parsed.data.tour, parsed.data.outcome);
+  if (error) return { ok: false };
+  revalidatePath("/admin", "layout");
+  return { ok: true };
 }

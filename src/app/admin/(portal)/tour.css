@@ -1,0 +1,166 @@
+/* The first-sign-in tours' ring and tip (issue #358; Figma section 15,
+   T-front-desk and T-admin). The tip is a ui/popover on the `paper` paint
+   and the recipe's `wgi` motion: it grows from the ring it points at on
+   the staff home's base beat and leaves on the fast one. The ring tracks
+   its control 1:1, so its position never transitions; a new step's ring
+   fades in on the same base beat and curve. Reduced motion: the blanket
+   reset in globals.css leaves the fade as a cross-fade. */
+
+.wgi-tour-ring {
+  position: fixed;
+  z-index: 50;
+  box-sizing: border-box;
+  border: 2px solid var(--color-teal);
+  border-radius: 12px;
+  pointer-events: none;
+  transition: opacity var(--motion-base-duration) var(--motion-standard);
+}
+
+@starting-style {
+  .wgi-tour-ring {
+    opacity: 0;
+  }
+}
+
+.wgi-tour-tip {
+  position: relative;
+  display: grid;
+  width: 23.625rem;
+  max-width: calc(100vw - 2rem);
+  box-sizing: border-box;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  gap: 0 0.875rem;
+  padding: 1.25rem 1.25rem 1rem;
+}
+
+.wgi-tour-tip:focus-visible {
+  outline: 2px solid var(--color-teal);
+  outline-offset: 2px;
+}
+
+.wgi-tour-arrow {
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--color-slate-200);
+  background: #fff;
+  transform: rotate(45deg);
+}
+
+.wgi-tour-arrow[data-side="bottom"] {
+  top: -7px;
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+}
+
+.wgi-tour-arrow[data-side="top"] {
+  bottom: -7px;
+  border-top-color: transparent;
+  border-left-color: transparent;
+}
+
+.wgi-tour-arrow[data-side="right"] {
+  left: -7px;
+  border-top-color: transparent;
+  border-right-color: transparent;
+}
+
+.wgi-tour-arrow[data-side="left"] {
+  right: -7px;
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+}
+
+.wgi-tour-icon {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--color-slate-100);
+  color: var(--color-navy-800);
+}
+
+.wgi-tour-text {
+  min-width: 0;
+  padding-right: 1.5rem;
+}
+
+.wgi-tour-eyebrow {
+  margin: 0;
+  color: var(--color-muted-ink);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.66px;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.wgi-tour-tip .wgi-tour-title {
+  margin-top: 0.25rem;
+  color: var(--color-navy-900);
+  font-size: 1.0625rem;
+  line-height: 1.4;
+}
+
+.wgi-tour-body {
+  margin: 0.375rem 0 0;
+  color: var(--color-muted-ink);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.wgi-tour-close {
+  position: absolute;
+  top: 0.625rem;
+  right: 0.625rem;
+  width: 2rem;
+  height: 2rem;
+  min-height: 0;
+  color: var(--color-muted-ink);
+}
+
+.wgi-tour-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  grid-column: 1 / -1;
+  margin-top: 1rem;
+}
+
+.wgi-tour-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.wgi-tour-dots > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-slate-300);
+}
+
+.wgi-tour-dots > span[data-current] {
+  background: var(--color-navy-800);
+}
+
+/* The tip's buttons are ui/button pills: the knobs, not the recipe, change. */
+.wgi-tour-actions {
+  --btn-radius: 999px;
+  --btn-lift: 0px;
+  --btn-hover-shadow: none;
+
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+@media (forced-colors: active) {
+  .wgi-tour-ring {
+    border-color: Highlight;
+  }
+
+  .wgi-tour-dots > span[data-current] {
+    background: CanvasText;
+  }
+}

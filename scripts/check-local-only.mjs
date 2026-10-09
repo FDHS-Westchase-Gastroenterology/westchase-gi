@@ -231,11 +231,8 @@ function main(argv) {
   }
 
   if (mode === "verify-generated") {
-    // The check that keeps the copies honest: regenerate from the manifest and
-    // Compare against what is committed. The rules document lives inside .claude/,
-    // Which is itself local-only and therefore not in git, so CI can only verify
-    // The .gitignore block. `npm run local-only:write` keeps the document current
-    // For whoever is at the machine.
+    // Verify the generated ignore block against the manifest.
+    // The write command also refreshes the tracked Claude rules document.
     const gi = readFileSync(join(repoRoot, ".gitignore"), "utf8");
     const expected = renderGitignoreBlock(manifest);
     const b = gi.indexOf(BEGIN);

@@ -3,56 +3,80 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
-import { REQUEST_STATUSES } from "@/lib/portal/contracts";
-import type { RequestStatus } from "@/lib/portal/contracts";
+import { REQUEST_LOCATIONS, REQUEST_TIMES } from "@/lib/portal/contracts";
+import type { RequestLocation, RequestTime } from "@/lib/portal/contracts";
 import { orderQueueRows } from "@/lib/portal/queue-attention";
 import type { AttentiveRow } from "@/lib/portal/queue-attention";
+import { readRequestWorklist } from "@/lib/portal/request-worklist/service";
+import { presentationStatus, storedRequestStateSchema } from "@/lib/portal/workflow/contracts";
+import type { RequestStatus } from "@/lib/portal/workflow/contracts";
 
-// Shared queue reads for the requests list and the detail page's
-// Previous/next continuity: one attention derivation, one fetch shape.
+// Shared queue reads for Home's list and Schedule's worked-row refresh: one
+// Attention derivation, one fetch shape.
 
 export interface QueueRow {
   id: string;
   name: string;
   phone: string;
-  location: "any" | "tampa" | "lutz";
-  preferred_time: "any" | "morning" | "afternoon";
+  location: RequestLocation;
+  preferred_time: RequestTime;
   locale: string;
+  /** Deploy-overlap presentation shape: durable `booked` normalizes to legacy UI `scheduled`. */
   status: RequestStatus;
   created_at: string;
   follow_up_at: string | null;
+  /** Migrated closure awaiting staff review (spec §14): stays visible. */
+  legacy_review_required: boolean;
+  /** Optimistic-concurrency token, so a row can be worked where it is read. */
+  version: number;
+  /** The linked patient record; the request card books directly when present. */
+  patientId: string | null;
 }
 
 export type AttentiveQueueRow = AttentiveRow<QueueRow>;
 
+/** A queue row that also knows who last worked it (newest audit actor). */
+export type WorkedQueueRow = AttentiveQueueRow & { lastActivityBy: string | null };
+
 const COLUMNS =
-  "id, name, phone, location, preferred_time, locale, status, created_at, follow_up_at";
+  "id, name, phone, location, preferred_time, locale, status, created_at, follow_up_at, legacy_review_required, version, patient_request_links(patient_id)";
 
-// Open-queue candidates are bounded well past any realistic front-desk
-// Backlog; beyond this the attention ordering would need a database view.
-// ponytail: if open rows ever approach the cap, revisit with a computed
-// Ordering column instead of widening it.
-export const OPEN_CANDIDATE_LIMIT = 500;
+export type OpenStatus = Exclude<RequestStatus, "closed">;
+export const OPEN_STATUSES = [
+  "new",
+  "contacted",
+  "scheduled",
+] as const satisfies readonly OpenStatus[];
 
-export const OPEN_STATUSES = ["new", "contacted", "scheduled"] as const;
-export type OpenStatus = (typeof OPEN_STATUSES)[number];
-
-const queueRowSchema = z.object({
+const storedQueueRowSchema = z.object({
   id: z.string(),
   name: z.string(),
   phone: z.string(),
-  location: z.enum(["any", "tampa", "lutz"]),
-  preferred_time: z.enum(["any", "morning", "afternoon"]),
+  location: z.enum(REQUEST_LOCATIONS),
+  preferred_time: z.enum(REQUEST_TIMES),
   locale: z.string(),
-  status: z.enum(REQUEST_STATUSES),
+  status: storedRequestStateSchema,
   created_at: z.string(),
   follow_up_at: z.string().nullable(),
-}) satisfies z.ZodType<QueueRow>;
-
-const activityRowSchema = z.object({
-  entity_id: z.string().nullable(),
-  at: z.string(),
+  legacy_review_required: z.boolean(),
+  // Postgres may hand a bigint back as a string, the way the work-surface
+  // Read already allows for.
+  version: z.union([z.number(), z.string()]),
+  // A to-one embed: patient_request_links is keyed by request_id.
+  patient_request_links: z.object({ patient_id: z.string() }).nullable(),
 });
+
+function toQueueRow({
+  patient_request_links: link,
+  ...row
+}: z.infer<typeof storedQueueRowSchema>): QueueRow {
+  return {
+    ...row,
+    status: presentationStatus(row.status),
+    version: Number(row.version),
+    patientId: link?.patient_id ?? null,
+  };
+}
 
 /**
  * The attention-ordered open set: open statuses (or one scoped status),
@@ -62,62 +86,37 @@ const activityRowSchema = z.object({
 export async function fetchAttentiveOpenRows(
   db: SupabaseClient,
   {
+    actorId,
     statuses = [...OPEN_STATUSES],
-    searchFilter = "",
     now = new Date(),
   }: Readonly<{
+    actorId: string;
     statuses?: readonly OpenStatus[];
-    searchFilter?: string;
     now?: Date;
-  }> = {},
-): Promise<AttentiveQueueRow[]> {
-  let query = db
-    .from("requests")
-    .select(COLUMNS)
-    .in("status", [...statuses])
-    .order("created_at", { ascending: false })
-    .limit(OPEN_CANDIDATE_LIMIT);
-  if (searchFilter) query = query.or(searchFilter);
-  const { data, error } = await query;
-  if (error) throw new Error(`Queue read failed: ${error.code}`);
-  const parsedRows = z.array(queueRowSchema).safeParse(data);
-  if (!parsedRows.success) throw new Error("Queue read failed: invalid");
-  const rows = parsedRows.data;
-
-  const activityById = new Map<string, string>();
-  const ids = rows.map((row) => row.id);
-  // PostgREST URL limits reject long `in` lists (a 500-row candidate set is
-  // ~18KB of UUIDs), so the activity map is fetched in parallel chunks.
-  const ACTIVITY_ID_CHUNK = 100;
-  const activityChunks = await Promise.all(
-    Array.from({ length: Math.ceil(ids.length / ACTIVITY_ID_CHUNK) }, (_, chunkIndex) =>
-      db
-        .from("audit_log")
-        .select("entity_id, at")
-        .eq("entity", "requests")
-        .in(
-          "entity_id",
-          ids.slice(chunkIndex * ACTIVITY_ID_CHUNK, (chunkIndex + 1) * ACTIVITY_ID_CHUNK),
-        ),
-    ),
-  );
-  for (const chunk of activityChunks) {
-    if (chunk.error) {
-      throw new Error(`Queue read failed: ${chunk.error.code}`);
-    }
-    for (const row of chunk.data) {
-      const parsed = activityRowSchema.safeParse(row);
-      if (!parsed.success) continue;
-      const { entity_id: id, at } = parsed.data;
-      if (id === null || id === "") continue;
-      const current = activityById.get(id);
-      if (current === undefined || current === "" || at > current) {
-        activityById.set(id, at);
-      }
-    }
+  }>,
+): Promise<WorkedQueueRow[]> {
+  const rows: WorkedQueueRow[] = [];
+  let offset = 0;
+  // The existing Home filters need the full open set. Fetch bounded pages;
+  // Consumers with their own paging use the same read operation directly.
+  for (;;) {
+    const page = await readRequestWorklist(
+      db,
+      actorId,
+      {
+        action: "page",
+        statuses,
+        offset,
+        limit: 200,
+      },
+      now,
+    );
+    if (!page.ok) throw new Error(`Queue read failed: ${page.code}`);
+    rows.push(...page.items);
+    if (page.nextOffset === null) return rows;
+    if (page.nextOffset <= offset) throw new Error("Queue read failed: invalid page");
+    offset = page.nextOffset;
   }
-
-  return orderQueueRows(rows, activityById, now);
 }
 
 /**
@@ -141,11 +140,61 @@ export async function fetchClosedRows(
     .select(COLUMNS)
     .eq("status", "closed")
     .order("created_at", { ascending: false })
+    .order("id", { ascending: true })
     .range(from, from + limit - 1);
   if (searchFilter) query = query.or(searchFilter);
   const { data, error } = await query;
   if (error) throw new Error(`Queue read failed: ${error.code}`);
-  const parsed = z.array(queueRowSchema).safeParse(data);
+  const parsed = z.array(storedQueueRowSchema).safeParse(data);
   if (!parsed.success) throw new Error("Queue read failed: invalid");
-  return parsed.data;
+  // Offset pages stay on `requests`. The only embed is the to-one patient
+  // Link (keyed by request_id), which cannot fan a row out and shorten a page.
+  return parsed.data.map(toQueueRow);
+}
+
+const activitySchema = z.array(z.object({ at: z.string(), actor_email: z.string().nullable() }));
+
+/**
+ * One request as the worklist reads it: its attention bucket, its newest
+ * activity, and who did it, on the same rules as portal_request_worklist_rows
+ * (the newest request audit entry, and the newest one with an actor). Null
+ * when the request does not exist; throws on a failed read.
+ */
+export async function fetchWorkedRow(
+  db: SupabaseClient,
+  requestId: string,
+  now: Date = new Date(),
+): Promise<WorkedQueueRow | null> {
+  const audit = () =>
+    db
+      .from("audit_log")
+      .select("at, actor_email")
+      .eq("entity", "requests")
+      .eq("entity_id", requestId)
+      .order("at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(1);
+  const [requestRead, activityRead, actorRead] = await Promise.all([
+    db.from("requests").select(COLUMNS).eq("id", requestId).maybeSingle(),
+    audit(),
+    audit().not("actor_email", "is", null).neq("actor_email", ""),
+  ]);
+  if (requestRead.error || activityRead.error || actorRead.error) {
+    throw new Error("Request read failed");
+  }
+  if (requestRead.data === null) return null;
+  const row = storedQueueRowSchema.safeParse(requestRead.data);
+  const activity = activitySchema.safeParse(activityRead.data);
+  const actor = activitySchema.safeParse(actorRead.data);
+  if (!row.success || !activity.success || !actor.success) {
+    throw new Error("Request read failed: invalid");
+  }
+  const newest = activity.data.at(0)?.at;
+  const attentive = orderQueueRows(
+    [toQueueRow(row.data)],
+    new Map(newest === undefined ? [] : [[requestId, newest]]),
+    now,
+  ).at(0);
+  if (attentive === undefined) return null;
+  return { ...attentive, lastActivityBy: actor.data.at(0)?.actor_email ?? null };
 }

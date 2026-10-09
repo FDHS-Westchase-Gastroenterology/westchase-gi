@@ -1,23 +1,45 @@
-import Link from "next/link";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { z } from "zod";
 
 import { formatReceived } from "@/app/admin/(portal)/requests/format";
+import { initialsOf, practiceDate } from "@/app/admin/(portal)/schedule/week-calendar";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { asJsonObject, asJsonString, jsonSchema } from "@/lib/json";
 import type { Json } from "@/lib/json";
+import { readActivity } from "@/lib/portal/activity";
+import { activityHref, parseActivitySearchParams } from "@/lib/portal/activity-contracts";
+import type { ActivityPage, ActivityUrlFilters } from "@/lib/portal/activity-contracts";
 import { requireRole } from "@/lib/portal/auth";
 import { PORTAL_RELEASE_BRIEFING } from "@/lib/portal/release-briefing-content";
 import { getPortalReleaseEngagement } from "@/lib/portal/release-engagement";
 import { parsePage } from "@/lib/portal/request-query";
+import { executeSchedulingOperation } from "@/lib/portal/scheduling/service";
 import { serviceClient } from "@/lib/portal/server";
 import { displayNameOrEmail, fetchStaffNameMap } from "@/lib/portal/staff-identity";
 
-import { RecentWorkSection } from "./recent-work";
-import { toRecentWorkItems } from "./recent-work-model";
-import type { AuditEntry } from "./recent-work-model";
+import { ActivityLog } from "./activity-log";
+import type { ActivityProvider } from "./activity-log";
+import { technicalRecordHref } from "./activity-model";
+import type { AuditEntry } from "./audit-sentences";
 import { ReleaseEngagementSection } from "./release-engagement";
+import { TechnicalRecordPager, TechnicalRecordSummary } from "./technical-record-pager";
+
+/* The Activity log (issue #357). Everyone on staff reads the log; the server
+   decides which changes each role sees, and front desk never gets the
+   Settings filter. Administrators also get the release engagement and the
+   Technical record: the stored audit rows, 100 a page, at `?page=`. */
 
 const PAGE_SIZE = 100;
+const AUDIT_COLUMNS = "id, actor_email, action, entity, entity_id, detail, at";
 
 const auditEntrySchema = z.object({
   id: z.string(),
@@ -28,16 +50,6 @@ const auditEntrySchema = z.object({
   detail: jsonSchema,
   at: z.string(),
 }) satisfies z.ZodType<AuditEntry>;
-
-const profileNameSchema = z.object({
-  id: z.string(),
-  display_name: z.string(),
-});
-
-const recipientEmailSchema = z.object({
-  id: z.string(),
-  email: z.string(),
-});
 
 interface ExternalAuditSummary {
   target: string;
@@ -55,203 +67,202 @@ function externalAuditSummary(detail: Json): ExternalAuditSummary | null {
   return { target, outcome };
 }
 
+function parseAuditEntries(rows: Json): AuditEntry[] {
+  const parsed = z.array(auditEntrySchema).safeParse(rows);
+  if (!parsed.success) {
+    throw new Error("Audit read failed: invalid");
+  }
+  return parsed.data;
+}
+
+async function readFirstPage(
+  db: SupabaseClient,
+  actorId: string,
+  filters: Readonly<ActivityUrlFilters>,
+): Promise<ActivityPage> {
+  try {
+    return await readActivity(db, actorId, filters, null);
+  } catch {
+    return { ok: false, code: "unavailable" };
+  }
+}
+
+async function readProviders(db: SupabaseClient, actorId: string): Promise<ActivityProvider[]> {
+  try {
+    const catalog = await executeSchedulingOperation(db, actorId, {
+      action: "catalog",
+      entity: "provider",
+      query: "",
+      active: true,
+      limit: 100,
+      after: null,
+    });
+    if (
+      !catalog.ok ||
+      !("entity" in catalog) ||
+      catalog.entity !== "provider" ||
+      !("items" in catalog)
+    ) {
+      return [];
+    }
+    return catalog.items.map((provider) => ({
+      id: provider.id,
+      name: provider.name,
+      initials: initialsOf(provider.name),
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export default async function AdminAuditPage({
   searchParams,
 }: Readonly<{
-  searchParams: Promise<{ page?: string | string[] }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }>) {
   const session = await requireRole("staff");
-  const page = parsePage((await searchParams).page);
-  const from = (page - 1) * PAGE_SIZE;
+  const params = await searchParams;
+  const admin = session.role === "admin";
+  const parsed = parseActivitySearchParams(params);
+  // Front desk has no Settings filter; the database would refuse it anyway.
+  const categories = admin
+    ? parsed.categories
+    : parsed.categories?.filter((category) => category !== "settings");
+  const filters: ActivityUrlFilters = {
+    ...parsed,
+    categories: categories !== undefined && categories.length > 0 ? categories : undefined,
+  };
   const now = new Date();
-
   const db = serviceClient();
-  const [{ data: rows, error, count }, nameMap, profileRows, recipientRows, releaseEngagement] =
-    await Promise.all([
-      db
-        .from("audit_log")
-        .select("id, actor_email, action, entity, entity_id, detail, at", {
-          count: "exact",
-        })
-        .order("at", { ascending: false })
-        .order("id", { ascending: false })
-        .range(from, from + PAGE_SIZE - 1),
-      fetchStaffNameMap(db),
-      db.from("staff_profiles").select("id, display_name"),
-      db.from("notification_recipients").select("id, email"),
-      session.role === "admin"
-        ? getPortalReleaseEngagement(PORTAL_RELEASE_BRIEFING.id)
-        : Promise.resolve(null),
-    ]);
-  if (error) {
+  const [firstPage, providers] = await Promise.all([
+    readFirstPage(db, session.id, filters),
+    readProviders(db, session.id),
+  ]);
+
+  return (
+    <ActivityLog
+      key={activityHref(filters)}
+      initialFilters={filters}
+      initialPage={firstPage}
+      role={admin ? "admin" : "staff"}
+      now={now.toISOString()}
+      today={practiceDate(now)}
+      providers={providers}
+    >
+      {admin ? <TechnicalRecord filters={filters} page={parsePage(params.page)} /> : null}
+    </ActivityLog>
+  );
+}
+
+async function TechnicalRecord({
+  filters,
+  page,
+}: Readonly<{
+  filters: ActivityUrlFilters;
+  page: number;
+}>) {
+  const db = serviceClient();
+  const from = (page - 1) * PAGE_SIZE;
+  const [{ data: rows, error, count }, nameMap, releaseEngagement] = await Promise.all([
+    db
+      .from("audit_log")
+      .select(AUDIT_COLUMNS, { count: "exact" })
+      .order("at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1),
+    fetchStaffNameMap(db),
+    getPortalReleaseEngagement(PORTAL_RELEASE_BRIEFING.id),
+  ]);
+  if (error !== null) {
     throw new Error(`Audit read failed: ${error.code}`);
   }
-
-  const parsedEntries = z.array(auditEntrySchema).safeParse(rows);
-  if (!parsedEntries.success) {
-    throw new Error("Audit read failed: invalid");
-  }
-  const entries = parsedEntries.data;
-  const namesByProfileId = new Map<string, string>();
-  for (const row of profileRows.data ?? []) {
-    const parsed = profileNameSchema.safeParse(row);
-    if (!parsed.success) continue;
-    const name = parsed.data.display_name.trim();
-    if (name.length === 0) continue;
-    namesByProfileId.set(parsed.data.id, name);
-  }
-  const recipientsById = new Map<string, string>();
-  for (const row of recipientRows.data ?? []) {
-    const parsed = recipientEmailSchema.safeParse(row);
-    if (!parsed.success) continue;
-    recipientsById.set(parsed.data.id, parsed.data.email);
-  }
-  const recentItems = toRecentWorkItems(entries, {
-    namesByEmail: nameMap,
-    namesByProfileId,
-    recipientsById,
-    now,
-  });
+  const entries = parseAuditEntries(rows);
   const total = count ?? entries.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   if (page > totalPages) {
-    redirect(`/admin/audit${totalPages > 1 ? `?page=${totalPages}` : ""}`);
+    redirect(technicalRecordHref(activityHref(filters), totalPages));
   }
   const firstShown = total === 0 ? 0 : from + 1;
   const lastShown = from + entries.length;
 
   return (
-    <section aria-labelledby="audit-heading">
-      <nav aria-label="Breadcrumb" className="flex items-center text-[0.9rem]">
-        <Link
-          href="/admin"
-          className="inline-flex min-h-11 min-w-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+    <>
+      <ReleaseEngagementSection engagement={releaseEngagement} />
+      <section aria-labelledby="technical-record-heading" className="mt-6">
+        <h2
+          id="technical-record-heading"
+          className="text-[1.05rem] font-black text-[var(--color-ink)]"
         >
-          Home
-        </Link>
-        <span aria-hidden="true" className="mx-2 text-[var(--color-muted)]">
-          /
-        </span>
-        <span className="text-[var(--color-muted)]">Activity log</span>
-      </nav>
-
-      <h1 id="audit-heading" className="portal-title mt-4">
-        Activity log
-      </h1>
-      <p className="mt-1.5 max-w-[60ch] text-[0.95rem] text-[var(--color-muted)]">
-        Who did what, in plain language — with the exact technical record beneath for
-        administrators.
-      </p>
-
-      {releaseEngagement ? <ReleaseEngagementSection engagement={releaseEngagement} /> : null}
-
-      {entries.length === 0 ? (
-        <div className="mt-10 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-8 text-center sm:p-12">
-          <h2 className="text-[1.1rem] font-black text-[var(--color-ink)]">Nothing recorded yet</h2>
-          <p className="mx-auto mt-2 max-w-[52ch] text-[0.95rem] text-[var(--color-body)]">
-            The first status change, note, recipient edit, or staff change will appear here
-            automatically.
-          </p>
-        </div>
-      ) : (
-        <>
-          <RecentWorkSection items={recentItems} now={now} />
-
-          <section aria-labelledby="technical-record-heading" className="mt-10">
-            <h2
-              id="technical-record-heading"
-              className="text-[1.05rem] font-black text-[var(--color-ink)]"
-            >
-              Technical record
-            </h2>
-            <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
-              The exact actions behind the entries above, for administrators.
-            </p>
-            <div className="mt-4 overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white">
-              <table data-testid="audit-table" className="w-full min-w-[640px] text-left">
-                <thead>
-                  <tr className="border-b border-[var(--color-line)] text-[0.8rem] tracking-[0.06em] text-[var(--color-muted)] uppercase">
-                    <th scope="col" className="px-5 py-3.5 font-bold">
-                      When
-                    </th>
-                    <th scope="col" className="px-5 py-3.5 font-bold">
-                      Who
-                    </th>
-                    <th scope="col" className="px-5 py-3.5 font-bold">
-                      Action
-                    </th>
-                    <th scope="col" className="px-5 py-3.5 font-bold">
-                      Entity
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--color-line)]">
-                  {entries.map((entry) => {
-                    const external = externalAuditSummary(entry.detail);
-                    return (
-                      <tr key={entry.id} className="text-[0.9rem]">
-                        <td className="px-5 py-3 whitespace-nowrap text-[var(--color-muted)]">
-                          {formatReceived(entry.at, true)}
-                        </td>
-                        <td className="px-5 py-3 font-bold text-[var(--color-ink)]">
-                          {displayNameOrEmail(nameMap, entry.actor_email)}
-                        </td>
-                        <td className="px-5 py-3">
-                          <code className="rounded bg-[var(--color-mint)] px-2 py-0.5 text-[0.85rem] text-[var(--color-teal-ink)]">
-                            {entry.action}
-                          </code>
-                        </td>
-                        <td className="px-5 py-3 text-[var(--color-body)]">
-                          {entry.entity}
-                          {entry.entity_id !== null && entry.entity_id !== "" ? (
-                            <span className="ml-1.5 text-[0.8rem] text-[var(--color-muted)]">
-                              {entry.entity_id.slice(0, 8)}…
-                            </span>
-                          ) : null}
-                          {external ? (
-                            <span className="mt-0.5 block text-[0.8rem] text-[var(--color-muted)]">
-                              {external.target} · Outcome {external.outcome}
-                            </span>
-                          ) : null}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </>
-      )}
-
-      {total > 0 ? (
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-          <p data-testid="audit-page-summary" className="text-[0.9rem] text-[var(--color-muted)]">
-            Showing {firstShown}–{lastShown} of {total}
-          </p>
-          {totalPages > 1 ? (
-            <nav aria-label="Activity log pages" className="flex items-center gap-3">
-              {page > 1 ? (
-                <Link
-                  href={`/admin/audit${page > 2 ? `?page=${page - 1}` : ""}`}
-                  rel="prev"
-                  className="btn btn-outline"
-                >
-                  Previous
-                </Link>
-              ) : null}
-              <span className="text-[0.9rem] font-bold text-[var(--color-body)]">
-                Page {page} of {totalPages}
-              </span>
-              {page < totalPages ? (
-                <Link href={`/admin/audit?page=${page + 1}`} rel="next" className="btn btn-outline">
-                  Next
-                </Link>
-              ) : null}
-            </nav>
-          ) : null}
-        </div>
-      ) : null}
-    </section>
+          Technical record
+        </h2>
+        <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted-ink)]">
+          The exact stored actions behind the log, for administrators.
+        </p>
+        {entries.length === 0 ? (
+          <p className="mt-4 text-[0.9rem] text-[var(--color-muted-ink)]">Nothing is stored yet.</p>
+        ) : (
+          <div
+            role="region"
+            aria-labelledby="technical-record-heading"
+            tabIndex={0}
+            className="mt-4 overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white"
+          >
+            <Table data-testid="audit-table" className="min-w-[640px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>When</TableHead>
+                  <TableHead>Who</TableHead>
+                  <TableHead>Action</TableHead>
+                  <TableHead>Entity</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {entries.map((entry) => {
+                  const external = externalAuditSummary(entry.detail);
+                  return (
+                    <TableRow key={entry.id}>
+                      <TableCell className="whitespace-nowrap text-[var(--color-muted-ink)]">
+                        {formatReceived(entry.at, true)}
+                      </TableCell>
+                      <TableCell className="font-bold text-[var(--color-ink)]">
+                        {displayNameOrEmail(nameMap, entry.actor_email)}
+                      </TableCell>
+                      <TableCell>
+                        <code className="rounded bg-[var(--color-mint)] px-2 py-0.5 text-[0.85rem] text-[var(--color-teal-ink)]">
+                          {entry.action}
+                        </code>
+                      </TableCell>
+                      <TableCell className="text-[var(--color-body)]">
+                        {entry.entity}
+                        {entry.entity_id !== null && entry.entity_id !== "" ? (
+                          <span className="ml-1.5 text-[0.8rem] text-[var(--color-muted-ink)]">
+                            {entry.entity_id.slice(0, 8)}…
+                          </span>
+                        ) : null}
+                        {external ? (
+                          <span className="mt-0.5 block text-[0.8rem] text-[var(--color-muted-ink)]">
+                            {external.target} · Outcome {external.outcome}
+                          </span>
+                        ) : null}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+        {total > 0 ? (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <TechnicalRecordSummary renderKey={`${page}\n${total}\n${firstShown}\n${lastShown}`}>
+              Showing {firstShown}–{lastShown} of {total}
+            </TechnicalRecordSummary>
+            <Suspense fallback={null}>
+              <TechnicalRecordPager page={page} totalPages={totalPages} />
+            </Suspense>
+          </div>
+        ) : null}
+      </section>
+    </>
   );
 }

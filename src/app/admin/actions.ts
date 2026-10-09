@@ -5,6 +5,7 @@ import { timingSafeEqual } from "node:crypto";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { recordAudit } from "@/lib/portal/audit";
 import {
   clearPasswordAuthFlow,
   establishPasswordAuthFlow,
@@ -14,8 +15,11 @@ import {
   requireRole,
   resolveStaffAuthState,
 } from "@/lib/portal/auth";
-import type { PasswordAuthFlow, PortalStaffAuthState } from "@/lib/portal/auth";
+import type { PortalSessionUser, PortalStaffAuthState } from "@/lib/portal/auth";
+import { AUDIT_ACTIONS } from "@/lib/portal/contracts";
+import type { PasswordAuthFlow } from "@/lib/portal/contracts";
 import { portalUrl, serverClient, serviceClient } from "@/lib/portal/server";
+import { landingHref } from "@/lib/portal/tours";
 
 export interface LoginActionState {
   error: string | null;
@@ -65,7 +69,7 @@ function previewLoginCredentials(
   submittedEmail: string,
   submittedPassword: string,
 ): { email: string; password: string } | null {
-  if (process.env.VERCEL_ENV !== "preview") return null;
+  if (process.env.VERCEL_ENV === "production") return null;
 
   const username = process.env.PORTAL_PREVIEW_USERNAME?.trim();
   const password = process.env.PORTAL_PREVIEW_PASSWORD;
@@ -96,7 +100,7 @@ function credential(formData: FormData, name: string, trim = true): string {
 }
 
 async function passwordUpdatedIncomplete(
-  flow: "invite" | "recovery",
+  flow: PasswordAuthFlow,
   automaticSignInFailed = false,
 ): Promise<SetPasswordActionState> {
   try {
@@ -219,6 +223,8 @@ async function completePasswordChange(
       : { error: SET_PASSWORD_ERROR, changeCommitted: false };
   }
 
+  // Setting a password signs the account in, so the Activity log records the sign-in.
+  await recordSignIn(staff);
   return null;
 }
 
@@ -226,6 +232,23 @@ async function completePasswordChange(
  * Public by necessity: this is the sole action that establishes a portal
  * session. Every action available after sign-in must call requireRole().
  */
+/** The Activity log's sign-in row. Written only after a sign-in succeeds; a failed write is
+    logged without the address and never fails the sign-in. */
+async function recordSignIn(
+  user: Readonly<Pick<PortalSessionUser, "id" | "email">>,
+): Promise<void> {
+  try {
+    await recordAudit(serviceClient(), {
+      actorEmail: user.email,
+      action: AUDIT_ACTIONS.AUTH_SIGN_IN,
+      entity: "staff",
+      entityId: user.id,
+    });
+  } catch {
+    console.error("[portal-auth] sign-in audit write failed");
+  }
+}
+
 export async function loginAction(
   _state: Readonly<LoginActionState>,
   formData: FormData,
@@ -237,6 +260,7 @@ export async function loginAction(
     return loginError();
   }
 
+  let landing = "/admin";
   try {
     const previewCredentials = previewLoginCredentials(email, password);
     const supabase = await serverClient();
@@ -253,11 +277,13 @@ export async function loginAction(
       await supabase.auth.signOut({ scope: "local" });
       return loginError();
     }
+    await recordSignIn(sessionUser);
+    landing = landingHref(sessionUser.pendingTour);
   } catch {
     return loginError();
   }
 
-  return redirect("/admin");
+  return redirect(landing);
 }
 
 export async function logoutAction(): Promise<void> {
@@ -390,7 +416,7 @@ export async function setPasswordAction(
 
   const completionError = await completePasswordChange(supabase, staff, flow, password);
   if (completionError !== null) return completionError;
-  return redirect("/admin");
+  return redirect(landingHref(staff.pendingTour));
 }
 
 /**
@@ -475,5 +501,5 @@ export async function recoverPasswordAction(
 
   const completionError = await completePasswordChange(supabase, staff, flow, password);
   if (completionError !== null) return completionError;
-  return redirect("/admin");
+  return redirect(landingHref(staff.pendingTour));
 }

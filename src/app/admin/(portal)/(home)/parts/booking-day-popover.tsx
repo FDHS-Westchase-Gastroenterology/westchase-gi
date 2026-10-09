@@ -1,0 +1,314 @@
+"use client";
+
+import { useId, useMemo, useState } from "react";
+
+import {
+  closedReasons,
+  dayOf,
+  daySubtitle,
+  fullyBooked,
+  longDay,
+  nearestOpen,
+  openBlocks,
+} from "@/app/admin/(portal)/(home)/card-booking-days";
+import type { OpenBlock, TakenTime } from "@/app/admin/(portal)/(home)/card-booking-days";
+import { clockLabel } from "@/app/admin/(portal)/(home)/record-card-time";
+import type { CardMonthStatus } from "@/app/admin/(portal)/(home)/use-card-month";
+import { PopoverArrow, PopoverContent, PopoverTitle } from "@/components/ui/popover";
+import { createPopoverHandle, usePopoverHoverIntent } from "@/components/ui/popover-behavior";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import type {
+  MonthAvailability,
+  MonthAvailabilityDay,
+} from "@/lib/portal/scheduling/read-contracts";
+
+/* The booking month's day popover (issue #344; Figma 09d, 09e): the open
+   starts per provider for one day, why a closed day is closed, a start
+   lost to someone else struck beside the nearest one still open, and
+   "Enter a time…" for a start the month does not offer. One popover serves
+   every day through a handle (parts/booking-calendar.tsx), so there is
+   never more than one open; its payload is the day, and what it lists is
+   read from the month at render, so a re-read redraws it in place. */
+
+/** A day popover's payload: the practice-local day. */
+interface DayPayload {
+  readonly date: string;
+}
+
+const CARD_SURFACE = ".wgi-record-card";
+
+/* How the day popover follows the pointer (Figma 09f): a pointer resting
+   250ms on a day opens it or moves it there; crossing days on the way to
+   it leaves it where it is, and it outlasts a pointer that left for
+   anywhere else by 150ms (ui/popover's hover intent, with the triangle). */
+const DAY_INTENT = { rest: 250, leave: 150, triangle: true } as const;
+
+/* The handle lives with the card, so a start lost to someone else can
+   reopen its day's popover from the booking's own outcome. */
+export function useDayPopover() {
+  const baseId = useId();
+  const [handle] = useState(() => createPopoverHandle<DayPayload>());
+  const intent = usePopoverHoverIntent(handle, DAY_INTENT);
+  return useMemo(() => {
+    const idFor = (date: string) => `${baseId}-day-${date}`;
+    return {
+      handle,
+      intent,
+      idFor,
+      /** Opens a day's popover at once, as if the keyboard had. A day that
+         is not a trigger on screen (another month, a locked card) has no
+         popover to open. */
+      openNow: (date: string) => {
+        intent.openNow(idFor(date));
+      },
+      close: intent.close,
+    };
+  }, [baseId, handle, intent]);
+}
+
+export type DayPopover = ReturnType<typeof useDayPopover>;
+
+/* The popover's anchor: the card's full width at the day's row, so it
+   stands clear of the month on either side with its arrow level with the
+   row. Read on every positioning pass, it follows the card when dragged. */
+function useAnchor(triggerId: string) {
+  return useMemo(
+    () =>
+      function anchor() {
+        const trigger = document.getElementById(triggerId);
+        if (trigger === null) return null;
+        return {
+          contextElement: trigger,
+          getBoundingClientRect: () => {
+            const row = trigger.getBoundingClientRect();
+            const card = trigger.closest(CARD_SURFACE)?.getBoundingClientRect();
+            return card === undefined
+              ? row
+              : new DOMRect(card.left, row.top, card.width, row.height);
+          },
+        };
+      },
+    [triggerId],
+  );
+}
+
+/* Beside the card on either side, never over the month. */
+const DAY_COLLISION = { side: "flip", align: "shift", fallbackAxisSide: "none" } as const;
+
+export interface DayPopupActions {
+  /** A start from the popover: the day, the provider and office, the time. */
+  readonly onPickOpen: (
+    pick: Readonly<{ day: string; providerId: string; locationId: string; time: string }>,
+  ) => void;
+  /** Enter a time…: the provider and time row for this day. */
+  readonly onSqueeze: (day: string) => void;
+}
+
+/* One provider's open starts at one office, three to a row and one tab
+   stop, the arrow keys moving between them; a start lost to someone else
+   stays struck in place, passed over, with the nearest one offered. */
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the popover handle and the actions carry Base UI and callback members that cannot be made readonly
+function DayBlock({
+  date,
+  block,
+  nearest,
+  nearestName,
+  popover,
+  actions,
+}: Readonly<{
+  date: string;
+  block: OpenBlock;
+  nearest: ReturnType<typeof nearestOpen>;
+  nearestName: string;
+  popover: DayPopover;
+  actions: DayPopupActions;
+}>) {
+  const lost = block.times.some((time) => time.taken);
+  return (
+    <section className="wgi-day-block">
+      <p className="wgi-day-provider">
+        <b>{block.providerName}</b>
+        <span>{block.locationName}</span>
+      </p>
+      <ToggleGroup
+        variant="time"
+        className="wgi-day-times"
+        aria-label={`${block.providerName}, ${block.locationName}`}
+        value={[]}
+        onValueChange={(picked) => {
+          const time = picked.at(0);
+          if (time === undefined) return;
+          actions.onPickOpen({
+            day: date,
+            providerId: block.providerId,
+            locationId: block.locationId,
+            time,
+          });
+          popover.close();
+        }}
+      >
+        {block.times.map((start) => (
+          <ToggleGroupItem
+            key={start.time}
+            value={start.time}
+            className="wgi-day-time"
+            data-taken={start.taken || undefined}
+            disabled={start.taken}
+            aria-label={start.taken ? `${clockLabel(start.time)}, booked a moment ago` : undefined}
+          >
+            {clockLabel(start.time)}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+      {lost ? (
+        <div className="wgi-day-lost">
+          <p className="wgi-day-taken">Booked a moment ago.</p>
+          {nearest === null ? null : (
+            <button
+              type="button"
+              className="wgi-day-use"
+              onClick={() => {
+                actions.onPickOpen({ day: date, ...nearest });
+                popover.close();
+              }}
+            >
+              Use {clockLabel(nearest.time)}
+              {nearestName === "" ? null : ` with ${nearestName}`}
+            </button>
+          )}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+/* The day's open starts by provider, or, with none, why each provider has
+   none. A start lost to someone else offers the nearest one left. */
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the popover handle and the actions carry Base UI and callback members that cannot be made readonly
+function DayBody({
+  date,
+  read,
+  blocks,
+  availability,
+  taken,
+  popover,
+  actions,
+}: Readonly<{
+  date: string;
+  read: MonthAvailabilityDay;
+  blocks: readonly OpenBlock[];
+  availability: MonthAvailability | null;
+  taken: TakenTime | null;
+  popover: DayPopover;
+  actions: DayPopupActions;
+}>) {
+  if (blocks.length === 0) {
+    const reasons = closedReasons(read);
+    if (reasons.length === 0) return null;
+    return (
+      <div className="wgi-day-body">
+        <ul className="wgi-day-reasons">
+          {reasons.map((line) => (
+            <li key={line.providerId}>
+              <span>{line.name}</span>
+              <span className="wgi-day-reason">{line.reason}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+  const nearest = taken?.day === date ? nearestOpen(read, taken) : null;
+  const nearestName =
+    nearest === null || nearest.providerId === taken?.providerId
+      ? ""
+      : (availability?.providers.find((provider) => provider.id === nearest.providerId)?.name ??
+        "");
+  const full = fullyBooked(read);
+  return (
+    <div className="wgi-day-body">
+      {blocks.map((block) => (
+        <DayBlock
+          key={`${block.providerId}:${block.locationId}`}
+          date={date}
+          block={block}
+          nearest={nearest}
+          nearestName={nearestName}
+          popover={popover}
+          actions={actions}
+        />
+      ))}
+      {full.length === 0 ? null : <p className="wgi-day-full">Fully booked: {full.join(", ")}</p>}
+    </div>
+  );
+}
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the popover handle and the actions carry Base UI and callback members that cannot be made readonly
+export function DayPopup({
+  date,
+  availability,
+  status,
+  taken,
+  popover,
+  actions,
+}: Readonly<{
+  date: string;
+  availability: MonthAvailability | null;
+  status: CardMonthStatus;
+  taken: TakenTime | null;
+  popover: DayPopover;
+  actions: DayPopupActions;
+}>) {
+  const anchor = useAnchor(popover.idFor(date));
+  const read = dayOf(availability, date);
+  const blocks = read === null ? [] : openBlocks(read, taken);
+
+  /* The day keeps focus: Tab is the way in, the popover's own focus
+     guards placing it next in order after the day. */
+  return (
+    <PopoverContent
+      {...popover.intent.popupProps}
+      className="wgi-day-popover"
+      positionerClassName="wgi-day-positioner"
+      paint="card"
+      motion={popover.intent.keyed ? "none" : "wgi"}
+      anchor={anchor}
+      side="right"
+      align="center"
+      sideOffset={12}
+      collisionPadding={12}
+      arrowPadding={14}
+      collisionAvoidance={DAY_COLLISION}
+      initialFocus={false}
+    >
+      <PopoverArrow className="wgi-history-arrow wgi-day-arrow" />
+      <div className="wgi-day-head">
+        <PopoverTitle className="wgi-day-title">{longDay(date)}</PopoverTitle>
+        <p className="wgi-day-sub">{daySubtitle(read, blocks.length, status)}</p>
+      </div>
+      {read === null ? null : (
+        <DayBody
+          date={date}
+          read={read}
+          blocks={blocks}
+          availability={availability}
+          taken={taken}
+          popover={popover}
+          actions={actions}
+        />
+      )}
+      <div className="wgi-day-foot">
+        <button
+          type="button"
+          className="wgi-day-enter"
+          onClick={() => {
+            actions.onSqueeze(date);
+            popover.close();
+          }}
+        >
+          Enter a time…
+        </button>
+      </div>
+    </PopoverContent>
+  );
+}

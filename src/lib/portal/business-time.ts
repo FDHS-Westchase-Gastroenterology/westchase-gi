@@ -1,12 +1,11 @@
 // Practice-local business context for appointment-request timestamps.
 // The staff shell reads time the way the front desk does — "since
-// Yesterday", "since Friday", "after hours" — not as raw durations.
+// Yesterday", "since Friday" — not as raw durations.
 
-// Office-hours envelope: Mon–Fri 8:00 AM – 5:00 PM America/New_York, the
-// Wider of the two offices (Tampa closes 5:00 PM, Lutz 4:30 PM), so a
-// 4:45 PM submission is never labeled after-hours while an office is open.
+// The business morning starts at 8:00 AM America/New_York; a touched row
+// That has been silent since before the previous business morning is
+// Attention again.
 const OPEN_MINUTES = 8 * 60;
-const CLOSE_MINUTES = 17 * 60;
 const PRACTICE_TZ = "America/New_York";
 const YMD_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const WEEKDAY_INDEX = new Map<string, number>([
@@ -30,17 +29,6 @@ const NY_CLOCK = new Intl.DateTimeFormat("en-US", {
 // En-CA renders YYYY-MM-DD, which parses cleanly back into a UTC day number.
 const NY_DAY = new Intl.DateTimeFormat("en-CA", {
   dateStyle: "short",
-  timeZone: PRACTICE_TZ,
-});
-
-const NY_WEEKDAY = new Intl.DateTimeFormat("en-US", {
-  weekday: "long",
-  timeZone: PRACTICE_TZ,
-});
-
-const NY_MONTH_DAY = new Intl.DateTimeFormat("en-US", {
-  month: "long",
-  day: "numeric",
   timeZone: PRACTICE_TZ,
 });
 
@@ -178,10 +166,26 @@ export function resolveFollowUpAt(
   }
 }
 
-export function arrivedOutsideOfficeHours(iso: string): boolean {
-  const { weekday, minutes } = nyClock(new Date(iso));
-  if (weekday === "Sat" || weekday === "Sun") return true;
-  return minutes < OPEN_MINUTES || minutes >= CLOSE_MINUTES;
+/**
+ * Resolve a staff-entered appointment day and wall-clock time to an absolute
+ * instant, DST-safe in practice-local time.
+ *
+ * The horizon is wider than a call-again's 90 days because a procedure is often
+ * booked months out, but a past day is still refused: an appointment that has
+ * already happened is a correction, not a booking.
+ */
+export function resolveAppointmentAt(
+  choice: Readonly<{ date: string; hour: number; minute: number }>,
+  now: Date = new Date(),
+): string | null {
+  const todayNumber = ymdToDayNumber(NY_DAY.format(now));
+  if (todayNumber === null) return null;
+  if (!isValidCalendarYmd(choice.date)) return null;
+  const target = ymdToDayNumber(choice.date);
+  if (target === null || target < todayNumber || target > todayNumber + 400) return null;
+  if (!Number.isInteger(choice.hour) || choice.hour < 0 || choice.hour > 23) return null;
+  if (!Number.isInteger(choice.minute) || choice.minute < 0 || choice.minute > 59) return null;
+  return atPracticeLocal(choice.date, choice.hour, choice.minute);
 }
 
 // The instant a silent touched row becomes attention again: the most recent
@@ -208,15 +212,4 @@ export function previousBusinessMorningBoundary(now: Date = new Date()): Date {
     }
     day -= 1;
   }
-}
-
-// "yesterday", a weekday name within the past week, or "July 18" beyond it.
-// Null while the request arrived on the current practice-local calendar day.
-export function waitingSince(iso: string, now: Date = new Date()): string | null {
-  const created = new Date(iso);
-  const dayDiff = nyDayNumber(now) - nyDayNumber(created);
-  if (dayDiff <= 0) return null;
-  if (dayDiff === 1) return "yesterday";
-  if (dayDiff <= 6) return NY_WEEKDAY.format(created);
-  return NY_MONTH_DAY.format(created);
 }

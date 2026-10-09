@@ -1,160 +1,183 @@
 import Link from "next/link";
 
+import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
 import {
   cancelMaintainerInvite,
   inviteMaintainer,
   revokeMaintainer,
 } from "@/app/admin/(portal)/settings/actions";
+import { Check, ChevronRight, Plus } from "@/components/icons";
 import { requireRole } from "@/lib/portal/auth";
-import { CANONICAL_REPOSITORY } from "@/lib/portal/integrations";
 import { getMaintainerAccessModel } from "@/lib/portal/maintainers";
+import {
+  ATTENTION_HEADING,
+  MAINTAINER_ACCESS_ROW,
+  MAINTAINER_DISCLOSURE_INTRO,
+  MAINTAINER_GRANT_ACCESS,
+  PROVIDER_LINK_REL,
+  PROVIDER_LINK_TARGET,
+  SOFTWARE_INTRO,
+  SOFTWARE_ROWS,
+  SOFTWARE_RUNS_HEADING,
+  WEBSITE_CAPABILITIES,
+  WEBSITE_CHANGE_HREF,
+  WEBSITE_MAINTAINER_SERVICES,
+  websiteAttentionItems,
+  websiteProviderLink,
+} from "@/lib/portal/website-custody";
 
 import { MaintainerAccess } from "./maintainer-access";
 
-const CAPABILITIES = [
-  "Patient-facing website",
-  "Authenticated staff portal",
-  "Review-flyer printing",
-] as const;
+import "@/app/admin/(portal)/settings/settings.css";
 
+function ProviderLink({
+  id,
+  children,
+}: Readonly<{
+  id: "github" | "vercel" | "supabase" | "porkbun";
+  children: string;
+}>) {
+  const link = websiteProviderLink(id);
+  return (
+    <a
+      data-testid={link.testId}
+      href={link.href}
+      target={PROVIDER_LINK_TARGET}
+      rel={PROVIDER_LINK_REL}
+      aria-label={link.name}
+      className="settings-software-link"
+    >
+      {children}
+      <ChevronRight aria-hidden="true" className="size-3.5" />
+    </a>
+  );
+}
+
+/* Settings › Software (issue #355, Figma St7): who runs the clinic's website
+   and staff portal, and what is still unfinished. One card names what the
+   software runs and who holds each account; maintainer access opens from its
+   own row, so most staff never see the provider consoles. */
 export default async function AdminSettingsSoftwarePage() {
   const session = await requireRole("staff");
   const model = await getMaintainerAccessModel();
+  const attentionItems = websiteAttentionItems(model.state);
+  const isAdmin = session.role === "admin";
 
   return (
-    <section
-      data-testid="managed-product"
-      aria-labelledby="website-heading"
-      className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8"
-    >
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-[0.75rem] font-bold tracking-[0.08em] text-[var(--color-teal-ink)] uppercase">
-            Clinic website
-          </p>
-          <h2
-            id="website-heading"
-            className="mt-1 text-[1.3rem] leading-tight font-black text-[var(--color-ink)]"
+    <>
+      <PortalPageHeader
+        title="Software"
+        actions={
+          <Link
+            href={WEBSITE_CHANGE_HREF}
+            data-testid="request-website-change"
+            className="wgi-settings-command"
           >
-            Westchase GI
-          </h2>
-          <p className="mt-2 max-w-[62ch] text-[0.92rem] leading-relaxed text-[var(--color-body)]">
-            This is the practice&rsquo;s own software — the public website patients visit and the
-            private portal the staff works in. It was built for Westchase GI and belongs to
-            Westchase GI, and this page shows where everything lives and how the practice stays in
-            control.
-          </p>
-        </div>
-        <Link href="/admin/review-flyers" className="btn btn-navy">
-          Print review flyers
-        </Link>
-      </div>
+            <Plus aria-hidden="true" className="size-4" />
+            Request a website change
+          </Link>
+        }
+      />
+      <div className="wgi-settings mt-6 flex flex-col gap-4">
+        <p className="text-[0.875rem] leading-5 text-(--wgi-muted-ink)">{SOFTWARE_INTRO}</p>
 
-      <div className="mt-6 grid gap-6 border-t border-[var(--color-line)] pt-6 md:grid-cols-2">
-        <div>
-          <h3 className="text-[0.82rem] font-bold tracking-[0.06em] text-[var(--color-muted)] uppercase">
-            Included capabilities
-          </h3>
-          <ul className="mt-3 space-y-2 text-[0.92rem] text-[var(--color-ink)]">
-            {CAPABILITIES.map((capability) => (
-              <li key={capability} className="flex gap-2.5">
-                <span aria-hidden="true" className="text-[var(--color-teal-ink)]">
-                  ✓
+        <section
+          data-testid="managed-product"
+          aria-labelledby="software-runs-heading"
+          className="settings-software"
+        >
+          <div className="settings-software-runs">
+            <h2 id="software-runs-heading" className="settings-software-heading">
+              {SOFTWARE_RUNS_HEADING}
+            </h2>
+            <ul className="settings-software-capabilities">
+              {WEBSITE_CAPABILITIES.map((capability) => (
+                <li key={capability}>
+                  <Check aria-hidden="true" className="size-4" />
+                  {capability}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <dl className="contents">
+            {SOFTWARE_ROWS.map((row) => (
+              <div key={row.id} data-row={row.id} className="settings-software-row">
+                <dt className="settings-software-label">{row.label}</dt>
+                <dd className="settings-software-value">{row.value}</dd>
+                <dd className="settings-software-trailing">
+                  {row.linkId === null ? (
+                    row.note
+                  ) : (
+                    <ProviderLink id={row.linkId}>Open</ProviderLink>
+                  )}
+                </dd>
+              </div>
+            ))}
+          </dl>
+
+          <details data-testid="maintainer-details" className="settings-software-details">
+            <summary className="settings-software-row">
+              <span className="settings-software-label">{MAINTAINER_ACCESS_ROW.label}</span>
+              <span className="settings-software-value">{MAINTAINER_ACCESS_ROW.value}</span>
+              <span aria-hidden="true" className="settings-software-trailing">
+                <span className="settings-software-link">
+                  <span className="settings-software-when-closed">Manage</span>
+                  <span className="settings-software-when-open">Hide</span>
+                  <ChevronRight className="settings-software-chevron size-3.5" />
                 </span>
-                {capability}
-              </li>
+              </span>
+            </summary>
+
+            <div className="settings-software-maintainers">
+              <p>{MAINTAINER_DISCLOSURE_INTRO}</p>
+              <dl className="settings-software-services">
+                {WEBSITE_MAINTAINER_SERVICES.map((service) => (
+                  <div key={service.id}>
+                    <dt>{service.title}</dt>
+                    <dd>
+                      {service.body}
+                      {service.linkId === "porkbun" || service.linkId === "supabase" ? (
+                        <>
+                          {" "}
+                          <ProviderLink id={service.linkId}>Open</ProviderLink>
+                        </>
+                      ) : null}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+              <p>{MAINTAINER_GRANT_ACCESS}</p>
+              <div className="settings-software-access">
+                <MaintainerAccess
+                  model={model}
+                  isAdmin={isAdmin}
+                  actions={
+                    isAdmin
+                      ? { inviteMaintainer, cancelMaintainerInvite, revokeMaintainer }
+                      : undefined
+                  }
+                />
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <section
+          data-testid="website-attention"
+          aria-labelledby="still-needs-attention-heading"
+          className="settings-attention"
+        >
+          <h2 id="still-needs-attention-heading" className="settings-attention-heading">
+            {ATTENTION_HEADING} · {attentionItems.length}
+          </h2>
+          <ul>
+            {attentionItems.map((item) => (
+              <li key={item.id}>{item.text}</li>
             ))}
           </ul>
-        </div>
-
-        <div>
-          <h3 className="text-[0.82rem] font-bold tracking-[0.06em] text-[var(--color-muted)] uppercase">
-            Who owns the website
-          </h3>
-          <p className="mt-3 max-w-[62ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-            Westchase GI controls this website&apos;s domain, source repository, and deployment.
-            Database and email account custody is documented separately, so this page is not proof
-            that the practice holds every service credential.
-          </p>
-          <dl className="mt-3 max-w-[62ch] space-y-3 text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-            <div>
-              <dt className="font-bold text-[var(--color-ink)]">Website files — GitHub</dt>
-              <dd>
-                GitHub safeguards the files used to build and update the website.
-                <a
-                  data-testid="canonical-repository"
-                  href={`https://github.com/${CANONICAL_REPOSITORY}`}
-                  className="mt-1 block w-fit font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-                >
-                  Open the website files in GitHub
-                </a>
-              </dd>
-            </div>
-            <div>
-              <dt className="font-bold text-[var(--color-ink)]">Live website — Vercel</dt>
-              <dd>
-                Vercel keeps the website up and running around the clock for patients and staff.
-                <a
-                  href="https://vercel.com/login"
-                  className="mt-1 block w-fit font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-                >
-                  Sign in to Vercel
-                </a>
-              </dd>
-            </div>
-            <div>
-              <dt className="font-bold text-[var(--color-ink)]">
-                Appointment requests and staff access — Supabase
-              </dt>
-              <dd>
-                Supabase holds the appointment requests shown in this portal and handles staff
-                sign-in.
-                <a
-                  href="https://supabase.com/dashboard/sign-in"
-                  className="mt-1 block w-fit font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-                >
-                  Sign in to Supabase
-                </a>
-              </dd>
-            </div>
-            <div>
-              <dt className="font-bold text-[var(--color-ink)]">Website address — Porkbun</dt>
-              <dd>
-                Porkbun currently holds the westchasegi.com registration and serves its DNS.
-                Auto-renew and WHOIS privacy still need to be confirmed in the clinic account.
-                <a
-                  href="https://porkbun.com/account/login"
-                  className="mt-1 block w-fit font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-                >
-                  Sign in to Porkbun
-                </a>
-              </dd>
-            </div>
-          </dl>
-          <p className="mt-3 max-w-[62ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-            The practice can grant a new maintainer access to GitHub, Vercel, and Porkbun now. After
-            the Supabase project transfer and Resend handoff are documented, it can grant those
-            services too. The application does not need to be rebuilt, and the Supabase transfer
-            requires no data migration.
-          </p>
-        </div>
+        </section>
       </div>
-
-      <div className="mt-6 border-t border-[var(--color-line)] pt-6">
-        <MaintainerAccess
-          model={model}
-          isAdmin={session.role === "admin"}
-          actions={
-            session.role === "admin"
-              ? {
-                  inviteMaintainer,
-                  cancelMaintainerInvite,
-                  revokeMaintainer,
-                }
-              : undefined
-          }
-        />
-      </div>
-    </section>
+    </>
   );
 }

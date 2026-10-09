@@ -8,7 +8,20 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { z } from "zod";
 
-import type { StaffRole } from "@/lib/portal/contracts";
+import {
+  parsePasswordAuthFlow,
+  roleTour,
+  STAFF_ROLES,
+  STAFF_TOUR_STATUSES,
+  STAFF_TOURS,
+  toursForRole,
+} from "@/lib/portal/contracts";
+import type {
+  PasswordAuthFlow,
+  StaffRole,
+  StaffTour,
+  StaffTourStatus,
+} from "@/lib/portal/contracts";
 import { serverClient, serviceClient, serviceRoleKey } from "@/lib/portal/server";
 
 export interface PortalSessionUser {
@@ -17,15 +30,22 @@ export interface PortalSessionUser {
   displayName: string;
   role: StaffRole;
   onboardedAt: string;
-  portalTourDismissedAt: string | null;
+  /** The account's tour records (staff_tours), one per tour it has been offered. */
+  tours: readonly StaffTourRecord[];
+  /** The tour the portal runs now: one started from Help, else the role's tour on first sign-in. */
+  pendingTour: StaffTour | null;
+}
+
+export interface StaffTourRecord {
+  readonly tour: StaffTour;
+  readonly status: StaffTourStatus;
+  readonly recordedAt: string;
 }
 
 export type PortalStaffAuthState = Omit<PortalSessionUser, "onboardedAt"> & {
   active: boolean;
   onboardedAt: string | null;
 };
-
-export type PasswordAuthFlow = "invite" | "recovery";
 
 export interface RequireRoleOptions {
   unauthenticated?: "redirect" | "throw";
@@ -41,7 +61,28 @@ export class PortalAuthorizationError extends Error {
   }
 }
 
-const staffRoleSchema = z.enum(["admin", "staff"]);
+const staffRoleSchema = z.enum(STAFF_ROLES);
+const staffTourRowSchema = z.object({
+  tour: z.enum(STAFF_TOURS),
+  status: z.enum(STAFF_TOUR_STATUSES),
+  recorded_at: z.string(),
+});
+
+/** A tour started from Help runs first; otherwise the role's tour runs until it has a record. */
+export function pendingTourFor(
+  role: StaffRole,
+  tours: readonly StaffTourRecord[],
+): StaffTour | null {
+  const own = roleTour(role);
+  const open = new Set<StaffTour>(toursForRole(role));
+  const pending: StaffTour[] = [];
+  for (const record of tours) {
+    if (record.status === "pending" && open.has(record.tour)) pending.push(record.tour);
+  }
+  if (pending.includes(own)) return own;
+  if (pending.length > 0) return pending[0];
+  return tours.some((record) => record.tour === own) ? null : own;
+}
 
 const PASSWORD_FLOW_COOKIE = "wgi-portal-password-flow";
 const PASSWORD_FLOW_TTL_SECONDS = 10 * 60;
@@ -71,7 +112,9 @@ export async function resolveStaffAuthState(
 ): Promise<PortalStaffAuthState | null> {
   const { data: profile, error: profileError } = await serviceClient()
     .from("staff_profiles")
-    .select("email, display_name, role, active, onboarded_at, portal_tour_dismissed_at")
+    .select(
+      "email, display_name, role, active, onboarded_at, staff_tours(tour, status, recorded_at)",
+    )
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -82,7 +125,15 @@ export async function resolveStaffAuthState(
   const emailFromProfile = z.string().safeParse(profile.email);
   const displayName = z.string().safeParse(profile.display_name);
   const onboardedAt = z.string().safeParse(profile.onboarded_at);
-  const portalTourDismissedAt = z.string().safeParse(profile.portal_tour_dismissed_at);
+  const tourRows = z.array(staffTourRowSchema).safeParse(profile.staff_tours);
+  // An unreadable tour record starts no tour: a returning account is never interrupted by a read.
+  const tours: StaffTourRecord[] | null = tourRows.success
+    ? tourRows.data.map((row) => ({
+        tour: row.tour,
+        status: row.status,
+        recordedAt: row.recorded_at,
+      }))
+    : null;
 
   const userEmail = user.email?.trim();
   const email =
@@ -102,7 +153,8 @@ export async function resolveStaffAuthState(
     role: role.data,
     active: profile.active === true,
     onboardedAt: onboardedAt.success ? onboardedAt.data : null,
-    portalTourDismissedAt: portalTourDismissedAt.success ? portalTourDismissedAt.data : null,
+    tours: tours ?? [],
+    pendingTour: tours === null ? null : pendingTourFor(role.data, tours),
   };
 }
 
@@ -147,11 +199,12 @@ export async function readPasswordAuthFlow(userId: string): Promise<PasswordAuth
   const token = cookieStore.get(PASSWORD_FLOW_COOKIE)?.value;
   if (token === undefined || token === "") return null;
 
-  const [version, flow, tokenUserId, expires, signature, ...extra] = token.split(".");
+  const [version, rawFlow, tokenUserId, expires, signature, ...extra] = token.split(".");
+  const flow = parsePasswordAuthFlow(rawFlow);
   if (
     extra.length > 0 ||
     version !== "v1" ||
-    (flow !== "invite" && flow !== "recovery") ||
+    flow === null ||
     tokenUserId !== userId ||
     expires === "" ||
     signature === ""
@@ -194,7 +247,8 @@ export const getSessionUser = cache(async (): Promise<PortalSessionUser | null> 
     displayName: state.displayName,
     role: state.role,
     onboardedAt: state.onboardedAt,
-    portalTourDismissedAt: state.portalTourDismissedAt,
+    tours: state.tours,
+    pendingTour: state.pendingTour,
   };
 });
 

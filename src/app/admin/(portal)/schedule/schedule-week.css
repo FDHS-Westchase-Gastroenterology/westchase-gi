@@ -1,0 +1,1355 @@
+/* The Schedule's week view (Figma Ypf9ohpRcGWF5C9T9bSvWW, section 08, W1,
+   W1b and W2; hover and click in H2–H8) and its click card (H3, H4). It
+   shares the month's header, surface and focus ring from schedule.css and
+   the --wgi-* paints from wgi-paints.css; the sizes below are the frame's.
+   Unlayered, like schedule.css. */
+
+.wgi-week {
+  /* One hour of the grid is the frame's 76.25px. Cells sit 2px inside
+     their start and end, so back-to-back visits read as separate. */
+  --week-minute: calc(76.25px / 60);
+  --week-head: 78px;
+  --week-gutter: 52px;
+  /* The first hour's label is centred on its line, so the body starts
+     this far below the sticky header to keep the label whole. */
+  --week-inset: 7px;
+}
+
+/* ---------- Header ---------- */
+
+/* The header is one row, as W1 draws it: the tools take what the title
+   and range leave. The search is the frame's 200px (the month keeps 240)
+   and gives way to 136px for a week that spans two months; past that the
+   tools wrap under the title, set to the right. */
+.wgi-week .wgi-schedule-head {
+  align-items: flex-start;
+  column-gap: 0.75rem;
+}
+
+/* Title, controls and tools share the frame's 48px row; in compare mode
+   the lanes' surnames sit beneath it (W2) and the row stays put. */
+/* Top-aligned, so the search and the view switch sit where Day and Month
+   put them and a change of view never nudges the switch. */
+.wgi-week .wgi-schedule-tools {
+  height: 3rem;
+  min-width: min-content;
+  flex: 1 0 0;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.wgi-week .wgi-schedule-search {
+  width: auto;
+  min-width: 8.5rem;
+  flex: 0 1 12.5rem;
+}
+
+.wgi-week .wgi-schedule-search input {
+  width: 0;
+  text-overflow: ellipsis;
+}
+
+/* The view control never gives way; its labels would overlap. */
+.wgi-week .wgi-schedule-tools > [data-slot="segmented-control"] {
+  min-width: max-content;
+  flex: none;
+}
+
+.wgi-schedule-nav.wgi-week-nav {
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.wgi-week-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+.wgi-week-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px 0 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+/* While its menu is open the title wears the hover band (W1b). */
+.wgi-week-trigger[data-popup-open] {
+  background-color: var(--wgi-hover);
+}
+
+.wgi-week-trigger:active {
+  transform: scale(0.98);
+}
+
+.wgi-week-trigger-chevron {
+  flex: none;
+  color: var(--wgi-muted-ink);
+}
+
+.wgi-week-subtitle {
+  margin: 0;
+  color: var(--wgi-muted-ink);
+  font-size: 0.9375rem;
+  line-height: normal;
+}
+
+.wgi-week-controls {
+  display: flex;
+  height: 3rem;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.wgi-week-range {
+  margin: 0;
+  color: var(--wgi-muted-ink);
+  font-size: 1.125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.wgi-schedule-message {
+  margin: 0;
+  padding: 3rem 0;
+  color: var(--wgi-muted-ink);
+  text-align: center;
+}
+
+/* ---------- The grid ---------- */
+
+.wgi-week-surface {
+  padding-bottom: 29px;
+}
+
+/* Compare mode lifts the grid to 12px under the surface's edge, so the
+   lane names fit the same 78px header (W2). */
+.wgi-week-surface:has(.wgi-week-grid[data-compare]) {
+  padding-top: 12px;
+}
+
+.wgi-week-grid {
+  display: grid;
+  grid-template-columns: var(--week-gutter) var(--week-columns);
+}
+
+.wgi-week-gutter,
+.wgi-week-strip,
+.wgi-week-day {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.wgi-week-gutter-head,
+.wgi-week-day-head {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  height: var(--week-head);
+  box-sizing: border-box;
+  flex: none;
+  background: var(--wgi-surface);
+}
+
+.wgi-week-gutter-body,
+.wgi-week-day-body,
+.wgi-week-strip::after {
+  position: relative;
+  height: calc(var(--week-height) * var(--week-minute));
+  /* Hour lines: one at every whole hour, and the closing one below. */
+  background-image: linear-gradient(var(--wgi-rule) 0 1px, transparent 1px);
+  background-size: 100% calc(60 * var(--week-minute));
+  box-shadow: inset 0 -1px var(--wgi-rule);
+}
+
+.wgi-week-gutter-body,
+.wgi-week-day-body {
+  margin-top: var(--week-inset);
+}
+
+.wgi-week-gutter-body {
+  background: none;
+  box-shadow: none;
+}
+
+.wgi-week-hour {
+  position: absolute;
+  top: calc(var(--top) * var(--week-minute) - 6.5px);
+  left: 0;
+  color: var(--wgi-muted-ink);
+  font-size: 0.6875rem;
+  line-height: 13px;
+  white-space: nowrap;
+}
+
+/* Day rules run the full height: left of every day, and left of a strip
+   that follows a day or another strip. Compare mode firms them so days
+   stay the unit. */
+.wgi-week-day,
+:is(.wgi-week-day, .wgi-week-strip) + .wgi-week-strip {
+  box-shadow: inset 1px 0 var(--wgi-rule);
+}
+
+.wgi-week-grid[data-compare]
+  :is(.wgi-week-day, :is(.wgi-week-day, .wgi-week-strip) + .wgi-week-strip) {
+  box-shadow: inset 1px 0 var(--color-slate-300);
+}
+
+/* ---------- No-hours strips ---------- */
+
+/* The whole strip is the tooltip's target. At rest the shade starts under
+   the header; pointed at, the strip deepens one step from its header to
+   the foot of the grid (H5). */
+.wgi-week-strip {
+  cursor: default;
+  transition: background-color var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-week-strip::after {
+  content: "";
+  display: block;
+  margin-top: calc(var(--week-head) + var(--week-inset));
+  background-color: var(--color-slate-50);
+  transition: background-color var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-week-strip[data-popup-open],
+.wgi-week-strip[data-popup-open]::after {
+  background-color: var(--color-slate-100);
+}
+
+.wgi-week-strip-day {
+  position: absolute;
+  top: 4px;
+  right: 0;
+  left: 0;
+  color: var(--wgi-muted-ink);
+  font-size: 0.6875rem;
+  line-height: 13px;
+  text-align: center;
+}
+
+/* ---------- Day header ---------- */
+
+.wgi-week-day-head {
+  display: flex;
+  flex-direction: column;
+  padding: 1px 8px 0;
+  background-clip: padding-box;
+  border-left: 1px solid transparent;
+}
+
+.wgi-week-day-date {
+  display: flex;
+  width: fit-content;
+  height: 24px;
+  align-items: center;
+  gap: 6px;
+  margin: 0 -6px;
+  padding: 0 6px;
+  border-radius: 6px;
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background-color var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-week-day-date:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--portal-surface, #fff),
+    0 0 0 4px var(--color-teal);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wgi-week-day-date:hover {
+    background: var(--color-slate-100);
+  }
+}
+
+.wgi-week-day-number {
+  display: grid;
+  min-width: 24px;
+  height: 24px;
+  place-items: center start;
+  color: var(--wgi-name-ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.wgi-week-day[data-today] .wgi-week-day-number {
+  place-items: center;
+  border-radius: 999px;
+  background: var(--wgi-name-ink);
+  color: #fff;
+}
+
+.wgi-week-day-count {
+  min-height: 16px;
+  margin: 2px 0 0;
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+  line-height: 16px;
+}
+
+.wgi-week-day-count b {
+  color: var(--wgi-name-ink);
+  font-weight: 700;
+}
+
+/* Compare mode names each lane at the foot of the day header, over its
+   lane and in line with the names in its cells (W2). */
+.wgi-week-lane-labels {
+  display: grid;
+  grid-template-columns: repeat(var(--lanes), minmax(0, 1fr));
+  margin: auto -4px 7px -5px;
+}
+
+/* The whole label cell is the target; the hover pill hugs the surname,
+   4px above and below it and 6px either side (H7), without moving it. */
+.wgi-week-lane-label {
+  min-width: 0;
+  margin: 0 1px;
+  color: var(--wgi-label-ink);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 13px;
+  text-align: left;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-week-lane-name {
+  display: inline-block;
+  overflow: hidden;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: -4px 0;
+  padding: 4px 6px;
+  border-radius: 4px;
+  text-overflow: ellipsis;
+  vertical-align: top;
+  transition: background-color var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-week-lane-label[data-popup-open] {
+  color: var(--wgi-name-ink);
+}
+
+.wgi-week-lane-label[data-popup-open] .wgi-week-lane-name {
+  background: var(--color-slate-100);
+}
+
+/* ---------- Day body ---------- */
+
+.wgi-week-grid[data-compare] .wgi-week-day-body {
+  --lane-width: calc((100% - 8px) / var(--lanes));
+}
+
+.wgi-week-shade,
+.wgi-week-off {
+  position: absolute;
+  right: 0;
+  left: 1px;
+  background: var(--color-slate-50);
+}
+
+.wgi-week-shade {
+  top: calc(var(--top) * var(--week-minute));
+  height: calc(var(--height) * var(--week-minute));
+}
+
+.wgi-week-grid[data-compare] :is(.wgi-week-shade, .wgi-week-off) {
+  right: auto;
+  left: calc(4px + var(--lane) * var(--lane-width));
+  width: var(--lane-width);
+}
+
+/* An off lane keeps its place for the whole day; "Off" sits at its top.
+   The whole lane is the tooltip's target, and it keeps its fill while
+   pointed at: a click there does nothing (H8). */
+.wgi-week-off {
+  top: 0;
+  bottom: 0;
+  padding-top: 6px;
+  color: var(--wgi-label-ink);
+  cursor: default;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 13px;
+  text-align: center;
+}
+
+/* ---------- Cells ---------- */
+
+.wgi-week-cell,
+.wgi-week-open {
+  position: absolute;
+  top: calc(var(--top) * var(--week-minute) + 2px);
+  right: 3px;
+  left: 4px;
+  display: flex;
+  height: calc(var(--height) * var(--week-minute) - 4px);
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    border-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-week-cell:active,
+.wgi-week-open:active {
+  transform: scale(0.98);
+}
+
+.wgi-week-grid[data-compare] :is(.wgi-week-cell, .wgi-week-open) {
+  right: auto;
+  left: calc(4px + var(--lane) * var(--lane-width) + 1px);
+  width: calc(var(--lane-width) - 2px);
+  padding: 0 5px;
+}
+
+.wgi-week-grid[data-compare] .wgi-week-cell:not([data-short]) {
+  padding-top: 7px;
+}
+
+.wgi-week-cell {
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 2px;
+  padding-top: 7px;
+}
+
+.wgi-week-cell[data-short] {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding-top: 0;
+}
+
+.wgi-week-cell-line {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.wgi-week-cell[data-short] .wgi-week-cell-line {
+  flex: 1;
+}
+
+.wgi-week-cell-name {
+  overflow: hidden;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wgi-week-cell-type {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+.wgi-week-cell-icon {
+  width: 0.6875rem;
+  height: 0.6875rem;
+}
+
+.wgi-week-cell-status {
+  flex: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+/* On a short cell the status takes the type's place on line 1. */
+.wgi-week-cell[data-short]:has(.wgi-week-cell-status) .wgi-week-cell-type {
+  display: none;
+}
+
+.wgi-week-grid[data-compare] .wgi-week-cell-name {
+  font-size: 0.75rem;
+  line-height: 14px;
+}
+
+.wgi-week-grid[data-compare] .wgi-week-cell-status {
+  font-size: 0.6875rem;
+  line-height: 13px;
+}
+
+/* A lane is too narrow to share a line, so a short cell in compare mode
+   stacks its status under the name and keeps both (W2). */
+.wgi-week-grid[data-compare] .wgi-week-cell[data-short]:has(.wgi-week-cell-status) {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0;
+}
+
+.wgi-week-grid[data-compare] .wgi-week-cell[data-short] .wgi-week-cell-line {
+  flex: none;
+}
+
+/* States. Only upcoming work and a patient who is here carry the 3px bar;
+   pointed at or opened, a fill deepens one step. */
+.wgi-week-cell[data-state="past"] {
+  background: var(--color-slate-100);
+}
+
+.wgi-week-cell[data-state="past"] .wgi-week-cell-name {
+  color: var(--wgi-muted-ink);
+}
+
+.wgi-week-cell[data-state="past"] .wgi-week-cell-type {
+  color: var(--wgi-label-ink);
+}
+
+.wgi-week-cell[data-state="past"] .wgi-week-cell-status {
+  color: var(--color-amber-800);
+}
+
+.wgi-week-cell[data-state="past"][data-popup-open] {
+  background: var(--color-slate-200);
+}
+
+.wgi-week-cell[data-state="upcoming"] {
+  padding-left: 13px;
+  background: var(--color-navy-100);
+  box-shadow: inset 3px 0 var(--color-navy-600);
+}
+
+.wgi-week-cell[data-state="upcoming"] .wgi-week-cell-name {
+  color: var(--wgi-name-ink);
+}
+
+.wgi-week-cell[data-state="upcoming"] .wgi-week-cell-type {
+  color: var(--wgi-muted-ink);
+}
+
+.wgi-week-cell[data-state="upcoming"][data-popup-open] {
+  background: var(--color-navy-200);
+}
+
+.wgi-week-cell[data-state="here"] {
+  padding-left: 13px;
+  background: var(--color-teal-100);
+  box-shadow: inset 3px 0 var(--color-teal-600);
+  color: var(--color-teal-800);
+}
+
+.wgi-week-cell[data-state="here"] :is(.wgi-week-cell-name, .wgi-week-cell-type) {
+  color: var(--color-teal-800);
+}
+
+.wgi-week-cell[data-state="here"][data-popup-open] {
+  background: var(--color-teal-200);
+}
+
+.wgi-week-grid[data-compare] .wgi-week-cell:is([data-state="upcoming"], [data-state="here"]) {
+  padding-left: 10px;
+}
+
+/* The portal's focus ring, on the cell's own corners. */
+.wgi-schedule :is(.wgi-week-cell, .wgi-week-open, .wgi-week-trigger):focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--portal-surface, #fff),
+    0 0 0 4px var(--color-teal);
+}
+
+.wgi-week-cell:is([data-state="upcoming"], [data-state="here"]):focus-visible {
+  box-shadow:
+    inset 3px 0 var(--color-navy-600),
+    0 0 0 2px var(--portal-surface, #fff),
+    0 0 0 4px var(--color-teal);
+}
+
+.wgi-week-cell[data-state="here"]:focus-visible {
+  box-shadow:
+    inset 3px 0 var(--color-teal-600),
+    0 0 0 2px var(--portal-surface, #fff),
+    0 0 0 4px var(--color-teal);
+}
+
+/* Open times: a dashed mint edge and a plus disc; pointed at, the edge
+   turns solid teal over a mint wash and "Open" offers the time. */
+.wgi-week-open {
+  align-items: center;
+  gap: 6px;
+  border: 1.5px dashed var(--color-mint-400);
+  background: #fff;
+  color: var(--color-mint-800);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.wgi-week-open[data-popup-open] {
+  border-style: solid;
+  border-color: var(--color-teal-600);
+  background: var(--color-mint-100);
+}
+
+.wgi-week-open-disc {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border-radius: 999px;
+  background:
+    linear-gradient(#fff, #fff) center / 7px 1.5px no-repeat,
+    linear-gradient(#fff, #fff) center / 1.5px 7px no-repeat,
+    var(--color-mint-400);
+}
+
+.wgi-week-open-book,
+.wgi-week-open[data-popup-open] .wgi-week-open-word {
+  display: none;
+}
+
+.wgi-week-open[data-popup-open] .wgi-week-open-book {
+  display: inline;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wgi-week-open {
+  container-type: inline-size;
+  overflow: hidden;
+}
+
+@container (max-width: 4.5rem) {
+  .wgi-week-open-word,
+  .wgi-week-open-book,
+  .wgi-week-open[data-popup-open] .wgi-week-open-book {
+    display: none;
+  }
+
+  .wgi-week-open-disc {
+    margin-inline: auto;
+  }
+}
+
+.wgi-week-grid[data-compare] .wgi-week-open {
+  gap: 3px;
+  padding: 0 4px;
+  font-size: 0.6875rem;
+  line-height: 13px;
+}
+
+.wgi-week-grid[data-compare] .wgi-week-open-disc {
+  width: 11px;
+  height: 11px;
+  background-size:
+    6px 1.5px,
+    1.5px 6px,
+    auto;
+}
+
+/* The now line: coral across today's lanes, a dot at its left end. */
+.wgi-week-now {
+  position: absolute;
+  z-index: 1;
+  top: calc(var(--top) * var(--week-minute) - 1px);
+  right: 0;
+  left: 0;
+  height: 2px;
+  background: var(--color-coral-500);
+  pointer-events: none;
+}
+
+.wgi-week-now::before {
+  content: "";
+  position: absolute;
+  top: -3px;
+  left: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-coral-500);
+}
+
+/* ---------- Tooltips ---------- */
+
+.wgi-week-tip {
+  pointer-events: none;
+}
+
+/* ---------- The click card ---------- */
+
+/* The appointment card is H3's popover (657:8203) on the recipe's card
+   paint (ui/popover): 340 wide, radius 16, white, the body inset 16 by 18.
+   The open-time and face cards share the shell. */
+.wgi-week-card {
+  width: 21.25rem;
+  max-width: calc(100vw - 1.5rem);
+  box-sizing: border-box;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: var(--shadow-popover);
+}
+
+/* A radio mark draws its own focus outline (ui/radio-group), so the ring
+   here never replaces the ring that shows its checked state. */
+.wgi-week-card :where(a, button, input, textarea, [tabindex]:not([role="radio"])):focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 4px var(--color-teal);
+}
+
+.wgi-week-card-arrow {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--wgi-rule);
+  background: #fff;
+  transform: rotate(45deg);
+}
+
+.wgi-week-card-arrow[data-side="right"] {
+  left: -6px;
+  border-top-color: transparent;
+  border-right-color: transparent;
+}
+
+.wgi-week-card-arrow[data-side="left"] {
+  right: -6px;
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+}
+
+.wgi-week-card-arrow[data-side="bottom"] {
+  top: -6px;
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+}
+
+.wgi-week-card-arrow[data-side="top"] {
+  bottom: -6px;
+  border-top-color: transparent;
+  border-left-color: transparent;
+}
+
+.wgi-week-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wgi-week-card-face {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wgi-week-card-body > .wgi-week-card-face {
+  margin-top: 4px;
+}
+
+.wgi-week-card-name {
+  margin: 0;
+  font-family: inherit;
+  color: var(--wgi-name-ink);
+  font-size: 1.1875rem;
+  font-weight: 700;
+  line-height: normal;
+}
+
+/* The status wears Home's line badge (.wgi-badge in home.css), so an
+   appointment's word looks the same as the request it came from. */
+.wgi-week-card-kind {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+  line-height: normal;
+}
+
+.wgi-week-card-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--wgi-name-ink);
+  font-size: 0.875rem;
+  line-height: normal;
+}
+
+/* Under the status row the frame spaces the facts 16 down: the body's 6
+   twice around a 4 spacer. */
+.wgi-week-card-kind + .wgi-week-card-facts {
+  margin-top: 10px;
+}
+
+.wgi-week-card-facts li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* The frame draws the card's glyphs with a 2px line at their size: 3 units
+   of the 24-unit box at 16px, 3.2 at the commands' 15px. */
+.wgi-week-card-facts svg {
+  flex: none;
+  color: var(--wgi-muted-ink);
+  stroke-width: 3;
+}
+
+/* The patient's phone is Ap1's filled row under the facts: the whole row
+   dials, the number in link ink on a slate well. */
+.wgi-week-card-call {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: var(--color-slate-100);
+  color: var(--wgi-link-ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: normal;
+  text-decoration: none;
+}
+
+.wgi-week-card-call svg {
+  flex: none;
+  stroke-width: 3.2;
+}
+
+.wgi-week-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The details face's commands sit 20 below the facts: the body's 6 plus
+   the frame's 14. The error, when there is one, takes that space instead. */
+.wgi-week-card-body > .wgi-week-card-actions,
+.wgi-week-card-facts + .wgi-week-card-error,
+.wgi-week-card-call + .wgi-week-card-error {
+  margin-top: 14px;
+}
+
+.wgi-week-card-body > .wgi-week-card-error + .wgi-week-card-actions {
+  margin-top: 4px;
+}
+
+/* The card's commands take the frame's compact step: 33 tall, 14px
+   semibold, inset 14, flat. The recipe keeps its press and transitions. */
+.wgi-week-card-actions [data-slot="button"] {
+  --btn-hover-shadow: none;
+  min-height: 2.0625rem;
+  gap: 6px;
+  padding: 0 14px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* The quiet commands (Reschedule, Back, Change patient, Try again) wear
+   Home's command edge: white under a 1px slate-300 hairline in name ink.
+   The hairline stays beneath the card's teal focus ring. */
+.wgi-week-card-actions [data-slot="button"]:not(.wgi-week-card-go) {
+  --wgi-week-cmd-edge: inset 0 0 0 1px var(--wgi-cmd-stroke);
+  background: #fff;
+  box-shadow: var(--wgi-week-cmd-edge);
+  color: var(--wgi-name-ink);
+}
+
+.wgi-week-card-actions [data-slot="button"]:not(.wgi-week-card-go):focus-visible {
+  box-shadow:
+    var(--wgi-week-cmd-edge),
+    0 0 0 2px #fff,
+    0 0 0 4px var(--color-teal);
+}
+
+.wgi-week-card-actions [data-slot="button"] > svg,
+.wgi-week-card-more > svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 3.2;
+}
+
+/* The face's commit (Check in, Book, Cancel appointment) is the command
+   navy and takes the row's spare width. */
+.wgi-week-card-actions .wgi-week-card-go {
+  flex: 1 0 0;
+  background: var(--wgi-cmd-primary);
+  color: #fff;
+}
+
+.wgi-week-card-more {
+  display: grid;
+  width: 33px;
+  height: 33px;
+  place-items: center;
+  margin-left: auto;
+  border: 0;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--wgi-cmd-stroke);
+  color: var(--wgi-name-ink);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-week-card-more[data-popup-open] {
+  background: var(--color-slate-100);
+}
+
+.wgi-week-card-more:active {
+  transform: scale(0.98);
+}
+
+/* Open full record sits under a hairline that runs edge to edge: 16 below
+   the commands, 11 above its words and 13 below them. */
+.wgi-week-card-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px -18px -16px;
+  padding: 11px 18px 13px;
+  border-top: 1px solid var(--wgi-rule);
+}
+
+/* A ui/button link (size sm, motion none); this restates the card's
+   text-action geometry over the recipe's 36px step. */
+.wgi-week-card-record {
+  display: inline-flex;
+  min-height: 0;
+  align-items: center;
+  align-self: flex-start;
+  gap: 2px;
+  padding: 0;
+  line-height: normal;
+  border: 0;
+  background: none;
+  color: var(--wgi-link-ink);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wgi-week-card-record:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.wgi-week-card-record svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* A ui/field FieldLabel at the card's label step. */
+.wgi-week-card-label {
+  margin-bottom: -6px;
+  line-height: inherit;
+  color: var(--wgi-name-ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+/* The reschedule day: the record card's calendar (home.css
+   .wgi-editor-cal) at the card's width, its grid flush with the face. */
+.wgi-week-card-cal .wgi-editor-cal {
+  --cell-size: 2.375rem;
+
+  padding: 0;
+}
+
+.wgi-week-card-quiet {
+  margin: 0;
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+}
+
+.wgi-week-card-nofit {
+  margin: 0;
+  color: var(--color-amber-800);
+  font-size: 0.75rem;
+}
+
+.wgi-week-card-error {
+  margin: 0;
+  color: var(--color-coral-700);
+  font-size: 0.8125rem;
+}
+
+/* ---- The cancel form (Figma Ap4) ----
+   The card widens to 380 for it, at once: the face swaps in a single
+   frame, so the width never animates. */
+.wgi-week-card:has(.wgi-week-card-cancel) {
+  width: 23.75rem;
+}
+
+.wgi-week-card-cancel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wgi-week-card-sub {
+  margin: 0;
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+  line-height: normal;
+}
+
+/* What the cancel frees and why: one coral well, its warning over a
+   hairline, the reasons under it. */
+.wgi-week-card-well {
+  display: flex;
+  flex-direction: column;
+  margin-top: 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-coral-200);
+  border-radius: 10px;
+  background: var(--color-coral-50);
+}
+
+.wgi-week-card-warn {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-coral-100);
+  color: var(--color-coral-700);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.wgi-week-card-warn svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.wgi-week-card-caps {
+  margin: 12px 0 6px;
+  color: var(--wgi-muted-ink);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.wgi-week-card-well .wgi-week-card-caps {
+  color: var(--color-coral-700);
+}
+
+.wgi-week-card-cancel > .wgi-week-card-caps {
+  margin-top: 18px;
+}
+
+.wgi-week-card-choices {
+  gap: 4px;
+}
+
+/* A ui/label wrapping its ui/radio-group item: the whole row chooses. */
+.wgi-week-card-choice {
+  display: flex;
+  min-height: 1.75rem;
+  align-items: center;
+  gap: 10px;
+  color: var(--wgi-name-ink);
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: normal;
+  cursor: pointer;
+}
+
+.wgi-week-card-choice-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* The call-again day: a ui/popover trigger worn as a chip. */
+.wgi-week-card-chip {
+  display: inline-flex;
+  min-height: 1.75rem;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--wgi-cmd-stroke);
+  color: var(--wgi-name-ink);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.wgi-week-card-chip svg {
+  color: var(--wgi-muted-ink);
+}
+
+.wgi-week-card-chip:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.wgi-week-card-chip-cal {
+  padding: 12px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: var(--shadow-popover);
+}
+
+.wgi-week-card-chip-cal .wgi-editor-cal {
+  --cell-size: 2.25rem;
+
+  padding: 0;
+}
+
+/* Keep appointment, then the coral command, right-aligned in a band that
+   runs edge to edge under a hairline. */
+.wgi-week-card-band {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 16px -18px -16px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--wgi-rule);
+  border-radius: 0 0 16px 16px;
+  background: var(--color-slate-50);
+}
+
+.wgi-week-card-band [data-slot="button"] {
+  min-height: 2.25rem;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.wgi-week-card-band .wgi-week-card-stop {
+  background: var(--color-coral-700);
+  color: #fff;
+}
+
+.wgi-week-card-times {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  max-height: 10.5rem;
+  margin: 0;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.wgi-week-card-time,
+.wgi-week-card-patient {
+  width: 100%;
+  border: 1px solid var(--wgi-chip-stroke);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--wgi-name-ink);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-week-card-time {
+  min-height: 2.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.wgi-week-card-time:active,
+.wgi-week-card-patient:active {
+  transform: scale(0.98);
+}
+
+/* The patient the arrows or the pointer rest on (ui/combobox). Focus
+   stays in the search, so the row carries the visible mark: the hover
+   tint, edged in teal ink. */
+.wgi-week-card-patient[data-highlighted] {
+  border-color: var(--color-teal-ink);
+  background: var(--wgi-hover);
+}
+
+.wgi-week-card-time:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.wgi-week-card-search {
+  position: relative;
+}
+
+.wgi-week-card-search svg {
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  color: var(--wgi-label-ink);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.wgi-week-card-search input {
+  padding-left: 34px;
+}
+
+.wgi-week-card-patients {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 12rem;
+  margin: 0;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+/* Base UI keeps the list mounted with no rows; it takes no gap until a
+   search returns patients. */
+.wgi-week-card-patients[data-empty] {
+  display: none;
+}
+
+.wgi-week-card-patient {
+  display: flex;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.wgi-week-card-chosen {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--wgi-band);
+  color: var(--wgi-name-ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* Hover tints, for a pointer that can hover; an open card keeps its cell's
+   tint through data-popup-open above. */
+@media (hover: hover) and (pointer: fine) {
+  .wgi-week-strip:hover,
+  .wgi-week-strip:hover::after,
+  .wgi-week-lane-label:hover .wgi-week-lane-name,
+  .wgi-week-card-more:hover {
+    background-color: var(--color-slate-100);
+  }
+
+  .wgi-week-lane-label:hover {
+    color: var(--wgi-name-ink);
+  }
+
+  .wgi-week-cell[data-state="past"]:hover {
+    background: var(--color-slate-200);
+  }
+
+  .wgi-week-cell[data-state="upcoming"]:hover {
+    background: var(--color-navy-200);
+  }
+
+  .wgi-week-cell[data-state="here"]:hover {
+    background: var(--color-teal-200);
+  }
+
+  .wgi-week-open:hover {
+    border-style: solid;
+    border-color: var(--color-teal-600);
+    background: var(--color-mint-100);
+  }
+
+  .wgi-week-open:hover .wgi-week-open-word {
+    display: none;
+  }
+
+  .wgi-week-open:hover .wgi-week-open-book {
+    display: inline;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @container (max-width: 4.5rem) {
+    .wgi-week-open:hover .wgi-week-open-book {
+      display: none;
+    }
+  }
+
+  .wgi-week-card-call:hover,
+  .wgi-week-card-record:hover {
+    text-decoration: underline;
+  }
+
+  .wgi-week-card-time:hover {
+    background: var(--wgi-hover);
+  }
+
+  .wgi-week-card-chip:hover {
+    background: var(--color-slate-50);
+  }
+
+  .wgi-week-card-band .wgi-week-card-stop:hover {
+    background: var(--color-coral-800);
+  }
+
+  .wgi-week-card-actions .wgi-week-card-go:hover {
+    background: color-mix(in oklch, var(--wgi-cmd-primary) 88%, white);
+  }
+
+  .wgi-week-card-actions [data-slot="button"]:not(.wgi-week-card-go):hover {
+    --wgi-week-cmd-edge: inset 0 0 0 1px var(--color-slate-400);
+    background: var(--color-slate-50);
+  }
+}
+
+/* The patient whose record is open (issue #356): their appointments wear
+   a navy outline, inside the corners, apart from the focus ring. */
+.wgi-week-cell[data-record-open] {
+  outline: 2px solid var(--color-navy-800);
+  outline-offset: -2px;
+}

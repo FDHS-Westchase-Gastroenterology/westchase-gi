@@ -1,0 +1,148 @@
+# Forms
+
+Every form composes the `Field` family from `ui/field.tsx` around a `ui/` control. The family
+owns label placement, description and error text, and group spacing, so a form never lays out
+its own label stack.
+
+## Fields
+
+| Component | When | Real uses |
+| --- | --- | --- |
+| `Field` `FieldLabel` | One labeled control. `orientation` is `vertical` (default), `horizontal` or `responsive`. | `staff-request-fields.tsx`, `record-card.tsx`, `type-editor-dialog.tsx` |
+| `FieldGroup` | The stack of fields in one form | `login-form.tsx`, `password-form.tsx`, `reset-request-form.tsx` |
+| `FieldSet` `FieldLegend` `FieldTitle` | A named group of related choices | `staff-request-fields.tsx` |
+| `FieldDescription` `FieldError` | The hint under a control; the reason it was refused. `size="note"` is the Add request sheet's quieter 13px line, its fix led by an icon | `staff-request-fields.tsx`, `AppointmentForm.tsx` |
+
+- **An invalid control sets `aria-invalid`** and its `FieldError` says what to change, in the
+  words the staff member or patient uses. Color is never the only signal.
+- **The label is a `FieldLabel` with `htmlFor`**, never placeholder text. `Label` exists for
+  `Field`'s own use; no route imports it.
+- **`orientation="horizontal"` is for a control that reads as one line with its label**, like the
+  record card's start time. Everything else stacks.
+
+```tsx
+// Correct (staff-request-fields.tsx): the control carries the state; FieldError carries the words
+aria-invalid={error === null ? undefined : true}
+```
+
+```tsx incorrect
+// Incorrect: a hand-built label stack and a red border that says nothing to a screen reader
+<div className="space-y-1"><label>Name</label><input className="border-red-500" /></div>
+```
+
+## Controls
+
+| Component | When | Real uses |
+| --- | --- | --- |
+| `Input` | Single-line text, email, phone, search | `staff-request-fields.tsx`, `recipient-row.tsx` |
+| `Textarea` | Multi-line text | `staff-request-fields.tsx`, `AppointmentForm.tsx` |
+| `Select` | Appointment type Length: the shadcn Base UI listbox | `type-editor-dialog.tsx` |
+| `NativeSelect` | Other fixed lists, including patient-facing controls | `staff-manager.tsx`, `AppointmentForm.tsx` |
+| `SegmentedControl` | Choosing one of two to four short options, all visible at once, one always chosen | `staff-request-fields.tsx` (preferred office and time) |
+| `Checkbox` | An independent yes or no, including each row of a multi-select list | `print-sheet-body.tsx` |
+
+These controls share one `motion` axis. `wgi` is the default. `none` has
+one: the Schedule's view switch wears it while a move chosen from the keyboard is on its way, so
+its thumb jumps. `shadcn` has no consumer today. `Input`, `Textarea` and `NativeSelect` fade their
+border and ring over 200ms `ease`, a recorded literal ([item 16](roadmap.md#16-motion-literals)). `Checkbox` draws a 4px
+corner off the radius steps ([item 8](roadmap.md#8-the-radius-ramp)).
+
+Patient-facing selects stay native: the platform picker speaks every locale the site serves
+and needs no portal layer. Appointment type Length uses `ui/select.tsx`, adopted from the
+shadcn registry on Base UI, with a selected-item check, typeahead and arrow-key selection. Its
+portal stays inside the native dialog, and Escape closes the list before the dialog. The popup
+opens instantly; the trigger uses the registry micro duration for border and focus feedback.
+When the list is two to four short options that fit side by side, show them all with `SegmentedControl` (`ui/segmented-control.tsx`) instead: it is Base UI's
+radio group underneath (one tab stop, arrow keys choose, a hidden native radio posts `name=value`
+as the select did), and the thumb slides on the staff home's fast beat.
+
+```
+Which control?
+├── Free text → Input; more than one line → Textarea
+├── One of a fixed list
+│   ├── A request's outcome, a follow-up or a reason → a choice list (below)
+│   ├── Two to four short options that fit side by side → SegmentedControl
+│   ├── Appointment type Length → Select
+│   └── Other fixed lists → NativeSelect
+├── An independent yes or no → Checkbox
+├── A date → a date input (dates-and-times.md)
+└── A time of day → TimePicker (dates-and-times.md)
+```
+
+Dates and times have their own guide, [dates-and-times.md](dates-and-times.md): the raw date
+input, practice-local days and instants, and the `TimePicker` wheel.
+
+## Choices
+
+Staff choose outcomes and follow-ups from visible rows, not a menu. A new choice list composes
+`RadioGroup` and `RadioGroupItem` from `ui/radio-group.tsx`, each row a `Label` wrapping its item
+and its words, so the whole row chooses: the Schedule's cancel form does
+(`week-card-faces.tsx`). The record card still renders its rows with `RadioGroup` and
+`ToggleGroup` from `stock/`, a [recorded import](components.md#recorded-stock-imports). They
+stay as they render until [item 3](roadmap.md#3-choice-lists) moves them onto the recipe.
+
+## Saving
+
+A save on a request — from the staff home or the Schedule — shows its progress in one toast that
+follows the save's promise: the working verb while it runs, the saved sentence only once the server
+confirmed. `Toaster` (Sonner, from
+`src/components/ui/toaster.tsx`) is mounted once, in the portal layout, so a result outlives the
+surface that started it; the patient site has none. Toasts sit bottom center, 26rem wide, on
+`--popover` paper with `--shadow-popover` and no `richColors`; they arrive on the spring, leave on
+leaving, follow a swipe, and under reduced motion fade over 120ms.
+`followed` (`(portal)/toast-follow.ts`) narrows that promise on a **type guard**, not a value; its
+module and full signature are in [modules.md](modules.md#portal-modules).
+
+| Component | When | Real uses |
+| --- | --- | --- |
+| `Toaster` | The one toast region for the portal | `(portal)/layout.tsx` |
+
+```ts
+// Correct (new/created-toast.ts): `created` is that file's own guard on the result
+toast.promise(followed(attempt, created), {
+  id: `${CREATED_TOAST_TEST_ID}:${key}`,
+  testId: CREATED_TOAST_TEST_ID,
+  loading: "Adding appointment request…",
+  success: (result) => `${result.name} is on the line under New.`,
+});
+```
+
+```ts incorrect
+// Incorrect: success is announced before the server answered
+toast.success("Request added");
+void createStaffRequestAction(input);
+```
+
+A form that can show its own failure beside the fields gives the toast no error branch; a surface
+with nothing to point at, like the request work panel, reads the failure off the rejection. The
+home record card keeps its own follower, `record-card-save.ts`, which `use-record-commit.ts` hands
+to `toast.promise`.
+
+Settings saves do not toast. A settings form is a `<form action={action} noValidate
+aria-labelledby>` opened by its own heading: a `border-t border-[var(--color-line)] pt-5` edge where
+it follows a list, every control `disabled={pending}`, and a submit `Button` at `self-end` whose
+label turns to the working verb. A refused submit focuses the field, marks it `aria-invalid` with a
+`FieldError`, and shows one `role="alert"` `.portal-settings-form-summary` line between the heading
+and the fields (`recipients-manager.tsx#L348`, `staff-manager.tsx#L336`). The server's actions
+return no field errors, so a failure the server reports is an inline result line, below.
+
+## Reporting a result
+
+The portal answers an action in three places, and they are not interchangeable.
+
+| Mechanism | When | Real uses |
+| --- | --- | --- |
+| `toast.promise` | A save with a promise to follow, in the portal's one toast region | `record-card-save.ts`, `created-toast.ts`, `record-note-composer.tsx` |
+| `PortalFeedbackMessage` | A result with no promise to follow, or one that has to outlive a toast | `home-workbench.tsx`, `print-controls.tsx`, `review-flyer-printer.tsx` |
+| An inline `role="status"` or `role="alert"` line | A settings manager's result, beside the list or form it changed. The manager calls `router.refresh()` to reload its rows and mounts no provider | `recipients-manager.tsx`, `staff-manager.tsx`, `software/maintainer-access.tsx` |
+
+`PortalFeedbackProvider` (`portal-feedback.tsx`) holds a single current result per page, so a
+later result replaces the banner instead of stacking a second one. Three surfaces mount it: the
+staff home, the print packet and the review-flyer printer. An island calls
+`publish({ source, tone, message })`; a `PortalFeedbackMessage`, which takes `source` and an
+optional `testId` and `className`, renders only while the current result carries its own `source`,
+and `dismiss(source)` clears only its own. `tone` is `status` or `alert`, and it is both the element's
+`role` and its paint: mint on a teal hairline, or `amber-soft` on amber.
+
+A print, download or other handoff has no promise, so it publishes instead of toasting
+(`print-controls.tsx`, `flyer-output.tsx`).

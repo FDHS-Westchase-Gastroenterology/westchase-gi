@@ -1,8 +1,16 @@
 export default function PortalLoading() {
   return (
-    <div aria-busy="true" className="space-y-5">
-      <div className="h-16 max-w-xl animate-pulse rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white" />
-      <div className="h-40 animate-pulse rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white" />
+    <div aria-busy="true" aria-live="polite" className="portal-loading">
+      <span className="sr-only">Loading the staff portal</span>
+      <div className="portal-loading-heading" aria-hidden="true">
+        <span />
+        <i />
+      </div>
+      <div className="portal-loading-workbench" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
     </div>
   );
 }
