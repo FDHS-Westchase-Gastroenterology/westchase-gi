@@ -61,7 +61,9 @@ Every change to:
 4. **Preview.** Each pull request gets a preview environment with fictional data: at most two at
    once, destroyed when the pull request merges or closes, sharing staging's load balancer and
    database server with a throwaway database each (step 4).
-5. **Staging.** Merging to `main` deploys to staging automatically (step 4).
+5. **Staging.** Merging to the staging trunk deploys to staging automatically (step 4). The trunk
+   is `portal/appointment-workflow-experience` (PR #224's branch) until #224 lands on `main`, then
+   `main`.
 6. **Production.** A production deploy waits for the security official's approval in the
    protected GitHub `aws-production` environment. Migrations run as a pipeline step that stops the
    deploy on failure (step 4).
