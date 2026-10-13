@@ -10,6 +10,7 @@ import { serviceDb } from "../harness/env";
 import {
   createSchedulingFixture,
   disposeSchedulingFixturesAfterEach,
+  holdBookingInterval,
   restoreBookingInterval,
 } from "../harness/scheduling";
 
@@ -36,6 +37,7 @@ test("month availability lists open starts per provider and office, with a reaso
   const db = serviceDb();
   const fixture = await createSchedulingFixture(db, "card-month");
   const actor = fixture.staff.userId;
+  const restoreInterval = await holdBookingInterval(db, actor);
   try {
     // The booking interval is one practice-wide setting; start from the hourly default.
     await restoreBookingInterval(db, actor);
@@ -243,7 +245,7 @@ test("month availability lists open starts per provider and office, with a reaso
     }
   } finally {
     try {
-      await restoreBookingInterval(db, actor);
+      await restoreInterval();
     } finally {
       await fixture.dispose();
     }

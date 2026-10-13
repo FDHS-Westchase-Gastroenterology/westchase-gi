@@ -259,21 +259,68 @@ export async function removeSchedulingFixture(
   return removed;
 }
 
-/* Scheduling fixtures this worker made and has not removed yet, keyed by
-   their admin's user id. A fixture leaves only through its own dispose. */
-const undisposed = new Map<string, () => Promise<void>>();
+/* Cleanup this worker's tests registered and have not finished running, in
+   the order it was registered. A cleanup leaves only by running to the end. */
+const pendingCleanUp = new Set<() => Promise<void>>();
 
 /**
- * Removes, after each test in the calling spec file, every scheduling fixture
- * the test made and did not dispose. A test that times out is abandoned
- * mid-body, so its `finally` never runs; Playwright still runs afterEach
- * hooks then, on their own timeout. Call it once at the top level of every
- * spec file that makes scheduling fixtures. A failed removal fails the test
- * rather than leaving the offices behind unnoticed.
+ * Registers cleanup that has to happen even when the test times out, and
+ * returns it for the test's own `finally`. Once it has run to the end, the
+ * afterEach skips it.
+ */
+export function registerCleanUp(cleanUp: () => Promise<void>): () => Promise<void> {
+  async function run() {
+    await cleanUp();
+    pendingCleanUp.delete(run);
+  }
+  pendingCleanUp.add(run);
+  return run;
+}
+
+/**
+ * Runs, after each test in the calling spec file, every cleanup the test
+ * registered and did not finish: its scheduling fixtures, a practice setting
+ * it held, rows it made outside a fixture. A test that times out is abandoned
+ * mid-body, so its `finally` never runs; Playwright still runs afterEach hooks
+ * then, on their own timeout. The latest registration runs first, so a setting
+ * goes back while the fixture admin who changed it still exists. Call it once
+ * at the top level of every spec file that makes scheduling fixtures. Every
+ * cleanup runs even when an earlier one fails, and a failure fails the test
+ * rather than leaving rows behind unnoticed.
  */
 export function disposeSchedulingFixturesAfterEach(): void {
   test.afterEach(async () => {
-    for (const dispose of [...undisposed.values()]) await dispose();
+    const failures: unknown[] = [];
+    for (const run of [...pendingCleanUp].reverse()) {
+      try {
+        await run();
+      } catch (error) {
+        failures.push(error);
+      }
+    }
+    if (failures.length === 0) return;
+    /* The report prints the message, not the errors inside it. */
+    const reasons = failures.map((failure) =>
+      failure instanceof Error ? failure.message : String(failure),
+    );
+    throw new AggregateError(failures, `Cleanup after the test failed:\n${reasons.join("\n")}`);
+  });
+}
+
+/**
+ * Records the practice's booking interval as the test found it and registers
+ * putting it back, so a test that times out cannot hand a changed interval to
+ * the tests after it: the interval is one practice-wide setting that every
+ * openings read uses. Hold it after making the fixture whose admin `actorId`
+ * is, and before changing the interval. The returned function puts it back at
+ * once, for the test's `finally`.
+ */
+export async function holdBookingInterval(db: SupabaseClient, actorId: string) {
+  const settings = await readSettings(db, actorId);
+  if (!settings.ok) throw new Error("Settings read failed");
+  const found = settings.practice.bookingIntervalMinutes;
+  return registerCleanUp(async () => {
+    await restoreBookingInterval(db, actorId, found);
   });
 }
 
@@ -287,11 +334,9 @@ export async function createSchedulingFixture(db: SupabaseClient, prefix: string
   const providerIds: string[] = [];
   const locationIds: string[] = [];
   const typeIds: string[] = [];
-  async function dispose() {
+  const dispose = registerCleanUp(async () => {
     await removeSchedulingFixture(db, staff.userId, staff.email, patientIds);
-    undisposed.delete(staff.userId);
-  }
-  undisposed.set(staff.userId, dispose);
+  });
   async function save(input: Readonly<SchedulingWrite>) {
     return saveScheduling(db, staff.userId, input);
   }
