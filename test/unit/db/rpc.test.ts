@@ -47,8 +47,10 @@ void describe("rpc against the database", { skip: !connected }, () => {
 
   before(async () => {
     db = openDatabase(postgresUrl, undefined);
-    const rows = await db.$client.unsafe(
-      "select user_id::text as id from public.staff_profiles where active and onboarded_at is not null limit 1",
+    const rows = await db.transaction((sql) =>
+      sql.unsafe(
+        "select user_id::text as id from public.staff_profiles where active and onboarded_at is not null limit 1",
+      ),
     );
     staffId =
       z
@@ -58,13 +60,17 @@ void describe("rpc against the database", { skip: !connected }, () => {
   });
 
   after(async () => {
-    await db.$client.end();
+    await db.close();
   });
 
   void it("returns a scalar result as its JSON value", async () => {
     const [direct] = z
       .tuple([z.object({ minutes: z.number() })])
-      .parse(await db.$client.unsafe("select public.portal_booking_interval() as minutes"));
+      .parse(
+        await db.transaction((sql) =>
+          sql.unsafe("select public.portal_booking_interval() as minutes"),
+        ),
+      );
     assert.deepEqual(await rpc(db, "portal_booking_interval", {}), {
       data: direct.minutes,
       error: null,
@@ -138,12 +144,12 @@ void describe("rpc against the database", { skip: !connected }, () => {
     async function whileStaffLocked(call: () => Promise<void>): Promise<void> {
       const holder = openDatabase(postgresUrl, undefined);
       try {
-        await holder.$client.begin(async (sql) => {
+        await holder.transaction(async (sql) => {
           await sql.unsafe("lock table public.staff_profiles in access exclusive mode");
           await call();
         });
       } finally {
-        await holder.$client.end();
+        await holder.close();
       }
     }
 

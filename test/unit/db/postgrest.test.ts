@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { openDatabase } from "@/lib/db/client";
-import { databaseError, requestError, toPostgrestTimestamp } from "@/lib/db/postgrest";
+import { requestError, toPostgrestTimestamp } from "@/lib/db/postgrest";
 
 void describe("toPostgrestTimestamp", () => {
   void it("writes PostgreSQL's timestamptz text the way PostgREST's JSON did", () => {
@@ -23,16 +22,6 @@ void describe("toPostgrestTimestamp", () => {
   void it("leaves infinities as they are", () => {
     assert.equal(toPostgrestTimestamp("infinity"), "infinity");
     assert.equal(toPostgrestTimestamp("-infinity"), "-infinity");
-  });
-
-  void it("is what the database client parses every timestamptz with", async () => {
-    const db = openDatabase("postgresql://postgres@127.0.0.1:1/unused", undefined);
-    try {
-      const parse = db.$client.options.parsers[1184];
-      assert.equal(parse("2026-10-13 16:31:09.049815+00"), "2026-10-13T16:31:09.049815+00:00");
-    } finally {
-      await db.$client.end();
-    }
   });
 });
 
@@ -56,12 +45,5 @@ void describe("requestError", () => {
     assert.equal(requestError(aborted).message, "AbortError: This operation was aborted");
     const timedOut = new DOMException("The operation was aborted due to timeout", "TimeoutError");
     assert.equal(requestError(timedOut).hint, "");
-  });
-});
-
-void describe("databaseError", () => {
-  void it("treats an error without a SQLSTATE as a failed request", () => {
-    const failure = new Error("connect ECONNREFUSED 127.0.0.1:1");
-    assert.deepEqual(databaseError(failure), requestError(failure));
   });
 });

@@ -105,7 +105,7 @@ const REGISTRY_QUERY = `
 
 /** Differences between the generated registry and what the database exposes. */
 async function registryDrift(db) {
-  const [{ functions }] = await db.$client.unsafe(REGISTRY_QUERY);
+  const [{ functions }] = await db.transaction((sql) => sql.unsafe(REGISTRY_QUERY));
   const live = new Map(
     JSON.parse(functions).map((fn) => [
       fn.name,
@@ -130,11 +130,13 @@ async function registryDrift(db) {
 }
 
 async function staffActors(db) {
-  const rows = await db.$client.unsafe(`
+  const rows = await db.transaction((sql) =>
+    sql.unsafe(`
     select distinct on (role) role, user_id::text as id
     from public.staff_profiles
     where active and onboarded_at is not null
-    order by role, onboarded_at`);
+    order by role, onboarded_at`),
+  );
   return new Map(rows.map((row) => [row.role, row.id]));
 }
 
@@ -189,12 +191,14 @@ function cases(actors) {
 }
 
 async function assertReadOnly(db, names) {
-  const rows = await db.$client.unsafe(
-    `select p.proname as name, p.provolatile as volatility
-     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-     where n.nspname = 'public'
-       and p.proname in (select json_array_elements_text($1::text::json))`,
-    [JSON.stringify([...names])],
+  const rows = await db.transaction((sql) =>
+    sql.unsafe(
+      `select p.proname as name, p.provolatile as volatility
+       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public'
+         and p.proname in (select json_array_elements_text($1::text::json))`,
+      [JSON.stringify([...names])],
+    ),
   );
   const refused = [...names].filter((name) => {
     const overloads = rows.filter((row) => row.name === name);
@@ -262,7 +266,7 @@ async function main() {
       console.log("note no onboarded staff on this branch; staff pages were not compared");
     }
   } finally {
-    await db.$client.end();
+    await db.close();
   }
   if (failures > 0) {
     console.error(`${failures} parity check(s) failed`);

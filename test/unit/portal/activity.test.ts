@@ -17,7 +17,7 @@ void describe("readActivity without a database", () => {
         code: "unavailable",
       });
     } finally {
-      await db.$client.end();
+      await db.close();
     }
   });
 
@@ -29,7 +29,7 @@ void describe("readActivity without a database", () => {
         code: "invalid_command",
       });
     } finally {
-      await db.$client.end();
+      await db.close();
     }
   });
 });
@@ -42,8 +42,10 @@ void describe("readActivity against the database", { skip: postgresUrl === "" },
 
   before(async () => {
     db = openDatabase(postgresUrl, undefined);
-    const rows = await db.$client.unsafe(
-      "select user_id::text as id from public.staff_profiles where active and onboarded_at is not null limit 1",
+    const rows = await db.transaction((sql) =>
+      sql.unsafe(
+        "select user_id::text as id from public.staff_profiles where active and onboarded_at is not null limit 1",
+      ),
     );
     staffId =
       z
@@ -53,7 +55,7 @@ void describe("readActivity against the database", { skip: postgresUrl === "" },
   });
 
   after(async () => {
-    await db.$client.end();
+    await db.close();
   });
 
   void it("passes the database's refusal of an unknown actor through", async () => {
