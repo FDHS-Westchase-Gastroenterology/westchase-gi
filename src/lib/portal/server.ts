@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 
 import { openDatabase } from "@/lib/db/client";
 import type { Database } from "@/lib/db/client";
+import { databaseSource } from "@/lib/db/source";
 
 function requiredEnv(names: readonly string[]): string {
   for (const name of names) {
@@ -105,10 +106,14 @@ let sharedDatabase: Database | undefined;
 
 /**
  * The portal's database: a direct Postgres connection to the same Supabase database the
- * service client reaches through PostgREST, from `POSTGRES_URL`. One pool per server
- * instance, opened on first use, so a build without the variable still succeeds.
+ * service client reaches through PostgREST, from `databaseSource()`. One pool per server
+ * instance, opened on first use, so a build without a database still succeeds; without one,
+ * this throws `DatabaseNotConfigured`, which each caller turns into its `unavailable` outcome.
  */
 export function database(): Database {
-  sharedDatabase ??= openDatabase(requiredEnv(["POSTGRES_URL"]), supabaseUrl());
+  if (sharedDatabase === undefined) {
+    const { postgresUrl, supabaseUrl: apiUrl } = databaseSource();
+    sharedDatabase = openDatabase(postgresUrl, apiUrl);
+  }
   return sharedDatabase;
 }
