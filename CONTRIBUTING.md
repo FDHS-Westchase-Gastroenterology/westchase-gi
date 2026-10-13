@@ -296,6 +296,10 @@ Oxlint must report zero warnings and errors, oxfmt must report no drift, React D
 adds coverage for the changed behavior; it does not replace these gates. UI-visible changes also
 require the [visual evidence](#ui-changes) described below.
 
+`npm run gates` runs the four in that order: one line for each clean gate, the full output of a
+failing one, and a non-zero exit when any fails. In a checkout without `.env.local` it builds
+against the no-credentials placeholders below.
+
 ### What to run — without credentials
 
 This set is exactly the CI `quality` job (`.github/workflows/ci.yml`). It needs no
@@ -370,6 +374,20 @@ map them to the names in `.env.example`, and set `SUPABASE_PREVIEW_BRANCH=1`.
 `e2e/harness/target-guard.ts` binds the project reference to the URL, requires the hosted-branch
 marker, and rejects Production before the first database call. [`test/README.md`](test/README.md)
 describes the test tiers and shared harness.
+
+`npm run e2e -- <playwright arguments>` is the workstation entry point for these runs. It sets
+`SUPABASE_PREVIEW_BRANCH=1` and `NEXT_DIST_DIR=.next-e2e` unless they are already set, stops before
+starting anything when another checkout's server holds :3100 (Playwright reuses whatever answers
+there, so the run would test that checkout's code), and keeps the machine awake until the run ends.
+`--branch-env <path>` loads the branch's variables from a file; a value already in the environment
+wins over the file, and the file wins over `.env.local`. The target guard still decides whether the
+database is safe.
+
+`.next-e2e` is the only alternate build directory. An output directory that is not ignored enters
+Tailwind's source scan and breaks the stylesheet of a dev server already running from the same
+checkout, so do not introduce another one. A worktree installs from the lockfile; `node_modules` is
+never linked or copied between checkouts, because Turbopack rejects a linked tree and `npm ci` can
+follow the link and empty the other checkout's dependencies.
 
 Coordinate use of the database across the entire branch stack. Never run two Playwright
 processes, fixture resets, or conflicting migrations against it concurrently, including CI jobs

@@ -81,6 +81,10 @@ The standing gates are:
 - A diff that adds or changes motion (`transition`, `animation`, `@starting-style`, `--motion-*`, `motion/react`) carries a `review-animations` verdict in the turn's report, in the Before / After / Why table from `.claude/rules/design-eng.md`. Lint, format, React Doctor, and the build cannot see motion quality, so they do not replace it.
 - Visual evidence is in the pull-request conversation for every UI-visible change. A single-state change needs before and after screenshots. A new workflow or a feature with more than one authored step needs a video of that path. A clean lint score with no visual evidence is a failed loop.
 
+`npm run gates` runs the four command gates above in order, prints one line for a clean gate and the
+full output of a failing one, and exits non-zero when any of them fails. It does not check the
+motion review or the visual evidence.
+
 An extra check you are asked to run, including a single oxlint rule, is added to this list and does not replace it. Run the extra check first, then the standing gates; if a gate fails, fix it and rerun everything that already passed, because a later fix can reopen an earlier one.
 
 The turn, the pull request, and the worktree merge all wait on every gate being clean.
