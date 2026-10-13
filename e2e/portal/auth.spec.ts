@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { signInIdentifierField } from "../../src/lib/portal/staff-language";
 import { expectDenied, requireDecoded, requireText } from "../harness/assert";
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { publishableDb, seedAdmin, serviceDb } from "../harness/env";
 
 const { email: SEED_ADMIN_EMAIL, password: SEED_ADMIN_PASSWORD } = seedAdmin();
@@ -414,7 +415,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       await expect(page.getByRole("alert").filter({ hasText: "invalid or expired" })).toBeVisible();
     } finally {
       if (profileId !== null && profileId !== "") {
-        await db.from("audit_log").delete().eq("entity_id", profileId);
+        await deleteAuditRows({ entityIds: [profileId] });
       }
       await db.from("staff_profiles").delete().eq("user_id", userId);
       await db.auth.admin.deleteUser(userId);
@@ -556,7 +557,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       expect(afterSuccessAudit.data).toHaveLength(1);
     } finally {
       if (profileId !== null && profileId !== "") {
-        await db.from("audit_log").delete().eq("entity_id", profileId);
+        await deleteAuditRows({ entityIds: [profileId] });
       }
       await db.from("staff_profiles").delete().eq("user_id", userId);
       await db.auth.admin.deleteUser(userId);
@@ -724,7 +725,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       }
     } finally {
       if (profileId !== null && profileId !== "") {
-        await db.from("audit_log").delete().eq("entity_id", profileId);
+        await deleteAuditRows({ entityIds: [profileId] });
       }
       await db.from("staff_profiles").delete().eq("user_id", userId);
       await db.auth.admin.deleteUser(userId);
@@ -816,7 +817,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
         await loginProbe.auth.signOut();
       } finally {
         if (profileId !== null && profileId !== "") {
-          await db.from("audit_log").delete().eq("entity_id", profileId);
+          await deleteAuditRows({ entityIds: [profileId] });
         }
         await db.from("staff_profiles").delete().eq("user_id", userId);
         await db.auth.admin.deleteUser(userId);
