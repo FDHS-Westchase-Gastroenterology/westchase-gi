@@ -2,7 +2,7 @@
 
 ## Progress
 
-**Status:** Step 1's real work is done and merged into PR #224 (#402, merge `10bfd7a1`, 2026-10-13): the dependency map, the migration-order proof, the file-date fix and the settled defaults in `inventory.md`. Step 1 stays unticked only because billing and Vercel analytics removal is deferred; that removal blocks nothing. Step 2 (the AWS foundation) is next. No migration code yet: no Terraform, no Drizzle, and the app still runs on Supabase and Vercel. Most of Jason's AWS setup is done (see below).
+**Status:** Step 1's real work is done and merged into PR #224 (#402, merge `10bfd7a1`, 2026-10-13): the dependency map, the migration-order proof, the file-date fix and the settled defaults in `inventory.md`. Step 1 stays unticked only because billing and Vercel analytics removal is deferred; that removal blocks nothing. Step 2 (the AWS foundation) is in progress: the Terraform foundation (`infra/`, branch `init-1/terraform-foundation`) is planned against the `wgi` account and open for red-team review; nothing is applied. No Drizzle yet, and the app still runs on Supabase and Vercel. Most of Jason's AWS setup is done (see below).
 
 **Known CI failures, not caused by INIT-1:** `supabase-integration` fails the same 2 specs on PR #224 from at least `d7f9f4d2` (2026-10-07) and `b45cec60` (2026-10-09), before #402: `e2e/boundaries/notification-test.spec.ts` (Settings › Notifications test send) and `e2e/boundaries/schedule-month-availability.spec.ts` (month availability). The migration lineage and schema checks in that job pass. Fix them before relying on the suite as the regression contract.
 
@@ -35,7 +35,7 @@ Waiting on Jason:
 - [ ] Export the DNS zone from Porkbun, then swap the four nameservers once the Route 53 zone is ready.
 - [ ] Tell Juliet that staff will add an authenticator app or passkey at first sign-in, and may need to set a new password.
 - [ ] Put the Resend API key in Secrets Manager in both accounts, and the Supabase database connection string in production's.
-- [ ] Confirm admin on the GitHub repo and create the `production` environment with yourself as required reviewer.
+- [ ] Confirm admin on the GitHub repo and create the `aws-production` environment with yourself as required reviewer, before `infra/shared` is applied (`infra/README.md`, "Before the first apply"). The existing `Production` environment is Vercel's; leave it alone.
 - [ ] Click the AWS notification confirmation email when it arrives, so alarms reach you.
 - [ ] Sign the BAA with FDHS (not needed for the cut-over; the eCW connection in INIT-2 needs it).
 - [ ] Check the data with the clinic after the cut-over and sign off.

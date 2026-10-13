@@ -1,0 +1,140 @@
+name: Infrastructure
+
+# Checks for the Terraform under infra/.
+#
+# static  runs on every pull request that touches infra/. It needs no AWS
+#         credentials: formatting, validation of each root without a backend,
+#         and a checkov scan. Skips are written inline next to the resource,
+#         each with its reason.
+# plan    runs once the plan role exists, its ARN is stored as the repository
+#         secret TF_PLAN_ROLE_ARN and the repository variable TF_PLAN_ENABLED is
+#         "true" (see infra/README.md). The ARN is a secret, not a variable,
+#         because this repository is public and Actions prints step inputs in
+#         the log. The job assumes wgi-github-plan through OIDC, which reads
+#         metadata and non-production state only, and plans without taking the
+#         state lock. The job summary lists each resource address and its
+#         planned action, never attribute values. Pull requests from forks
+#         never get it.
+
+on:
+  pull_request:
+    paths:
+      - "infra/**"
+      - ".github/workflows/infra.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: infra-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  TERRAFORM_VERSION: "1.16.4"
+  CHECKOV_VERSION: "3.3.28"
+
+jobs:
+  static:
+    name: fmt, validate and checkov
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: Check formatting
+        run: terraform fmt -check -recursive -diff infra
+
+      - name: Validate each root
+        run: |
+          set -euo pipefail
+          for root in bootstrap shared; do
+            echo "::group::infra/$root"
+            terraform -chdir="infra/$root" init -backend=false -input=false
+            terraform -chdir="infra/$root" validate
+            echo "::endgroup::"
+          done
+
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+
+      - name: Scan with checkov
+        run: uvx "checkov@${CHECKOV_VERSION}" --directory infra --framework terraform --compact --quiet
+
+  plan:
+    name: plan (${{ matrix.root }})
+    needs: static
+    if: >-
+      vars.TF_PLAN_ENABLED == 'true' &&
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        root: [bootstrap, shared]
+    env:
+      TF_IN_AUTOMATION: "1"
+      TF_INPUT: "0"
+      TF_ROOT: infra/${{ matrix.root }}
+      TF_VAR_alarm_email: ${{ secrets.ALARM_EMAIL }}
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ secrets.TF_PLAN_ROLE_ARN }}
+          role-session-name: infra-plan-${{ github.run_id }}
+          aws-region: us-east-2
+          mask-aws-account-id: true
+
+      - name: Initialize
+        run: terraform -chdir="$TF_ROOT" init
+
+      # The plan role cannot write state, so the plan runs without the lock.
+      # The plan text stays on the runner; errors reach the log with account
+      # IDs replaced, since masking covers only the exact strings it knows.
+      - name: Plan
+        run: |
+          set -uo pipefail
+          status=0
+          terraform -chdir="$TF_ROOT" plan -lock=false -no-color -out=tfplan > /dev/null 2> plan.err || status=$?
+          sed -E 's/[0-9]{12}/<acct>/g' plan.err >&2
+          exit "$status"
+
+      # Only resource addresses and their actions are published. Attribute
+      # values (ARNs, the alarm address, policies) never leave the runner,
+      # because this repository's logs and summaries are public.
+      - name: Publish the plan summary
+        if: always()
+        run: |
+          set -euo pipefail
+          plan="$TF_ROOT/tfplan"
+          [ -f "$plan" ] || exit 0
+          terraform -chdir="$TF_ROOT" show -json tfplan > plan.json
+          {
+            echo "### $TF_ROOT"
+            echo
+            jq -r '[.resource_changes[]? | .change.actions | select(. != ["no-op"]) | join("/")] | group_by(.) | map("\(length) \(.[0])") | if length == 0 then "No changes." else join(", ") end' plan.json
+            echo
+            echo '```'
+            jq -r '.resource_changes[]? | select(.change.actions != ["no-op"]) | "\(.change.actions | join("/")) \(.address)"' plan.json | sed -E 's/[0-9]{12}/<acct>/g'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
