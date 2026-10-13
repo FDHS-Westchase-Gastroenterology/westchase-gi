@@ -371,7 +371,11 @@ async function testSendAllowed(db: ServiceClient, userId: string): Promise<boole
   return result.error === null && parsed.success ? parsed.data : null;
 }
 
-const testNotificationSchema = z.strictObject({ recipientId: z.uuid() }).nullable();
+/** No input and `{}` both mean every address that is on; `{ recipientId }` names one address. */
+const testNotificationSchema = z
+  .strictObject({ recipientId: z.uuid().optional() })
+  .nullable()
+  .transform((input) => input?.recipientId ?? null);
 
 /**
  * Sends the new-request email, marked as a test, to one address (on or paused) when the input
@@ -387,6 +391,7 @@ export async function sendTestNotificationMutation(
   if (!parsed.success) {
     return failure("invalid", "That address isn't on the list anymore.");
   }
+  const recipientId = parsed.data;
   const db = serviceClient();
   const link = portalUrl("/admin");
   if (link === null) {
@@ -395,13 +400,13 @@ export async function sendTestNotificationMutation(
 
   const query = db.from("notification_recipients").select("id, email").order("email");
   const { data: recipients, error } = await (
-    parsed.data === null ? query.eq("active", true) : query.eq("id", parsed.data.recipientId)
+    recipientId === null ? query.eq("active", true) : query.eq("id", recipientId)
   ).overrideTypes<{ id: string; email: string }[], { merge: false }>();
   if (error !== null) {
     return failure("unavailable", "The notification list couldn't be read.");
   }
   if (recipients.length === 0) {
-    return parsed.data === null
+    return recipientId === null
       ? failure("none_on", "No address is on, so there is nobody to send a test to.")
       : failure("not_found", "That address isn't on the list anymore.");
   }
