@@ -23,8 +23,10 @@ import {
 } from "../../src/lib/portal/scheduling/settings-contracts";
 import type { SettingsCommand } from "../../src/lib/portal/scheduling/settings-contracts";
 import { resolveAppointmentStart } from "../../src/lib/portal/scheduling/time";
+import { removedRows } from "./cleanup";
+import type { RemovedRows } from "./cleanup";
 import { removePatients, savePatient } from "./patients";
-import { createStaffFixture } from "./session";
+import { createStaffFixture, removeStaffAccount } from "./session";
 
 type SchedulingWrite = Extract<SchedulingInput, { action: "configure" | "command" }>;
 
@@ -221,6 +223,42 @@ export function schedulingFixtureDate(days = 14) {
   return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
 }
 
+/**
+ * Removes everything a scheduling fixture's admin created, children before
+ * parents: appointments, then providers (their hours go with them), visit
+ * types and offices, then patients, the admin's audit rows, and the admin.
+ * The fixture's own dispose and global setup's stale-fixture sweep both call
+ * it. Every step deletes by owner, so a rerun after an interruption finishes
+ * what is left.
+ */
+export async function removeSchedulingFixture(
+  db: SupabaseClient,
+  userId: string,
+  email: string,
+  patientIds: readonly string[],
+): Promise<readonly RemovedRows[]> {
+  const removed = [
+    removedRows(
+      "appointments",
+      await db.from("appointments").delete({ count: "exact" }).eq("created_by", userId),
+    ),
+  ];
+  for (const table of ["scheduling_providers", "appointment_types", "scheduling_locations"]) {
+    removed.push(
+      removedRows(table, await db.from(table).delete({ count: "exact" }).eq("created_by", userId)),
+    );
+  }
+  removed.push(...(await removePatients(db, patientIds)));
+  removed.push(
+    removedRows(
+      "audit_log:actor",
+      await db.from("audit_log").delete({ count: "exact" }).eq("actor_email", email),
+    ),
+  );
+  removed.push(...(await removeStaffAccount(db, userId)));
+  return removed;
+}
+
 export async function createSchedulingFixture(db: SupabaseClient, prefix: string) {
   const staff = await createStaffFixture(db, {
     prefix,
@@ -232,16 +270,7 @@ export async function createSchedulingFixture(db: SupabaseClient, prefix: string
   const locationIds: string[] = [];
   const typeIds: string[] = [];
   async function dispose() {
-    const appointments = await db.from("appointments").delete().eq("created_by", staff.userId);
-    expect(appointments.error).toBeNull();
-    for (const table of ["scheduling_providers", "appointment_types", "scheduling_locations"]) {
-      const removed = await db.from(table).delete().eq("created_by", staff.userId);
-      expect(removed.error).toBeNull();
-    }
-    await removePatients(db, patientIds);
-    const audits = await db.from("audit_log").delete().eq("actor_email", staff.email);
-    expect(audits.error).toBeNull();
-    await staff.dispose();
+    await removeSchedulingFixture(db, staff.userId, staff.email, patientIds);
   }
   async function save(input: Readonly<SchedulingWrite>) {
     return saveScheduling(db, staff.userId, input);
