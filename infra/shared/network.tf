@@ -2,7 +2,9 @@
 # production. Three tiers:
 #   public  - the load balancer and the NAT gateway; nothing else gets a public IP
 #   app     - ECS tasks, including one-off run-task jobs (migrations, e2e runs);
-#             outbound internet through the NAT gateway, S3 through a gateway endpoint
+#             outbound internet through the NAT gateway, S3 through a gateway
+#             endpoint, and ECR, Secrets Manager, KMS and CloudWatch Logs
+#             through interface endpoints
 #   db      - RDS only; no route to the internet in either direction, and a
 #             network ACL that admits PostgreSQL from the app tier and nothing else
 # Environments are separated inside the VPC by security groups, IAM roles and
@@ -194,6 +196,58 @@ resource "aws_vpc_endpoint" "s3" {
 
   tags = {
     Name = "wgi-s3"
+  }
+}
+
+# Interface endpoints in both app subnets, with private DNS, so image pulls,
+# secret reads, KMS calls and log delivery from the VPC never leave the AWS
+# network. Production's secrets can then require aws:SourceVpce, which a call
+# from outside the VPC cannot satisfy. Each endpoint's security group admits
+# HTTPS from the VPC and nothing else; it needs no egress rule, because
+# security groups return replies statefully. The endpoint policies stay at the
+# default: the GuardDuty agent's sidecar image comes from an AWS-owned ECR
+# registry, and IAM and the resource policies on keys and secrets do the
+# narrowing.
+locals {
+  interface_endpoints = toset(["ecr.api", "ecr.dkr", "secretsmanager", "kms", "logs"])
+}
+
+resource "aws_security_group" "endpoint" {
+  # checkov:skip=CKV2_AWS_5: attached to aws_vpc_endpoint.interface for the same key; the graph check misses some for_each edges
+  for_each = local.interface_endpoints
+
+  name        = "wgi-vpce-${replace(each.key, ".", "-")}"
+  description = "HTTPS from the VPC to the ${each.key} interface endpoint"
+  vpc_id      = aws_vpc.main.id
+
+  tags = {
+    Name = "wgi-vpce-${replace(each.key, ".", "-")}"
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "endpoint_https" {
+  for_each = local.interface_endpoints
+
+  security_group_id = aws_security_group.endpoint[each.key].id
+  description       = "HTTPS from the VPC"
+  ip_protocol       = "tcp"
+  from_port         = 443
+  to_port           = 443
+  cidr_ipv4         = aws_vpc.main.cidr_block
+}
+
+resource "aws_vpc_endpoint" "interface" {
+  for_each = local.interface_endpoints
+
+  vpc_id              = aws_vpc.main.id
+  service_name        = "com.amazonaws.${local.region}.${each.key}"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+  subnet_ids          = [aws_subnet.main["app-a"].id, aws_subnet.main["app-b"].id]
+  security_group_ids  = [aws_security_group.endpoint[each.key].id]
+
+  tags = {
+    Name = "wgi-${replace(each.key, ".", "-")}"
   }
 }
 

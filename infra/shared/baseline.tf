@@ -28,18 +28,28 @@ resource "aws_guardduty_detector" "account" {
 
 # Protection plans, set explicitly so a plan shows what is billed.
 # Enabled: S3 data events, RDS login events and Lambda network activity, which
-# cover the resources the app will run on and cost nothing while idle.
-# Disabled: EKS (not used); EBS malware scans (Fargate has no EBS volumes);
-# Runtime Monitoring, whose ECS agent creates VPC endpoints and security groups
-# outside Terraform. The environment roots decide on Runtime Monitoring.
+# cover the resources the app will run on and cost nothing while idle; and
+# Runtime Monitoring with GuardDuty managing the agent on ECS Fargate, billed
+# per vCPU of the tasks it watches. For each new Fargate task GuardDuty adds a
+# sidecar that runs its security agent, and it creates a guardduty-data VPC
+# endpoint and its security group in each VPC that hosts a cluster. GuardDuty
+# owns that endpoint and group, not Terraform. Task execution roles need ECR
+# pull permissions for the sidecar image, and task security groups need 443
+# egress.
+# Disabled: EKS (not used); EBS malware scans (Fargate has no EBS volumes).
 locals {
   guardduty_features = {
     S3_DATA_EVENTS         = "ENABLED"
     RDS_LOGIN_EVENTS       = "ENABLED"
     LAMBDA_NETWORK_LOGS    = "ENABLED"
+    RUNTIME_MONITORING     = "ENABLED"
     EKS_AUDIT_LOGS         = "DISABLED"
     EBS_MALWARE_PROTECTION = "DISABLED"
-    RUNTIME_MONITORING     = "DISABLED"
+  }
+
+  # Agent management for Runtime Monitoring: Fargate only.
+  guardduty_runtime_agent_management = {
+    ECS_FARGATE_AGENT_MANAGEMENT = "ENABLED"
   }
 
   guardduty_region_features = {
@@ -59,6 +69,15 @@ resource "aws_guardduty_detector_feature" "account" {
   detector_id = aws_guardduty_detector.account[each.value.region].id
   name        = each.value.feature
   status      = each.value.status
+
+  dynamic "additional_configuration" {
+    for_each = each.value.feature == "RUNTIME_MONITORING" ? local.guardduty_runtime_agent_management : {}
+
+    content {
+      name   = additional_configuration.key
+      status = additional_configuration.value
+    }
+  }
 }
 
 # IAM Access Analyzer reports any resource in the Region that is shared outside

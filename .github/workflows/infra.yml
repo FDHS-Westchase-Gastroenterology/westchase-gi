@@ -109,14 +109,15 @@ jobs:
         run: terraform -chdir="$TF_ROOT" init
 
       # The plan role cannot write state, so the plan runs without the lock.
-      # The plan text stays on the runner; errors reach the log with account
-      # IDs replaced, since masking covers only the exact strings it knows.
+      # The plan text stays on the runner; errors reach the log with every ARN
+      # and then every remaining account ID replaced, since masking covers only
+      # the exact strings it knows.
       - name: Plan
         run: |
           set -uo pipefail
           status=0
           terraform -chdir="$TF_ROOT" plan -lock=false -no-color -out=tfplan > /dev/null 2> plan.err || status=$?
-          sed -E 's/[0-9]{12}/<acct>/g' plan.err >&2
+          sed -E -e 's/arn:aws[^ "]*/<arn>/g' -e 's/[0-9]{12}/<acct>/g' plan.err >&2
           exit "$status"
 
       # Only resource addresses and their actions are published. Attribute

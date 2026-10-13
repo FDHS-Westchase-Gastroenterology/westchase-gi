@@ -14,13 +14,35 @@ module "state_key" {
   via_services = ["s3.${local.region}.amazonaws.com"]
 }
 
-# Production state changes only through the production deploy role, which only
-# a GitHub Actions job in the protected production environment can assume. Any
-# other principal, an administrator or an agent included, can read production
-# state but cannot write, lock or delete it. Changing this statement is the
-# break-glass path; infra/shared alarms on every change to this bucket policy
+# Production state is read and changed only through the production deploy role,
+# which only a GitHub Actions job in the protected production environment can
+# assume. Every other principal, the account root, administrators and agents
+# included, can neither read production state nor write, lock or delete it.
+# Editing these statements is the break-glass path (infra/README.md, "Break
+# glass"); infra/shared alarms on every change to this bucket policy
 # (protected-bucket-policy-changed).
 data "aws_iam_policy_document" "state_bucket" {
+  statement {
+    sid    = "DenyProductionStateReadsExceptProductionDeployRole"
+    effect = "Deny"
+    actions = [
+      "s3:GetObject",
+      "s3:GetObjectVersion",
+    ]
+    resources = ["arn:${data.aws_partition.current.partition}:s3:::${var.state_bucket_name}/production/*"]
+
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+
+    condition {
+      test     = "ArnNotEquals"
+      variable = "aws:PrincipalArn"
+      values   = [local.production_state_writer_arn]
+    }
+  }
+
   statement {
     sid    = "DenyProductionStateWritesExceptProductionDeployRole"
     effect = "Deny"

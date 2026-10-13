@@ -12,7 +12,7 @@ variable "alarm_email" {
 variable "monthly_budget_usd" {
   type        = number
   description = "Monthly cost budget in USD, measured before credits. Alerts fire at 80% of actual spend and at 100% of forecast spend."
-  default     = 150
+  default     = 200
 }
 
 variable "github_repository" {

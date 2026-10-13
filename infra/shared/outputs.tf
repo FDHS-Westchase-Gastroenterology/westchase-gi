@@ -27,6 +27,14 @@ output "route_table_ids" {
   }
 }
 
+output "vpc_endpoint_ids" {
+  description = "VPC endpoint IDs by service (s3, ecr.api, ecr.dkr, secretsmanager, kms, logs), for aws:SourceVpce conditions."
+  value = merge(
+    { s3 = aws_vpc_endpoint.s3.id },
+    { for svc, endpoint in aws_vpc_endpoint.interface : svc => endpoint.id },
+  )
+}
+
 output "kms_key_arns" {
   description = "CMK ARNs by purpose."
   value       = { for k, m in module.kms : k => m.arn }

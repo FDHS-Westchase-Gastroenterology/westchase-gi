@@ -6,6 +6,6 @@ variable "state_bucket_name" {
 
 variable "production_state_writer_role_name" {
   type        = string
-  description = "The only IAM role allowed to write or delete objects under production/ in the state bucket: the GitHub Actions production deploy role created by infra/shared."
+  description = "The only IAM role allowed to read, write or delete objects under production/ in the state bucket: the GitHub Actions production deploy role created by infra/shared."
   default     = "wgi-github-deploy-production"
 }

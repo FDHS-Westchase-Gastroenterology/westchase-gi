@@ -1,8 +1,12 @@
-# Customer managed keys, one per purpose. Staging and production never share a
-# key, so a staging role granted a staging key can never read production data.
-# Every key denies direct KMS calls by this account's IAM principals: they reach
-# the key only through the services listed in via_services. The state key lives
-# in infra/bootstrap.
+# Customer managed keys, one per purpose: the shared keys and staging's. The
+# production data and secrets keys are not here. The production root creates
+# them, applied only by the pipeline under wgi-github-deploy-production, with a
+# key policy that grants the account root no kms:*, so IAM permissions alone
+# never reach a production key; only the principals its policy names do.
+# Administrator and agent shells never create or administer a production key.
+# Staging and production never share a key. Every key here denies direct KMS
+# calls by this account's IAM principals: they reach the key only through the
+# services listed in via_services. The state key lives in infra/bootstrap.
 
 locals {
   # CloudWatch Logs log groups each environment's data key may encrypt. RDS log
@@ -12,11 +16,6 @@ locals {
       "arn:${local.partition}:logs:${local.region}:${local.account_id}:log-group:/wgi/staging/*",
       "arn:${local.partition}:logs:${local.region}:${local.account_id}:log-group:/aws/rds/instance/wgi-staging-*",
       "arn:${local.partition}:logs:${local.region}:${local.account_id}:log-group:/aws/rds/cluster/wgi-staging-*",
-    ]
-    production = [
-      "arn:${local.partition}:logs:${local.region}:${local.account_id}:log-group:/wgi/production/*",
-      "arn:${local.partition}:logs:${local.region}:${local.account_id}:log-group:/aws/rds/instance/wgi-production-*",
-      "arn:${local.partition}:logs:${local.region}:${local.account_id}:log-group:/aws/rds/cluster/wgi-production-*",
     ]
   }
 
@@ -53,20 +52,6 @@ locals {
       name         = "wgi-staging-secrets"
       env          = "staging"
       description  = "Encrypts staging and preview secrets in Secrets Manager"
-      via_services = ["secretsmanager.${local.region}.amazonaws.com"]
-      policies     = []
-    }
-    production_data = {
-      name         = "wgi-production-data"
-      env          = "production"
-      description  = "Encrypts production databases, buckets and application logs (patient data)"
-      via_services = ["rds.${local.region}.amazonaws.com", "s3.${local.region}.amazonaws.com"]
-      policies     = [data.aws_iam_policy_document.environment_logs["production"].json]
-    }
-    production_secrets = {
-      name         = "wgi-production-secrets"
-      env          = "production"
-      description  = "Encrypts production secrets in Secrets Manager"
       via_services = ["secretsmanager.${local.region}.amazonaws.com"]
       policies     = []
     }

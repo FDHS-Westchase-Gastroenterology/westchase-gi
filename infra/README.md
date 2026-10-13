@@ -19,7 +19,8 @@ multi-Region.
 | `modules/github-oidc-role/` | An IAM role that trusts exact GitHub Actions token subjects | |
 
 Environment roots (`staging/`, `production/`, previews) come in later pull requests and read
-`shared/` through its outputs.
+`shared/` through its outputs. `production/` also creates production's data and secrets keys, and
+only the pipeline applies it, under `wgi-github-deploy-production`.
 
 Versions: Terraform `>= 1.10` (CI pins 1.16.4), AWS provider `~> 6.68`. Both roots commit
 `.terraform.lock.hcl`. The backend uses S3 native locking (`use_lockfile = true`); there is no
@@ -38,26 +39,42 @@ DynamoDB table.
   trail change, a KMS key disabled or scheduled for deletion, an IAM user, access key or console
   password being created, and any change to the state or audit bucket policy.
 - **Account baseline.** S3 account-level public access block, EBS default encryption, GuardDuty
-  (S3, RDS login and Lambda network protection; EKS, EBS malware scan and Runtime Monitoring off)
-  and an IAM Access Analyzer in both Regions. us-east-1 findings are forwarded to the us-east-2
-  event bus. GuardDuty findings of Medium severity and above, and every new active Access Analyzer
-  finding, go to the alerts topic.
+  and an IAM Access Analyzer in both Regions. GuardDuty runs S3, RDS login and Lambda network
+  protection, and Runtime Monitoring with GuardDuty managing the agent on ECS Fargate; EKS and EBS
+  malware scans are off. us-east-1 findings are forwarded to the us-east-2 event bus. GuardDuty
+  findings of Medium severity and above, and every new active Access Analyzer finding, go to the
+  alerts topic.
+- **Runtime Monitoring on Fargate.** GuardDuty adds a sidecar running its security agent to each
+  new Fargate task, and creates a `guardduty-data` VPC endpoint and its security group in each VPC
+  that hosts a cluster. GuardDuty owns that endpoint and group; Terraform does not manage them, and
+  they cost nothing. Environment roots give each task execution role ECR pull permissions (the
+  sidecar image comes from an AWS-owned registry) and each task security group 443 egress. A
+  cluster tagged `GuardDutyManaged: false` gets no agent, so no environment root sets that tag.
 - **AWS Config.** Continuous recording of every supported resource in us-east-2 plus global IAM
   resources, delivered to the audit bucket. No rules or conformance packs; see
   [Config and Security Hub](#config-and-security-hub).
 - **KMS keys, one per purpose.** `wgi-audit-logs`, `wgi-alerts`, `wgi-artifacts` (ECR),
-  `wgi-staging-data`, `wgi-staging-secrets`, `wgi-production-data`, `wgi-production-secrets`;
-  `wgi-tfstate` is in `bootstrap/`. All rotate yearly and are protected from `terraform destroy`.
-  Each key denies this account's IAM principals any cryptographic call that does not arrive through
-  the services the key is for (`kms:ViaService`), so a role with broad KMS permissions still cannot
-  decrypt directly. Staging and production never share a key.
+  `wgi-staging-data`, `wgi-staging-secrets`; `wgi-tfstate` is in `bootstrap/`. All rotate yearly
+  and are protected from `terraform destroy`. Each key denies this account's IAM principals any
+  cryptographic call that does not arrive through the services the key is for (`kms:ViaService`),
+  so a role with broad KMS permissions still cannot decrypt directly. Production's data and secrets
+  keys are not here; see [Production keys](#production-keys). Staging and production never share a
+  key.
 - **Network.** VPC `10.20.0.0/16` across us-east-2a and us-east-2b:
 
   | Tier | Subnets | Route out | Holds |
   | --- | --- | --- | --- |
   | public | `10.20.0.0/24`, `10.20.1.0/24` | internet gateway | the load balancer, the NAT gateway |
-  | app | `10.20.16.0/20`, `10.20.32.0/20` | one NAT gateway in zone a; S3 gateway endpoint | ECS services and one-off tasks |
+  | app | `10.20.16.0/20`, `10.20.32.0/20` | one NAT gateway in zone a; S3 gateway endpoint; interface endpoints | ECS services and one-off tasks; the interface endpoints |
   | db | `10.20.64.0/24`, `10.20.65.0/24` | none | RDS only |
+
+  Interface endpoints for `ecr.api`, `ecr.dkr`, `secretsmanager`, `kms` and `logs` sit in both app
+  subnets with private DNS, so image pulls, secret reads, KMS calls and log delivery from the VPC
+  stay on the AWS network. Each has its own security group (`wgi-vpce-<service>`) that admits
+  HTTPS from the VPC CIDR and nothing else. Production's secrets can therefore require
+  `aws:SourceVpce` (the `vpc_endpoint_ids` output), which no call from outside the VPC, a laptop
+  included, satisfies. Endpoint policies stay at the default; IAM and the key and secret policies
+  do the narrowing.
 
   The database tier also has a network ACL that admits PostgreSQL from the app tier and nothing
   else. The default security group admits nothing. VPC flow logs (all traffic) go to the audit
@@ -70,12 +87,13 @@ DynamoDB table.
   repository keeps the newest 200 images overall.
 - **Alerts.** SNS topic `wgi-alerts`, encrypted with `wgi-alerts`, with one email subscription
   whose address is `var.alarm_email` (no default; never committed). A monthly cost budget
-  (`var.monthly_budget_usd`, default $150) alerts at 80% of actual and 100% of forecast spend.
+  (`var.monthly_budget_usd`, default $200) alerts at 80% of actual and 100% of forecast spend.
+  Each environment root that adds standing cost raises it in the same pull request.
 - **DNS.** Public hosted zone `westchasegi.com` with no records beyond the zone's own NS and SOA.
   It is not authoritative until the Porkbun nameservers change.
-- **Tags.** Every resource carries `env`: `shared` from the provider default tags, or `staging` or
-  `production` on the keys and deploy roles that belong to one environment. Guardrails that protect
-  production key on `env = production`, so no other resource may carry it.
+- **Tags.** Every resource carries `env`: `shared` from the provider default tags, `staging` on
+  staging's keys and deploy role, or `production` on the production deploy role. Guardrails that
+  protect production key on `env = production`, so no other resource may carry it.
 
 ## Before the first apply
 
@@ -148,7 +166,9 @@ Then complete the [after-apply steps](#human-steps).
 ### 3. Environment roots
 
 Later pull requests. Each reads `shared/` through `terraform_remote_state` (below) and stores its
-state under its own prefix: `staging/`, `production/`, `preview/`.
+state under its own prefix: `staging/`, `production/`, `preview/`. Nobody applies `production/` by
+hand: only the pipeline does, under `wgi-github-deploy-production`, because no other principal can
+read or write `production/` state or administer production's keys.
 
 ## Outputs contract
 
@@ -170,7 +190,8 @@ data "terraform_remote_state" "shared" {
 | `vpc_id`, `vpc_cidr` | The VPC |
 | `subnet_ids` | Map of tier (`public`, `app`, `db`) to subnet IDs sorted by zone |
 | `route_table_ids` | Map of tier to route table ID |
-| `kms_key_arns`, `kms_key_aliases` | Maps keyed `audit`, `alerts`, `artifacts`, `staging_data`, `staging_secrets`, `production_data`, `production_secrets` |
+| `vpc_endpoint_ids` | Map of service (`s3`, `ecr.api`, `ecr.dkr`, `secretsmanager`, `kms`, `logs`) to VPC endpoint ID, for `aws:SourceVpce` conditions |
+| `kms_key_arns`, `kms_key_aliases` | Maps keyed `audit`, `alerts`, `artifacts`, `staging_data`, `staging_secrets`; production's keys are outputs of `production/` |
 | `alerts_topic_arn` | Where environment alarms publish |
 | `audit_bucket`, `state_bucket` | Bucket names |
 | `ecr_repository_url` | The image repository |
@@ -189,9 +210,12 @@ Renaming or removing an output breaks every environment root that reads it.
 | `wgi-github-deploy-production` | `...:environment:aws-production` (`var.production_environment`) | reads `shared/`, reads and writes `production/` | the same for `wgi-production*`, except that it can pull and tag existing images but not upload layers, and reads no logs |
 
 - Every role session lasts at most one hour. Fork pull requests never receive an OIDC token.
-- The state bucket policy denies writes and deletes under `production/` to every principal except
-  `wgi-github-deploy-production`, administrators included. The break-glass path is editing that
-  bucket policy, which pages the alerts topic.
+- The state bucket policy denies reads, writes and deletes under `production/` to every principal
+  except `wgi-github-deploy-production`, the account root and administrators included. The only
+  way around it is [Break glass](#break-glass).
+- The pull request that adds `production/` also extends `wgi-github-deploy-production` with the
+  permissions to create and administer production's KMS keys. No administrator or agent shell
+  creates or administers a production key.
 - The staging deploy job must not name a GitHub environment: a job that names one gets an
   environment subject, which the staging role does not trust.
 - The staging role is exactly as trustworthy as the staging branch. Anyone who can push to
@@ -200,6 +224,24 @@ Renaming or removing an output breaks every environment root that reads it.
   adds the permissions its `terraform apply` needs, and extends `wgi-terraform-read` with the
   services that root refreshes.
 - CI plans run with `-lock=false`, because `wgi-github-plan` cannot write the lock file.
+
+### Break glass
+
+This is the emergency access procedure for production state (45 CFR 164.312(a)(2)(ii)). Use it
+only when production state must be read or repaired and the pipeline cannot do it: the production
+deploy role or its trust is broken, a lock is stuck, or a state version is corrupt. Jason decides
+to break glass; an agent never does.
+
+1. With administrator credentials, edit the bucket policy of `westchase-gi-tfstate-use2`: remove
+   `DenyProductionStateReadsExceptProductionDeployRole` and, if a write is needed,
+   `DenyProductionStateWritesExceptProductionDeployRole`, or add your role's ARN to their
+   `ArnNotEquals` list. The change fires the `protected-bucket-policy-changed` alarm, which pages
+   the alerts topic.
+2. Do the repair. CloudTrail records every object read and write on the state bucket.
+3. Restore the policy with `terraform -chdir=infra/bootstrap apply`. `bootstrap/` owns the bucket
+   policy, so the apply puts the committed statements back. The alarm fires again.
+4. Record who broke glass, when, why, what was read or changed and when the policy was restored,
+   with the CloudTrail event IDs of both policy changes, in the security incident records.
 
 ### Naming contract
 
@@ -239,13 +281,18 @@ IAM roles, separate KMS keys, separate secrets and separate database servers alr
 deploy roles are scoped by name to their own environment, and each environment's data has its own
 key.
 
-### One NAT gateway
+### One NAT gateway, five interface endpoints
 
-One NAT gateway in zone a. If zone a fails, tasks in zone b lose outbound internet (S3 still
-works through the gateway endpoint). A second NAT gateway costs about $36.50 a month; add it when
-the app's availability target justifies it. Interface endpoints (ECR API, Secrets Manager,
-CloudWatch Logs, STS) are deferred for the same reason: about $14.60 a month each across two
-zones, against NAT traffic that is small at this size.
+One NAT gateway in zone a. If zone a fails, tasks in zone b lose outbound internet, but S3 still
+works through the gateway endpoint, and ECR, Secrets Manager, KMS and CloudWatch Logs through the
+interface endpoints, which run in both zones. A second NAT gateway costs about $36.50 a month; add
+it when the app's availability target justifies it.
+
+The five interface endpoints cost about $73 a month ($0.01 an hour per zone each, plus $0.01 per
+GB processed). They are there for security, not traffic: production's secrets require
+`aws:SourceVpce`, so a stolen credential used from a laptop cannot read them. Image pulls and log
+delivery also stop paying NAT processing. STS is not among them; tasks reach it through the NAT
+gateway, which only matters during a zone a outage.
 
 ### How the e2e suite reaches the private database
 
@@ -263,6 +310,15 @@ deploy roles already allow `RunTask`, `DescribeTasks` and `StopTask` on `wgi-<en
 staging role can read the task's logs. `aws ecs wait tasks-stopped` gives up after about ten
 minutes, so a longer suite polls `describe-tasks` in a loop.
 
+### Production keys
+
+`wgi-production-data` and `wgi-production-secrets` are not in `shared/`. The `production/` root
+creates them, and only the pipeline applies it, under `wgi-github-deploy-production`. Their key
+policy grants the account root no `kms:*`, so no IAM policy, an administrator's included, reaches
+a production key on its own; only the principals the key policy names do. The `shared/` keys keep
+the root statement, because administrators apply `shared/`. The red-team gate checks the
+production key policy (G4) before that root's first apply.
+
 ### Other choices
 
 - **Default VPCs** in us-east-1 and us-east-2 are left in place. Nothing launches into them; removing
@@ -276,9 +332,6 @@ minutes, so a longer suite polls `describe-tasks` in a loop.
 - **Secrets.** Environment roots create empty `aws_secretsmanager_secret` containers and never
   manage `aws_secretsmanager_secret_version`, so no secret value reaches state. RDS uses
   `manage_master_user_password`.
-- **Production key use.** The production data key admits any IAM principal in the account that
-  arrives through RDS or S3 and holds IAM permission for it. The production root narrows that to
-  its own task roles when it adds them.
 
 ## Known properties
 
@@ -334,7 +387,8 @@ DNS, when the records are ready:
 - **plan** runs once `TF_PLAN_ENABLED` is `true` and only for pull requests from this repository.
   It assumes `wgi-github-plan`, plans `bootstrap/` and `shared/` without the lock, and lists each
   resource address with its planned action in the job summary. Attribute values stay on the
-  runner, because the repository is public. Plan errors reach the log with account IDs replaced.
+  runner, because the repository is public. Plan errors reach the log with every ARN and account
+  ID replaced.
 
 Local checks before pushing:
 
@@ -358,8 +412,10 @@ Estimated for the foundation alone in us-east-2, before any environment exists.
 | --- | --- |
 | NAT gateway (one, hourly charge) | $32.85 |
 | NAT gateway public IPv4 address | $3.65 |
-| KMS keys (8 at $1) | $8.00 |
+| Interface endpoints (5 across two zones, hourly charge) | $73.00 |
+| KMS keys (6 at $1) | $6.00 |
 | GuardDuty, two Regions, at this volume | $2 to $5 |
+| GuardDuty Runtime Monitoring (no tasks yet; then $1.50 per monitored vCPU, first 500 vCPUs) | $0 |
 | AWS Config recording | $1 to $3 |
 | ECR storage | $1 to $4 |
 | CloudWatch Logs (CloudTrail stream, 365 days) | $0.50 to $1 |
@@ -368,7 +424,9 @@ Estimated for the foundation alone in us-east-2, before any environment exists.
 | VPC flow logs to S3 | about $0.50 |
 | S3 (state, audit) | under $1 |
 | CloudTrail management events (first trail), IAM Access Analyzer external access, Budgets, SNS email | free |
-| **Total** | **about $52 to $60** |
+| **Total** | **about $121 to $131** |
 
-Options that would add to this: a second NAT gateway (about $36.50), each interface endpoint
-across two zones (about $14.60), Security Hub (about $10 to $30).
+Runtime Monitoring bills per vCPU of the Fargate tasks it watches, averaged over the month, so
+an always-on 1 vCPU task adds about $1.50; the endpoint GuardDuty creates for its agent is free.
+Production's two keys add $2 when `production/` creates them. Options that would add to this: a
+second NAT gateway (about $36.50), Security Hub (about $10 to $30).
