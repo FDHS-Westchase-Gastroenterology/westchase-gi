@@ -5,12 +5,15 @@ import { z } from "zod";
 import { runId, serviceDb } from "../harness/env";
 import {
   createSchedulingFixture,
+  disposeSchedulingFixturesAfterEach,
   readSettings,
   restoreBookingInterval,
   schedulingFixtureDate,
   setProviderWeek,
 } from "../harness/scheduling";
 import { createStaffFixture, signIn } from "../harness/session";
+
+disposeSchedulingFixturesAfterEach();
 
 /* Issue #352: the Settings window's Schedule group as staff use it. Weekly
    hours change from a start date and say which bookings they leave out; time

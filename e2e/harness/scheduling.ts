@@ -1,6 +1,6 @@
 import { createHmac, randomUUID } from "node:crypto";
 
-import { expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
@@ -259,6 +259,24 @@ export async function removeSchedulingFixture(
   return removed;
 }
 
+/* Scheduling fixtures this worker made and has not removed yet, keyed by
+   their admin's user id. A fixture leaves only through its own dispose. */
+const undisposed = new Map<string, () => Promise<void>>();
+
+/**
+ * Removes, after each test in the calling spec file, every scheduling fixture
+ * the test made and did not dispose. A test that times out is abandoned
+ * mid-body, so its `finally` never runs; Playwright still runs afterEach
+ * hooks then, on their own timeout. Call it once at the top level of every
+ * spec file that makes scheduling fixtures. A failed removal fails the test
+ * rather than leaving the offices behind unnoticed.
+ */
+export function disposeSchedulingFixturesAfterEach(): void {
+  test.afterEach(async () => {
+    for (const dispose of [...undisposed.values()]) await dispose();
+  });
+}
+
 export async function createSchedulingFixture(db: SupabaseClient, prefix: string) {
   const staff = await createStaffFixture(db, {
     prefix,
@@ -271,7 +289,9 @@ export async function createSchedulingFixture(db: SupabaseClient, prefix: string
   const typeIds: string[] = [];
   async function dispose() {
     await removeSchedulingFixture(db, staff.userId, staff.email, patientIds);
+    undisposed.delete(staff.userId);
   }
+  undisposed.set(staff.userId, dispose);
   async function save(input: Readonly<SchedulingWrite>) {
     return saveScheduling(db, staff.userId, input);
   }

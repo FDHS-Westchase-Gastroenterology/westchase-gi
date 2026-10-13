@@ -11,6 +11,7 @@ import {
 import { serviceDb } from "../harness/env";
 import {
   createSchedulingFixture,
+  disposeSchedulingFixturesAfterEach,
   readSettings,
   restoreBookingInterval,
   saveSettings,
@@ -18,6 +19,8 @@ import {
   setProviderWeek,
 } from "../harness/scheduling";
 import { createStaffFixture } from "../harness/session";
+
+disposeSchedulingFixturesAfterEach();
 
 /* The Settings window's Schedule group (issue #352): its read, and the granular commands that
    change providers, appointment types and locations one fact at a time. */

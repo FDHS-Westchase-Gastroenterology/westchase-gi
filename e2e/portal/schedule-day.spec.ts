@@ -5,8 +5,14 @@ import type { Page } from "@playwright/test";
 
 import { resolveAppointmentStart } from "../../src/lib/portal/scheduling/time";
 import { runId, serviceDb } from "../harness/env";
-import { createSchedulingFixture, schedulingFixtureDate } from "../harness/scheduling";
+import {
+  createSchedulingFixture,
+  disposeSchedulingFixturesAfterEach,
+  schedulingFixtureDate,
+} from "../harness/scheduling";
 import { signIn } from "../harness/session";
+
+disposeSchedulingFixturesAfterEach();
 
 /* Issue #351: the Schedule's day view. Every working provider is a lane;
    the lanes, the arrows and the shortcuts move through the day; Day, Week

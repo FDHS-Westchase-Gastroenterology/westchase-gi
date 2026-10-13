@@ -10,10 +10,13 @@ import { publishableDb, serviceDb } from "../harness/env";
 import { savePatient } from "../harness/patients";
 import {
   createSchedulingFixture,
+  disposeSchedulingFixturesAfterEach,
   saveScheduling,
   schedulingFixtureDate,
 } from "../harness/scheduling";
 import { insertRequest } from "./support";
+
+disposeSchedulingFixturesAfterEach();
 
 const schedulingPageSchema = z.object({
   ok: z.literal(true),

@@ -10,8 +10,10 @@ import {
 import { expectDenied } from "../harness/assert";
 import { publishableDb, runId, serviceDb } from "../harness/env";
 import { savePatient } from "../harness/patients";
-import { createSchedulingFixture } from "../harness/scheduling";
+import { createSchedulingFixture, disposeSchedulingFixturesAfterEach } from "../harness/scheduling";
 import { insertRequest } from "./support";
+
+disposeSchedulingFixturesAfterEach();
 
 /* Issue #356: the schedule's search, read at the database. A name matches by the start of any of
    its words in any order and without its accents; a phone matches by its digits whatever the

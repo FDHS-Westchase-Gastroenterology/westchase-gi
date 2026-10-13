@@ -7,8 +7,10 @@ import { z } from "zod";
 import { insertRequest } from "../boundaries/support";
 import { runId, serviceDb } from "../harness/env";
 import { savePatient } from "../harness/patients";
-import { createSchedulingFixture } from "../harness/scheduling";
+import { createSchedulingFixture, disposeSchedulingFixturesAfterEach } from "../harness/scheduling";
 import { signIn } from "../harness/session";
+
+disposeSchedulingFixturesAfterEach();
 
 /* Issue #356: the Schedule's search and the records it opens. `/` focuses
    the search; a name or a phone finds patients and the people known only

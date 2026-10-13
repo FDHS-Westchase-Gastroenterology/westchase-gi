@@ -7,7 +7,13 @@ import { monthAvailabilityOutcomeSchema } from "../../src/lib/portal/scheduling/
 import type { MonthAvailability } from "../../src/lib/portal/scheduling/read-contracts";
 import { resolveAppointmentStart } from "../../src/lib/portal/scheduling/time";
 import { serviceDb } from "../harness/env";
-import { createSchedulingFixture, restoreBookingInterval } from "../harness/scheduling";
+import {
+  createSchedulingFixture,
+  disposeSchedulingFixturesAfterEach,
+  restoreBookingInterval,
+} from "../harness/scheduling";
+
+disposeSchedulingFixturesAfterEach();
 
 function at(date: string, time: string) {
   const instant = resolveAppointmentStart({ date, time });
