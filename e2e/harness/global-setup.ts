@@ -56,11 +56,15 @@ export default async function globalSetup(): Promise<void> {
   await sweepStaleFixtures(db);
 }
 
-/* A fixture staff account this old belongs to a run that has finished. The
-   supabase-integration job is cut off at 60 minutes and takes the shared
-   Preview Branch one job at a time, so a fixture from a live CI run is
-   always younger. */
-const STALE_STAFF_FIXTURE_MINUTES = 60;
+/* A fixture staff account this old belongs to a run that has finished.
+   supabase-integration takes the shared Preview Branch one job at a time, so
+   global setup only meets accounts from earlier jobs. Keep this at least three
+   times the longest a fixture lives: its test's timeout (180 seconds at most
+   for a spec that makes one) plus the afterEach that removes it. A describe
+   that keeps an account across tests runs serially and stops at its first
+   failure, so it adds one timeout at most. A local run against the same
+   branch that outlasts this loses its accounts to the next job's sweep. */
+const STALE_STAFF_FIXTURE_MINUTES = 15;
 const AUTH_USERS_PER_PAGE = 1000;
 const AUTH_USERS_MAX_PAGES = 20;
 
