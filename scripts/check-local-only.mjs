@@ -58,6 +58,20 @@ export function assertManifestSane(manifest) {
       }
     }
   }
+  for (const entry of manifest.localOnly) {
+    for (const allowed of entry.except ?? []) {
+      if (!allowed.startsWith(entry.path) || allowed === entry.path) {
+        problems.push(`except "${allowed}" is not beneath localOnly entry "${entry.path}"`);
+      }
+      if (entry.gitignore.endsWith("/")) {
+        problems.push(
+          `localOnly entry "${entry.path}" has an except but its gitignore rule ` +
+            `"${entry.gitignore}" ignores the whole directory, so git could never re-include ` +
+            `"${allowed}". Ignore the contents instead (for example "/${entry.path}*").`,
+        );
+      }
+    }
+  }
   const seen = new Set();
   for (const entry of manifest.localOnly) {
     if (seen.has(entry.path)) problems.push(`duplicate localOnly entry "${entry.path}"`);
@@ -90,7 +104,9 @@ export function classifyPath(path, manifest) {
     if (matches(keep.path, normalised)) return null;
   }
   for (const entry of manifest.localOnly) {
-    if (matches(entry.path, normalised)) return entry;
+    if (!matches(entry.path, normalised)) continue;
+    if ((entry.except ?? []).some((allowed) => matches(allowed, normalised))) continue;
+    return entry;
   }
   return null;
 }
@@ -115,7 +131,10 @@ export function renderGitignoreBlock(manifest) {
     "# part of the product and only bloat review. See local-only-paths.json for why each",
     "# entry is here and which paths are deliberately NOT in this list.",
   ];
-  for (const entry of manifest.localOnly) lines.push(entry.gitignore);
+  for (const entry of manifest.localOnly) {
+    lines.push(entry.gitignore);
+    for (const allowed of entry.except ?? []) lines.push(`!/${allowed}`);
+  }
   lines.push(END);
   return lines.join("\n");
 }
