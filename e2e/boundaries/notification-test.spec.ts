@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { test, expect } from "@playwright/test";
 import { z } from "zod";
 
+import type { JsonObject } from "../../src/lib/json";
 import { NOTIFICATION_TEST_RATE_LIMIT } from "../../src/lib/portal/contracts";
 import { requireDecoded } from "../harness/assert";
 import { serviceDb } from "../harness/env";
@@ -95,6 +96,20 @@ test.describe("The Settings › Notifications test send", () => {
       } finally {
         await anonymousContext.close();
       }
+
+      // `{}` means every address that is on; anything else must name one real address.
+      const malformed: readonly JsonObject[] = [
+        { recipientId: "not-a-uuid" },
+        { recipient: randomUUID() },
+      ];
+      for (const input of malformed) {
+        const refused = await mutateSettings(page, "recipient.test", input);
+        expect(refused.status).toBe(400);
+        expect(refused.body).toMatchObject({ ok: false, code: "invalid" });
+      }
+      const unknown = await mutateSettings(page, "recipient.test", { recipientId: randomUUID() });
+      expect(unknown.status).toBe(404);
+      expect(unknown.body).toMatchObject({ ok: false, code: "not_found" });
 
       // With every address paused there is nobody to send to: refused, nothing audited, and the
       // Refusal does not spend the admin's allowance.
