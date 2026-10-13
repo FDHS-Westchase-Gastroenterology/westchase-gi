@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
 import { expectDenied } from "../harness/assert";
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { readClinical, removeClinical, saveClinical } from "../harness/clinical";
 import { publishableDb, serviceDb } from "../harness/env";
 import { createSchedulingFixture } from "../harness/scheduling";
@@ -142,7 +143,7 @@ test("document references and signing honor authorship, live permissions, and cl
     ).toEqual({ ok: false, code: "staff_unavailable" });
   } finally {
     await removeClinical(db, fixture.patientIds, [admin, author.userId]);
-    expect((await db.from("audit_log").delete().eq("actor_email", author.email)).error).toBeNull();
+    await deleteAuditRows({ actorEmail: author.email });
     await author.dispose();
     await fixture.dispose();
   }

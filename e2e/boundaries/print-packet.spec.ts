@@ -4,6 +4,7 @@ import { expect, test } from "@playwright/test";
 import { z } from "zod";
 
 import { jsonSchema } from "../../src/lib/json";
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { runId, serviceDb } from "../harness/env";
 import { signIn } from "../harness/session";
 import { expectNoPatientLeak, PATIENT_PHONE, SEED_EMAIL } from "./support";
@@ -169,7 +170,7 @@ test("an id packet prints each chosen record with its own full history and audit
     for (const name of Object.values(fixture.names))
       expect(JSON.stringify(rows[0].detail)).not.toContain(name);
   } finally {
-    if (auditIds.length > 0) await db.from("audit_log").delete().in("id", auditIds);
+    if (auditIds.length > 0) await deleteAuditRows({ ids: auditIds });
     await disposeFixture(fixture);
   }
 });

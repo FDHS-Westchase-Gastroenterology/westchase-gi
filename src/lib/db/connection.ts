@@ -1,5 +1,3 @@
-import "server-only";
-
 import { SUPABASE_ROOT_CA } from "./supabase-root-ca";
 
 /**

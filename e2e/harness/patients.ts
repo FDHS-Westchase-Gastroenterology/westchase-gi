@@ -8,6 +8,7 @@ import {
   patientCommandOutcomeSchema,
 } from "../../src/lib/portal/patients/contracts";
 import type { PatientCommandInput } from "../../src/lib/portal/patients/contracts";
+import { deleteAuditRows } from "./audit-fixtures";
 
 export async function savePatient(
   db: SupabaseClient,
@@ -34,10 +35,5 @@ export async function removePatients(db: SupabaseClient, patientIds: readonly st
   expect(links.error).toBeNull();
   const patients = await db.from("patients").delete().in("id", patientIds);
   expect(patients.error).toBeNull();
-  const audits = await db
-    .from("audit_log")
-    .delete()
-    .eq("entity", "patients")
-    .in("entity_id", patientIds);
-  expect(audits.error).toBeNull();
+  await deleteAuditRows({ entity: "patients", entityIds: patientIds });
 }

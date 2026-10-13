@@ -8,6 +8,7 @@ import { asJsonString, jsonObjectSchema } from "../../src/lib/json";
 import type { JsonObject } from "../../src/lib/json";
 import type { PasswordAuthFlow } from "../../src/lib/portal/contracts";
 import { expectDenied, requireDecoded } from "../harness/assert";
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { publishableDb, runId, seedAdmin, serviceDb } from "../harness/env";
 import { signIn } from "../harness/session";
 
@@ -162,17 +163,10 @@ test.describe("portal management server boundaries", () => {
       .from("notification_recipients")
       .delete()
       .in("email", [recipientEmail, deniedRecipientEmail]);
-    await db
-      .from("audit_log")
-      .delete()
-      .eq("action", "requests.export")
-      .eq("actor_email", staffEmail);
+    await deleteAuditRows({ action: "requests.export", actorEmail: staffEmail });
 
     if (auditEntityIds.size > 0) {
-      await db
-        .from("audit_log")
-        .delete()
-        .in("entity_id", [...auditEntityIds]);
+      await deleteAuditRows({ entityIds: [...auditEntityIds] });
     }
 
     await db.from("staff_profiles").delete().in("email", [staffEmail, targetEmail]);
@@ -644,7 +638,7 @@ test.describe("portal management server boundaries", () => {
       await expect(auditRow).toContainText(targetLogin);
       await expect(auditRow).toContainText("Outcome unconfirmed");
     } finally {
-      await db.from("audit_log").delete().eq("id", externalAuditRow.id);
+      await deleteAuditRows({ ids: [externalAuditRow.id] });
     }
   });
 
@@ -744,10 +738,7 @@ test.describe("portal management server boundaries", () => {
       expect(kept.status).toBe(409);
       expect(kept.body.ok).toBe(false);
     } finally {
-      await db
-        .from("audit_log")
-        .delete()
-        .in("entity_id", [...profileIds]);
+      await deleteAuditRows({ entityIds: [...profileIds] });
       await db.from("staff_profiles").delete().eq("email", legacyEmail);
       for (const userId of userIds) {
         await db.auth.admin.deleteUser(userId);
@@ -851,13 +842,12 @@ test.describe("portal management server boundaries", () => {
       await expect(technical).toContainText("request.status_change");
       await expect(technical).toContainText("requests.export");
     } finally {
-      await db.from("audit_log").delete().eq("entity_id", requestId);
-      await db
-        .from("audit_log")
-        .delete()
-        .eq("action", "requests.export")
-        .eq("actor_email", SEED_ADMIN_EMAIL.toLowerCase())
-        .contains("detail", { row_count: 42 });
+      await deleteAuditRows({ entityIds: [requestId] });
+      await deleteAuditRows({
+        action: "requests.export",
+        actorEmail: SEED_ADMIN_EMAIL.toLowerCase(),
+        detailContains: { row_count: 42 },
+      });
       await db.from("requests").delete().eq("id", requestId);
     }
   });
@@ -938,7 +928,7 @@ test.describe("portal management server boundaries", () => {
       await expectPacketsLead();
     } finally {
       for (const id of fixtureIds) {
-        await db.from("audit_log").delete().eq("id", id);
+        await deleteAuditRows({ ids: [id] });
       }
     }
   });
@@ -1110,7 +1100,7 @@ test.describe("portal management server boundaries", () => {
       await expect(adminPage).toHaveURL(/\/admin\/audit$/);
     } finally {
       for (const id of fixtureIds) {
-        await db.from("audit_log").delete().eq("id", id);
+        await deleteAuditRows({ ids: [id] });
       }
       await db.from("requests").delete().eq("id", requestId);
     }
@@ -1222,10 +1212,9 @@ test.describe("portal management server boundaries", () => {
       await expect(adminPage.getByTestId("audit-page-summary")).toContainText("101–200 of");
     } finally {
       if (fixtureIds.length > 0) {
-        const { error } = await db.from("audit_log").delete().in("id", fixtureIds);
-        expect(error).toBeNull();
+        await deleteAuditRows({ ids: fixtureIds });
       }
-      await db.from("audit_log").delete().eq("actor_email", actor);
+      await deleteAuditRows({ actorEmail: actor });
       await db.from("requests").delete().eq("id", oldestId);
     }
   });

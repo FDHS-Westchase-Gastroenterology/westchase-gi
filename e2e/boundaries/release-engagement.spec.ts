@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { asJsonObject } from "../../src/lib/json";
 import { requireDecoded, requireText } from "../harness/assert";
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { serviceDb } from "../harness/env";
 import {
   SEED_EMAIL,
@@ -433,7 +434,7 @@ test.describe("Release engagement RPCs", () => {
         .from("portal_release_states")
         .delete()
         .in("release_id", [releaseId, legacyReleaseId]);
-      await db.from("audit_log").delete().contains("detail", { release_id: releaseId });
+      await deleteAuditRows({ detailContains: { release_id: releaseId } });
       if (profileIds.length > 0) {
         await db.from("staff_profiles").delete().in("id", profileIds);
       }

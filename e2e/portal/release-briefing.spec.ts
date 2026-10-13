@@ -4,6 +4,7 @@ import { test, expect } from "@playwright/test";
 import type { BrowserContext } from "@playwright/test";
 import { z } from "zod";
 
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { runId, serviceDb } from "../harness/env";
 import { signIn } from "../harness/session";
 
@@ -43,7 +44,7 @@ test.describe("portal release briefing", () => {
     await secondContext?.close().catch(() => undefined);
     if (!staffUserId) return;
     await db.from("portal_release_states").delete().eq("staff_user_id", staffUserId);
-    await db.from("audit_log").delete().eq("actor_email", staffEmail);
+    await deleteAuditRows({ actorEmail: staffEmail });
     await db.from("staff_profiles").delete().eq("user_id", staffUserId);
     await db.auth.admin.deleteUser(staffUserId);
   });

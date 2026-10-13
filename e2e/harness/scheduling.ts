@@ -23,6 +23,7 @@ import {
 } from "../../src/lib/portal/scheduling/settings-contracts";
 import type { SettingsCommand } from "../../src/lib/portal/scheduling/settings-contracts";
 import { resolveAppointmentStart } from "../../src/lib/portal/scheduling/time";
+import { deleteAuditRows } from "./audit-fixtures";
 import { removePatients, savePatient } from "./patients";
 import { createStaffFixture } from "./session";
 
@@ -239,8 +240,7 @@ export async function createSchedulingFixture(db: SupabaseClient, prefix: string
       expect(removed.error).toBeNull();
     }
     await removePatients(db, patientIds);
-    const audits = await db.from("audit_log").delete().eq("actor_email", staff.email);
-    expect(audits.error).toBeNull();
+    await deleteAuditRows({ actorEmail: staff.email });
     await staff.dispose();
   }
   async function save(input: Readonly<SchedulingWrite>) {

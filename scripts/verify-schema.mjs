@@ -601,7 +601,7 @@ async function callServiceRpc({ url, serviceKey, name, body }) {
   return { response, payload: await parseResponse(response) };
 }
 
-async function assertStaffRequestCreation({ url, serviceKey }) {
+async function assertStaffRequestCreation({ url, serviceKey, accessToken, ref }) {
   const actorEmail = `verify-staff-request-${Date.now()}@example.test`;
   const idempotencyKey = crypto.randomUUID();
   const payload = {
@@ -723,19 +723,24 @@ async function assertStaffRequestCreation({ url, serviceKey }) {
     assertEffects(await readEffects());
   } finally {
     if (requestId !== null) {
-      const encodedId = encodeURIComponent(requestId);
+      /* The service role may only read and append to audit_log, so the creation audit goes
+         through the database owner. The id is checked as a uuid before it enters the SQL. */
+      assert(uuidSchema.safeParse(requestId).success, "Staff request id is not a uuid");
       await Promise.all([
-        deleteRows({
-          url,
-          serviceKey,
-          table: "audit_log",
-          query: `entity_id=eq.${encodedId}&action=eq.request.create`,
+        queryDatabase({
+          accessToken,
+          ref,
+          query: `
+            delete from public.audit_log
+            where entity_id = '${requestId}' and action = 'request.create'
+            returning id;
+          `,
         }),
         deleteRows({
           url,
           serviceKey,
           table: "requests",
-          query: `id=eq.${encodedId}`,
+          query: `id=eq.${encodeURIComponent(requestId)}`,
         }),
       ]);
     }
@@ -2240,7 +2245,12 @@ async function main() {
     serviceKey: config.serviceKey,
   });
   if (target === "branch") {
-    await assertStaffRequestCreation({ url: config.url, serviceKey: config.serviceKey });
+    await assertStaffRequestCreation({
+      url: config.url,
+      serviceKey: config.serviceKey,
+      accessToken,
+      ref: config.ref,
+    });
   }
 
   const encodedEmail = encodeURIComponent(email);
