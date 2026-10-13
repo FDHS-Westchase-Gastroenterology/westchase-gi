@@ -101,6 +101,8 @@ test.describe("Legacy call-outcome RPCs and their undo", () => {
         await insertRequest(db, {
           id: requestId,
           name: `TEST call outcome ${item.outcome}`,
+          /* The address lets global setup sweep a request this test leaves behind when it times out. */
+          email: "call-outcome@example.test",
           source_path: "/e2e/call-outcome",
         });
 
@@ -319,6 +321,7 @@ test.describe("Legacy call-outcome RPCs and their undo", () => {
       await insertRequest(db, {
         id: rollbackId,
         name: "TEST atomic call-outcome rollback",
+        email: "call-outcome@example.test",
         source_path: "/e2e/call-outcome-rollback",
       });
 
@@ -490,6 +493,7 @@ test.describe("Legacy call-outcome RPCs and their undo", () => {
         await insertRequest(db, {
           id: requestId,
           name: `TEST undo previous ${item.name}`,
+          email: "call-outcome@example.test",
           source_path: "/e2e/call-outcome-undo-shapes",
           ...item.before,
         });
@@ -563,11 +567,13 @@ test.describe("Legacy call-outcome RPCs and their undo", () => {
       await insertRequest(db, {
         id: firstRequestId,
         name: "TEST undo rejection first",
+        email: "call-outcome@example.test",
         source_path: "/e2e/call-outcome-undo-rejection",
       });
       await insertRequest(db, {
         id: secondRequestId,
         name: "TEST undo rejection second",
+        email: "call-outcome@example.test",
         source_path: "/e2e/call-outcome-undo-rejection",
       });
 
@@ -700,6 +706,7 @@ test.describe("Legacy call-outcome RPCs and their undo", () => {
       await insertRequest(db, {
         id: requestId,
         name: "TEST undo audit rollback",
+        email: "call-outcome@example.test",
         source_path: "/e2e/call-outcome-undo-audit-rollback",
       });
 

@@ -18,7 +18,12 @@ test("patient identity survives intake removal; edits, links, receipts, and hist
   const patientIds: string[] = [];
   const requestId = randomUUID();
   try {
-    await insertRequest(db, { id: requestId, name: "TEST request with independent patient" });
+    /* The address lets global setup sweep a request this test leaves behind when it times out. */
+    await insertRequest(db, {
+      id: requestId,
+      name: "TEST request with independent patient",
+      email: "patient-boundary@example.test",
+    });
     const key = randomUUID();
     const command = { kind: "create", patient: { name: "TEST Morgan Reed" }, requestId } as const;
     const created = await savePatient(db, staff.userId, command, key);
@@ -169,7 +174,11 @@ test("concurrent patient saves and competing request links cannot duplicate or o
     });
     if (!second.ok) throw new Error("Second registration failed");
     patientIds.push(second.patientId);
-    await insertRequest(db, { id: requestId, name: "TEST contested request link" });
+    await insertRequest(db, {
+      id: requestId,
+      name: "TEST contested request link",
+      email: "patient-race@example.test",
+    });
     const linked = await Promise.all([
       savePatient(db, staff.userId, {
         kind: "link_request",

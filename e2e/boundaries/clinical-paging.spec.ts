@@ -97,7 +97,12 @@ test("clinical summaries and long histories page completely and survive removal 
         kind: "document_reference",
       }),
     ).toMatchObject({ ok: true, total: 1 });
-    await insertRequest(db, { id: requestId, name: "TEST clinical retained patient" });
+    /* The address lets global setup sweep a request this test leaves behind when it times out. */
+    await insertRequest(db, {
+      id: requestId,
+      name: "TEST clinical retained patient",
+      email: "clinical-paging@example.test",
+    });
     expect(
       await savePatient(db, actor, {
         kind: "link_request",

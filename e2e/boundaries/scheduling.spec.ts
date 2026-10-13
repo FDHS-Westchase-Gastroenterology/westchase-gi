@@ -333,7 +333,12 @@ test("scheduling authorizes live staff, restricts configuration, and preserves a
       }),
     );
     expectDenied(await browser.from("appointments").select("*"));
-    await insertRequest(db, { id: requestId, name: "TEST retained appointment source" });
+    /* The address lets global setup sweep a request this test leaves behind when it times out. */
+    await insertRequest(db, {
+      id: requestId,
+      name: "TEST retained appointment source",
+      email: "schedule-access@example.test",
+    });
     expect(
       await savePatient(db, fixture.staff.userId, {
         kind: "link_request",
