@@ -66,6 +66,7 @@ next-env.d.ts
 *.tfstate
 *.tfstate.*
 *.tfplan
+tfplan
 *_override.tf
 *_override.tf.json
 .terraform.tfstate.lock.info

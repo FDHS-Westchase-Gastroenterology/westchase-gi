@@ -16,11 +16,13 @@ module "state_key" {
 
 # Production state is read and changed only through the production deploy role,
 # which only a GitHub Actions job in the protected production environment can
-# assume. Every other principal, the account root, administrators and agents
-# included, can neither read production state nor write, lock or delete it.
-# Editing these statements is the break-glass path (infra/README.md, "Break
-# glass"); infra/shared alarms on every change to this bucket policy
-# (protected-bucket-policy-changed).
+# assume. Every other principal, the account root, administrators, agents and
+# any S3 replication role included, can neither read production state nor
+# write, lock, replicate or delete it. Editing these statements is the
+# break-glass path (infra/README.md, "Break glass"); infra/shared alarms on
+# every change to this bucket's policy, lifecycle, replication, ACL or CORS
+# configuration (protected-bucket-policy-changed) and to the production deploy
+# role (production-deploy-role-changed).
 data "aws_iam_policy_document" "state_bucket" {
   statement {
     sid    = "DenyProductionStateReadsExceptProductionDeployRole"
@@ -28,6 +30,7 @@ data "aws_iam_policy_document" "state_bucket" {
     actions = [
       "s3:GetObject",
       "s3:GetObjectVersion",
+      "s3:GetObjectVersionForReplication",
     ]
     resources = ["arn:${data.aws_partition.current.partition}:s3:::${var.state_bucket_name}/production/*"]
 
@@ -50,6 +53,9 @@ data "aws_iam_policy_document" "state_bucket" {
       "s3:DeleteObject",
       "s3:DeleteObjectVersion",
       "s3:PutObject",
+      "s3:ReplicateDelete",
+      "s3:ReplicateObject",
+      "s3:ReplicateTags",
     ]
     resources = ["arn:${data.aws_partition.current.partition}:s3:::${var.state_bucket_name}/production/*"]
 

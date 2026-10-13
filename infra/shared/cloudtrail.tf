@@ -137,10 +137,20 @@ locals {
       pattern     = "{ ($.eventSource = \"iam.amazonaws.com\") && (($.eventName = \"CreateUser\") || ($.eventName = \"CreateAccessKey\") || ($.eventName = \"CreateLoginProfile\")) }"
     }
     # Both policies hold a deny that only a policy change can lift: production
-    # state writes on the state bucket, record deletion on the audit bucket.
+    # state reads and writes on the state bucket, record deletion on the audit
+    # bucket. A lifecycle rule expires objects without a DeleteObject call the
+    # deny could stop, and replication copies them out, so those changes alarm
+    # too.
     protected-bucket-policy-changed = {
-      description = "The Terraform state or audit bucket policy was changed (the break-glass path for production state and audit records)"
-      pattern     = "{ ($.eventSource = \"s3.amazonaws.com\") && (($.eventName = \"PutBucketPolicy\") || ($.eventName = \"DeleteBucketPolicy\")) && (($.requestParameters.bucketName = \"${var.state_bucket_name}\") || ($.requestParameters.bucketName = \"${local.audit_bucket_name}\")) }"
+      description = "The Terraform state or audit bucket's policy, lifecycle, replication, ACL or CORS configuration was changed (the break-glass path for production state and audit records)"
+      pattern     = "{ ($.eventSource = \"s3.amazonaws.com\") && (($.eventName = \"PutBucketPolicy\") || ($.eventName = \"DeleteBucketPolicy\") || ($.eventName = \"PutBucketLifecycle\") || ($.eventName = \"DeleteBucketLifecycle\") || ($.eventName = \"PutBucketReplication\") || ($.eventName = \"DeleteBucketReplication\") || ($.eventName = \"PutBucketAcl\") || ($.eventName = \"PutBucketCors\")) && (($.requestParameters.bucketName = \"${var.state_bucket_name}\") || ($.requestParameters.bucketName = \"${local.audit_bucket_name}\")) }"
+    }
+    # The state bucket admits this role by ARN, so a role recreated under the
+    # same name, or one whose trust or policies change, inherits production
+    # state.
+    production-deploy-role-changed = {
+      description = "The production deploy role, the only principal that reads production state, was created, deleted, or had its trust or policies changed"
+      pattern     = "{ ($.eventSource = \"iam.amazonaws.com\") && ($.requestParameters.roleName = \"${module.github_deploy_production.name}\") && (($.eventName = \"CreateRole\") || ($.eventName = \"DeleteRole\") || ($.eventName = \"UpdateAssumeRolePolicy\") || ($.eventName = \"PutRolePolicy\") || ($.eventName = \"AttachRolePolicy\")) }"
     }
   }
 }

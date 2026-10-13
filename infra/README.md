@@ -37,7 +37,9 @@ DynamoDB table.
   logs one year.
 - **Security alarms.** Metric filters on the trail page the alerts topic on root user activity, a
   trail change, a KMS key disabled or scheduled for deletion, an IAM user, access key or console
-  password being created, and any change to the state or audit bucket policy.
+  password being created, any change to the state or audit bucket's policy, lifecycle,
+  replication, ACL or CORS configuration, and `wgi-github-deploy-production` being created,
+  deleted, or having its trust or policies changed.
 - **Account baseline.** S3 account-level public access block, EBS default encryption, GuardDuty
   and an IAM Access Analyzer in both Regions. GuardDuty runs S3, RDS login and Lambda network
   protection, and Runtime Monitoring with GuardDuty managing the agent on ECS Fargate; EKS and EBS
@@ -210,9 +212,13 @@ Renaming or removing an output breaks every environment root that reads it.
 | `wgi-github-deploy-production` | `...:environment:aws-production` (`var.production_environment`) | reads `shared/`, reads and writes `production/` | the same for `wgi-production*`, except that it can pull and tag existing images but not upload layers, and reads no logs |
 
 - Every role session lasts at most one hour. Fork pull requests never receive an OIDC token.
-- The state bucket policy denies reads, writes and deletes under `production/` to every principal
-  except `wgi-github-deploy-production`, the account root and administrators included. The only
-  way around it is [Break glass](#break-glass).
+- The state bucket policy denies reads, writes, deletes and replication under `production/` to
+  every principal except `wgi-github-deploy-production`, the account root and administrators
+  included. An administrator can still get around it by changing the bucket policy, adding a
+  lifecycle rule that expires production state, or changing that role's trust or policies (or
+  deleting it and recreating it under the same name). Each of those pages the alerts topic
+  (`protected-bucket-policy-changed`, `production-deploy-role-changed`); none is prevented. The
+  sanctioned path is [Break glass](#break-glass).
 - The pull request that adds `production/` also extends `wgi-github-deploy-production` with the
   permissions to create and administer production's KMS keys. No administrator or agent shell
   creates or administers a production key.
@@ -345,6 +351,11 @@ production key policy (G4) before that root's first apply.
   block. The audit bucket name includes the account ID and follows automatically.
 - **A bucket that will hold patient data** adds a CloudTrail data-event selector for its objects in
   the same pull request that creates it.
+- **Audit records are protected by a deny and an alarm, not by Object Lock.** The audit bucket
+  denies record deletion, but an administrator can add a lifecycle rule that expires records
+  without a delete call. `protected-bucket-policy-changed` pages on it; nothing prevents it.
+  S3 Object Lock in COMPLIANCE mode with six-year retention is the preventive control, a G5
+  follow-up outside this foundation.
 
 ## Human steps
 
