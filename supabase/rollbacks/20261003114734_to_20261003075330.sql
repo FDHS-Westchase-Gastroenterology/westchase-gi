@@ -1,4 +1,4 @@
--- Reverses 20261004120000_patient_search: restores the patient read without its appointments,
+-- Reverses 20261003114734_patient_search: restores the patient read without its appointments,
 -- then removes the people search, its name key and the indexes that serve it.
 
 create or replace function public.portal_read_patient(

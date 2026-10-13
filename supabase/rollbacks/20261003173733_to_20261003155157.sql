@@ -1,4 +1,4 @@
--- Reverses 20261006120000_day_appointment_actions: removes the placement read and restores the
+-- Reverses 20261003173733_day_appointment_actions: removes the placement read and restores the
 -- cancel command without requestOutcome. Close transitions written from booked meanwhile stay as
 -- history, so the restored constraint is added not valid, as it was originally.
 

@@ -1,4 +1,4 @@
--- Reverses 20261008120200_close_request_from_booked: restores the #354 check, whose close_request
+-- Reverses 20261003232046_close_request_from_booked: restores the #354 check, whose close_request
 -- branch leaves new or contacted only. Closes written from booked meanwhile stay as history, so the
 -- restored constraint is added not valid.
 

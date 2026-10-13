@@ -1,6 +1,6 @@
--- Reverses 20261011120000_openings_on_the_clock: openings start one booking interval after the
+-- Reverses 20261004214429_openings_on_the_clock: openings start one booking interval after the
 -- last opening or booking again, wherever that lands, and a booked visit holds its provider for
--- one interval. The definitions below are 20261009120100_booked_visits_hold_interval's.
+-- one interval. The definitions below are 20261004171807_booked_visits_hold_interval's.
 
 create or replace function public.portal_schedule_greedy_opens(
   p_first date, p_last date, p_provider_ids uuid[], p_location_id uuid, p_type_id uuid

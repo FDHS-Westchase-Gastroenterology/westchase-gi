@@ -1,4 +1,4 @@
--- Lets close_request leave booked (#354). 20261006120000_day_appointment_actions added the
+-- Lets close_request leave booked (#354). 20261003173733_day_appointment_actions added the
 -- booked/wont_schedule case for a cancel that closes the request, but the branch's from_state list
 -- still stopped at contacted, so that cancel failed the check. The constraint stays not valid, as
 -- the earlier versions were.

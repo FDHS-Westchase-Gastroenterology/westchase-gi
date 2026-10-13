@@ -1,4 +1,4 @@
--- Reverses 20261012120000_settings_follow_the_clinic. Settings commands check the provider or
+-- Reverses 20261004225532_settings_follow_the_clinic. Settings commands check the provider or
 -- office row version again, weekly hours apply from today only, office hours refuse instead of
 -- moving providers, office-hours days become plain hours, and retire, restore and closed-day
 -- runs are gone. Retired providers and offices stay inactive, closed days and hours rows stay as

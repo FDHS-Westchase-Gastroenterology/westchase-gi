@@ -1,4 +1,4 @@
--- Reverses 20261003120000_scheduling_settings: restores the schedule, booking and config
+-- Reverses 20261003075330_scheduling_settings: restores the schedule, booking and config
 -- functions to their previous bodies, then removes the settings commands, eligibility, office
 -- hours, closed days and the new columns. Settings changes recorded by the new commands are
 -- deleted first, since the restored command check does not allow them.

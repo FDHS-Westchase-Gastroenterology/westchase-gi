@@ -1,4 +1,4 @@
--- Reverses 20261008120100_drop_portal_tour_dismissed_at: restores the single tour's column and
+-- Reverses 20261003232045_drop_portal_tour_dismissed_at: restores the single tour's column and
 -- command. An account with a running tour has the old tour undismissed; one with any finished or
 -- skipped tour has it dismissed at its latest record.
 

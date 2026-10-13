@@ -1,4 +1,4 @@
--- Reverses 20261008120000_staff_tours: removes the per-tour records and their command. The old
+-- Reverses 20261003232044_staff_tours: removes the per-tour records and their command. The old
 -- staff_profiles.portal_tour_dismissed_at column is still in place at this version; an account
 -- with a finished or skipped tour keeps the old tour dismissed, and one with a tour running from
 -- Help sees the old tour's nudge again.

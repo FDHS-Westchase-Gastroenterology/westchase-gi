@@ -2,7 +2,7 @@
 
 ## Progress
 
-**Status:** Not started. No migration code yet: no Terraform, no Drizzle, and the app still runs on Supabase and Vercel. Most of Jason's AWS setup is done (see below).
+**Status:** Step 1 in progress. The dependency map, the migration-order proof and the file-date fix are done; billing and Vercel analytics removal is deferred. No migration code yet: no Terraform, no Drizzle, and the app still runs on Supabase and Vercel. Most of Jason's AWS setup is done (see below).
 
 **Last updated:** 2026-10-13
 
@@ -11,6 +11,10 @@ To keep this current: when a PR finishes a step, tick its box in that same PR, a
 Steps (from "How I'd approach it"):
 
 - [ ] 1. Strip out what we're deleting (billing, Vercel analytics), fix the future-dated migration file names, and map every Supabase and Vercel touchpoint in `docs/migration/inventory.md`.
+  - [x] Map every Supabase and Vercel touchpoint in `docs/migration/inventory.md` (#402).
+  - [x] Prove the migration files build a clean database from scratch in order (`docs/migration/migration-order.md`) (#402).
+  - [x] Fix the future-dated migration file names (`docs/migration/migration-order.md`) (#402).
+  - [ ] Strip out billing and Vercel analytics: deferred; where they show up is in `inventory.md` §12.
 - [ ] 2. Stand up the AWS foundation.
 - [ ] 3. Move the database, sign-in, data access and email.
 - [ ] 4. Set up hosting and the pipeline.
@@ -25,7 +29,7 @@ Waiting on Jason:
 - [x] Allow us-east-1 in the Organization's Region policy (2026-10-06).
 - [ ] Create the production and non-production accounts and fill in the `wgi-nonprod` / `wgi-prod` profiles in `~/.aws/config`. Being confirmed. Step 2 waits on this.
 - [ ] Agree the cut-over hours with Juliet. The planned window (Sunday 2026-10-11) passed without the move happening, so it needs a new date.
-- [ ] Say go or no-go the night before the new window: go only if steps 1 to 4 have landed and the full end-to-end suite passes on staging.
+- [ ] Say go or no-go the night before the new window: go only if steps 1 to 4 have landed, Production is on all of PR #224's migrations, and the full end-to-end suite passes on staging.
 - [ ] Export the DNS zone from Porkbun, then swap the four nameservers once the Route 53 zone is ready.
 - [ ] Tell Juliet that staff will add an authenticator app or passkey at first sign-in, and may need to set a new password.
 - [ ] Put the Resend API key in Secrets Manager in both accounts, and the Supabase database connection string in production's.
