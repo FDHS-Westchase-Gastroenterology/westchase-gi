@@ -6,7 +6,10 @@ export interface DatabaseSource {
   readonly supabaseUrl: string | undefined;
 }
 
-/** The server has no database to connect to. The message names what is missing, never a value. */
+/**
+ * The server has no database to connect to. The message is what `database()` logs, so a deploy
+ * without one can be diagnosed: the variable's name, never a value.
+ */
 export class DatabaseNotConfigured extends Error {
   override readonly name = "DatabaseNotConfigured";
 }
@@ -31,7 +34,7 @@ function setting(env: Environment, name: string): string | undefined {
 export function databaseSource(env: Environment = process.env): DatabaseSource {
   const postgresUrl = setting(env, "POSTGRES_URL");
   if (postgresUrl === undefined) {
-    throw new DatabaseNotConfigured("Missing required server environment: POSTGRES_URL");
+    throw new DatabaseNotConfigured("POSTGRES_URL is not set");
   }
   return { postgresUrl, supabaseUrl: setting(env, "NEXT_PUBLIC_SUPABASE_URL") };
 }

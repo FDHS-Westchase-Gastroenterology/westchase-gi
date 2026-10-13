@@ -6,7 +6,8 @@ import { cookies } from "next/headers";
 
 import { openDatabase } from "@/lib/db/client";
 import type { Database } from "@/lib/db/client";
-import { databaseSource } from "@/lib/db/source";
+import { DatabaseNotConfigured, databaseSource } from "@/lib/db/source";
+import type { DatabaseSource } from "@/lib/db/source";
 
 function requiredEnv(names: readonly string[]): string {
   for (const name of names) {
@@ -104,15 +105,27 @@ export type ServiceClient = ReturnType<typeof serviceClient>;
 
 let sharedDatabase: Database | undefined;
 
+/* `database()`'s callers answer `unavailable` without saying why, so this line is the one trace
+   a deploy without a database leaves. */
+function configuredSource(): DatabaseSource {
+  try {
+    return databaseSource();
+  } catch (error) {
+    if (error instanceof DatabaseNotConfigured) console.error(`[db] ${error.message}`);
+    throw error;
+  }
+}
+
 /**
  * The portal's database: a direct Postgres connection to the same Supabase database the
  * service client reaches through PostgREST, from `databaseSource()`. One pool per server
  * instance, opened on first use, so a build without a database still succeeds; without one,
- * this throws `DatabaseNotConfigured`, which each caller turns into its `unavailable` outcome.
+ * this logs `[db] POSTGRES_URL is not set` and throws `DatabaseNotConfigured`, which each caller
+ * turns into its `unavailable` outcome.
  */
 export function database(): Database {
   if (sharedDatabase === undefined) {
-    const { postgresUrl, supabaseUrl: apiUrl } = databaseSource();
+    const { postgresUrl, supabaseUrl: apiUrl } = configuredSource();
     sharedDatabase = openDatabase(postgresUrl, apiUrl);
   }
   return sharedDatabase;
