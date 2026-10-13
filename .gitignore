@@ -61,6 +61,17 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# terraform (keep .terraform.lock.hcl tracked)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*_override.tf
+*_override.tf.json
+.terraform.tfstate.lock.info
+crash.log
+crash.*.log
+
 # BEGIN generated from local-only-paths.json -- edit that file, then run `npm run local-only:write`
 # Machine-local tooling, agent scratch and generated design output. These are never
 # part of the product and only bloat review. See local-only-paths.json for why each
