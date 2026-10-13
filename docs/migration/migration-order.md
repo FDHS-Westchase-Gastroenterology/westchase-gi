@@ -6,14 +6,14 @@ keep working on the existing Supabase setup until the switch-over.
 
 ## Result
 
-The current files already build a clean database in the right order. The thirteen
-future-dated names are cosmetic: they sort in the same order the files were written, and no
-other migration sorts between them. Renaming them is optional, and it has a cost on the live
-Preview database. That choice is Jason's ([Decision](#decision-for-jason)).
+The 55 files build a clean database in the right order, and the 13 future-dated files now carry
+their commit times. The rename kept the order, and the ledgers of the Supabase Preview databases
+were updated in the same change, so the existing Supabase setup keeps working until the
+switch-over.
 
 ## Proof: a fresh build from nothing
 
-Run on 2026-10-13 against the tree at `cc46e59a` (PR #224 head).
+Run on 2026-10-13 against PR #224's head `cc46e59a`, and again after the rename.
 
 1. Start an empty PostgreSQL 17.11 (Homebrew), the same major version as
    `supabase/config.toml` (`major_version = 17`).
@@ -42,97 +42,56 @@ The Preview database's ledger (`supabase_migrations.schema_migrations`) holds ex
 versions in the filenames, so CI's lineage check (`scripts/verify-migration-lineage.mjs`)
 agrees with the tree.
 
-## Which names are wrong
+## The renamed files
 
 None of these files are on `main`, so Production has never seen them; Production gets
 migrations only by the separate promotion in CONTRIBUTING.md "Shipping to production". (On
 2026-10-13 Production's ledger held 20 versions, ending at `20260729172311`; see
-[inventory.md](inventory.md#production-is-20-migrations-behind).) Times
-are UTC. The commits are squash merges, so the commit time is the latest a file can have been
-written, not its authoring time.
+[inventory.md](inventory.md#production-is-20-migrations-behind).) Times are UTC. The commits are
+squash merges, so the commit time is the latest a file can have been written; it is the new
+version.
 
-| File | First committed | Off by |
+| Old version | New version | File |
 | --- | --- | --- |
-| `20261003120000_scheduling_settings` | 2026-10-03 07:53 | +4 h |
-| `20261004120000_patient_search` | 2026-10-03 11:47 | +1 day |
-| `20261005120000_activity_log` | 2026-10-03 15:51 | +2 days |
-| `20261006120000_day_appointment_actions` | 2026-10-03 17:37 | +3 days |
-| `20261007120000_provider_day_hours` | 2026-10-03 19:17 | +4 days |
-| `20261008120000_staff_tours` | 2026-10-03 23:20 | +4.5 days |
-| `20261008120100_drop_portal_tour_dismissed_at` | 2026-10-03 23:20 | +4.5 days |
-| `20261008120200_close_request_from_booked` | 2026-10-03 23:20 | +4.5 days |
-| `20261009120000_booking_interval` | 2026-10-04 17:18 | +4.5 days |
-| `20261009120100_booked_visits_hold_interval` | 2026-10-04 17:18 | +4.5 days |
-| `20261010120000_portal_reads_match_screens` | 2026-10-04 19:19 | +5.5 days |
-| `20261011120000_openings_on_the_clock` | 2026-10-04 21:44 | +6.5 days |
-| `20261012120000_settings_follow_the_clinic` | 2026-10-04 22:55 | +7.5 days |
+| `20261003120000` | `20261003075330` | `scheduling_settings` |
+| `20261004120000` | `20261003114734` | `patient_search` |
+| `20261005120000` | `20261003155157` | `activity_log` |
+| `20261006120000` | `20261003173733` | `day_appointment_actions` |
+| `20261007120000` | `20261003191741` | `provider_day_hours` |
+| `20261008120000` | `20261003232044` | `staff_tours` |
+| `20261008120100` | `20261003232045` | `drop_portal_tour_dismissed_at` |
+| `20261008120200` | `20261003232046` | `close_request_from_booked` |
+| `20261009120000` | `20261004171806` | `booking_interval` |
+| `20261009120100` | `20261004171807` | `booked_visits_hold_interval` |
+| `20261010120000` | `20261004191946` | `portal_reads_match_screens` |
+| `20261011120000` | `20261004214429` | `openings_on_the_clock` |
+| `20261012120000` | `20261004225532` | `settings_follow_the_clinic` |
 
-Every one of them was dated in the future when committed. Today is 2026-10-13, so none is
-still in the future and any new migration sorts after all of them.
+Files committed together keep one-second steps so their order is unchanged. Every old stamp was
+in the future when committed, by 4 hours to 7.5 days.
 
-Two smaller slips, both harmless:
+Left as they are, because they sort correctly and no file sorts between them and their commit:
 
 - `20260806120000` was committed at 05:23 on Aug 6, about seven hours before its stamp.
 - `20260716090000` was committed at 14:33 on Jul 16, after `20260716132839` (13:49) although it
-  sorts first. The fresh build proves the order works.
+  sorts first. It is on Production, and the fresh build proves the order works.
+- `20260930230000`, `20261001160000` and `20261002120000` carry stamps earlier than their
+  commits.
 
-The early-October files around the tail are honest: `20260930230000` (committed Oct 1 15:01),
-`20261001160000` (Oct 1 17:30) and `20261002120000` (Oct 3 02:08) all carry stamps earlier
-than their commits.
+## What the rename touched
 
-## What a rename would touch
-
-The version is the key in two places outside the filename:
-
-- **The Preview database's ledger.** `supabase_migrations.schema_migrations` on
-  `gqzwcvwyhykscuidcmlh` holds the 13 old versions. Supabase Branching treats a renamed file as
-  a new, unapplied migration and runs it again on the next push. Several are not re-runnable:
-  `20261008120000_staff_tours` creates a table without `if not exists`,
-  `20261008120100_drop_portal_tour_dismissed_at` drops a column that is already gone, and
-  `20261009120000_booking_interval` creates a table and inserts its one row. The push fails
-  and the branch database stops following the PR, so the ledger rows have to change in the
-  same window as the merge.
-- **`supabase/rollbacks/`.** 13 rollback files carry the old versions in their names
-  (`<from>_to_<to>.sql`), from `20261003120000_to_20261002120000.sql` to
-  `20261012120000_to_20261011120000.sql`. None of them touch the ledger in their SQL, so a
-  rename is a file move.
-
-CI's lineage check fails on PR #224 and on every open child PR from the moment the files are
-renamed until the ledger is reconciled, and again on any child branch that has not merged
-the rename.
-
-Nothing else in the repository names these versions: no script, test, workflow or document.
-Production is untouched either way.
-
-## Decision for Jason
-
-**(a) Keep the names.** The order is proven correct, nothing breaks, and the dates are wrong only
-in the sense of being a week early. Record it and move on.
-
-**(b) Rename to the commit times.** The filenames then tell the truth, at the cost of one
-coordinated window on the shared Preview database: freeze pushes to PR #224 and its children,
-merge the rename, run the ledger update below, and re-run `supabase-integration`.
-
-The rename map keeps today's order:
-
-| Old version | New version |
-| --- | --- |
-| `20261003120000` | `20261003075330` |
-| `20261004120000` | `20261003114734` |
-| `20261005120000` | `20261003155157` |
-| `20261006120000` | `20261003173733` |
-| `20261007120000` | `20261003191741` |
-| `20261008120000` | `20261003232044` |
-| `20261008120100` | `20261003232045` |
-| `20261008120200` | `20261003232046` |
-| `20261009120000` | `20261004171806` |
-| `20261009120100` | `20261004171807` |
-| `20261010120000` | `20261004191946` |
-| `20261011120000` | `20261004214429` |
-| `20261012120000` | `20261004225532` |
-
-The ledger update for (b), not yet run anywhere. Run it on the Preview database only, in the
-coordination window, with the `wgi-supabase-branching` skill loaded:
+- **`supabase/migrations/`**: the 13 files, plus two header comments that name a sibling by
+  version.
+- **`supabase/rollbacks/`**: the 13 `<from>_to_<to>.sql` files, renamed on both sides of `_to_`,
+  and their header comments. No rollback writes the ledger.
+- **The Preview ledgers.** Supabase Branching treats a renamed file as a new, unapplied
+  migration and runs it again. Several cannot run twice: `staff_tours` creates a table without
+  `if not exists`, `drop_portal_tour_dismissed_at` drops a column that is already gone, and
+  `booking_interval` creates a table and inserts its one row. So
+  `supabase_migrations.schema_migrations` was updated in place on PR #224's Preview database
+  (`gqzwcvwyhykscuidcmlh`) and on this PR's own branch database, in the same window as the
+  push. CI's lineage check (`scripts/verify-migration-lineage.mjs`) compares that table with
+  the filenames.
 
 ```sql
 begin;
@@ -154,12 +113,14 @@ from (values
   ('20261012120000', '20261004225532')
 ) as r(old_version, new_version)
 where m.version = r.old_version;
--- Expect exactly 13 rows; roll back on anything else.
-select count(*) from supabase_migrations.schema_migrations where version like '202610%';
+-- Exactly 13 rows; anything else rolls back.
 commit;
 ```
 
-The rollback files are renamed with the same map, both sides of `_to_`.
+A branch cut from PR #224 before the rename still carries the old names. Merge PR #224 into it
+before its next push, or its lineage check fails and Supabase re-runs the files.
+
+Production is untouched: none of these versions is in its ledger.
 
 ## Rerunning the proof
 

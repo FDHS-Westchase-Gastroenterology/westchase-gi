@@ -1,4 +1,4 @@
--- Reverses 20261010120000_portal_reads_match_screens: the month tint returns to the share of
+-- Reverses 20261004191946_portal_reads_match_screens: the month tint returns to the share of
 -- working minutes, the Activity stream drops tour dismissals, and phone search needs three digits.
 
 drop index public.audit_log_activity_idx;

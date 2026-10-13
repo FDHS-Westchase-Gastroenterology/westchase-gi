@@ -1,4 +1,4 @@
--- Reverses 20261007120000_provider_day_hours: removes the Hours sheet's read, its two commands and
+-- Reverses 20261003191741_provider_day_hours: removes the Hours sheet's read, its two commands and
 -- their helpers, and restores the Settings read and the command list. Day-hours changes and their
 -- undos leave the change history; the hours and exceptions they wrote stay, so the schedule each
 -- provider works is unchanged. A reasonless unavailable range then lists as time off again.

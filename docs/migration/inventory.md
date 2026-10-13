@@ -8,8 +8,8 @@ plus read-only catalog queries against the PR #224 Preview database and Producti
 of that tree; re-grep before relying on an exact number.
 
 **Replaces with** names the AWS piece INIT-1 "Already decided" settles on. A dash means INIT-1
-says nothing and the builder picks; anything that is a real choice is in
-[Decisions for Jason](#decisions-for-jason).
+says nothing and the builder picks. Where INIT-1 was silent on something that changes the plan,
+the default this map sets is in [Settled defaults](#settled-defaults).
 
 **Removal deferred** marks billing and Vercel analytics. They are going away, but not in this
 migration step; they are listed so nobody rebuilds them on AWS by accident.
@@ -33,8 +33,8 @@ migration step; they are listed so nobody rebuilds them on AWS by accident.
 | 13 | Per-PR previews with their own database | Supabase Branching + Vercel Preview | ≤2 previews on staging's load balancer and DB server |
 | 14 | CI checks and deploy gates | `Supabase Preview`, `supabase-integration`, `Vercel` status | GitHub Actions with OIDC |
 | 15 | DNS | Porkbun | Route 53 |
-| 16 | The QR-code domain on printed flyers | `westchase-gi.vercel.app` | Undecided ([Decisions](#decisions-for-jason)) |
-| 17 | The data-retention job | Not running anywhere | Undecided ([Decisions](#decisions-for-jason)) |
+| 16 | The QR-code domain on printed flyers | `westchase-gi.vercel.app` | Vercel project kept as a redirect only ([Settled defaults](#settled-defaults)) |
+| 17 | The data-retention job | Not running anywhere | EventBridge Scheduler → one-off ECS task, created disabled ([Settled defaults](#settled-defaults)) |
 
 Confirmed not used, so nothing to build: Supabase Storage (0 buckets in Production and
 Preview), Realtime (the `supabase_realtime` publication has 0 tables), Edge Functions (no
@@ -50,8 +50,9 @@ is on `main` but not applied (the app tolerates it: `src/lib/portal/recipient-co
 PR #224 carries 55. Production also lacks `btree_gist`, `pg_trgm` and `unaccent`, which only
 the later migrations create.
 
-The cut-over copies Production into an RDS schema built from all 55. Those two shapes have to
-meet somewhere, which is a decision for Jason ([Decisions](#decisions-for-jason), item 1).
+The cut-over copies Production into an RDS schema built from all 55, so Production is promoted
+to PR #224's migrations through the usual release before the cut-over window, and the copy is
+like-for-like ([Settled defaults](#settled-defaults)).
 
 ## 1. Database
 
@@ -180,7 +181,7 @@ password flows and rate-limit buckets, which is harmless at cut-over.
 | Response headers | `src/proxy.ts` sets `Cache-Control: private, no-store` and `Referrer-Policy: no-referrer` on admin responses | Unchanged; INIT-1 adds CSP, HSTS and `frame-ancestors` |
 | Redirects, `revalidatePath` (19 calls), `generateStaticParams`, `robots.ts`, `sitemap.ts` | Standard Next.js; `site.url` is `https://westchasegi.com` | Work the same in a long-running container; the in-memory cache is per task |
 | Preview attestation | `src/app/api/preview-environment/route.ts`: 404 unless `VERCEL_ENV === "preview"`; checks the Supabase ref, the client key and two columns; returns `{ok, projectRef, gitCommitSha, clientKeySafe, schemaCompatible}` for CI | Rebuilt for the new preview flow or removed |
-| Vercel host on paper | `src/lib/review-targets.json`: the master review QR flyer points at `https://westchase-gi.vercel.app/review`; the PDFs and QR images under `private/review-flyers/` are hash-pinned (`scripts/verify-review-flyers.mjs`) | Undecided ([Decisions](#decisions-for-jason)) |
+| Vercel host on paper | `src/lib/review-targets.json`: the master review QR flyer points at `https://westchase-gi.vercel.app/review`; the PDFs and QR images under `private/review-flyers/` are hash-pinned (`scripts/verify-review-flyers.mjs`) | Vercel project kept as a redirect only ([Settled defaults](#settled-defaults)) |
 | Other Vercel host references | `scripts/capture-ui-reference.mjs:44` (`*.vercel.app` preview detection); `e2e/portal/review-flyers.spec.ts:533` (forbids `wgi-review-qr.vercel.app` and `/storage/v1/`) | Updated |
 | Staff-visible copy naming the providers | `src/lib/portal/website-custody.ts` ("Hosting = Vercel", links to the Vercel and Supabase dashboards, Porkbun, GitHub); asserted by `e2e/portal/website.spec.ts` | Rewritten for AWS |
 | DNS | Porkbun | Route 53 (INIT-1) |
@@ -192,7 +193,7 @@ Nothing runs on a schedule in Supabase or Vercel today. What exists:
 
 | Piece | Where | Replaces with |
 | --- | --- | --- |
-| Data retention | `portal_run_data_lifecycle(p_actor_email, p_now)` and `portal_preview_data_lifecycle(p_now)` (from `20260725170000`; windows of 1 hour, 180 days, 1 year, 6 years for audit). **Nothing calls it**: no pg_cron, Vercel cron or GitHub schedule. ARCHITECTURE.md describes "the request lifecycle scheduler"; AGENTS.md says scheduler activation needs separate explicit authorization | Undecided ([Decisions](#decisions-for-jason)); EventBridge Scheduler running a one-off ECS task is the natural fit |
+| Data retention | `portal_run_data_lifecycle(p_actor_email, p_now)` and `portal_preview_data_lifecycle(p_now)` (from `20260725170000`; windows of 1 hour, 180 days, 1 year, 6 years for audit). **Nothing calls it**: no pg_cron, Vercel cron or GitHub schedule. ARCHITECTURE.md describes "the request lifecycle scheduler"; AGENTS.md says scheduler activation needs separate explicit authorization | EventBridge Scheduler running a one-off ECS task, created disabled ([Settled defaults](#settled-defaults)) |
 | Intake rate-limit cleanup | Inside the rate-limit RPC (`delete ... where expires_at <= p_now`) | Nothing to schedule |
 | Analytics roll-up | Per request, `/api/telemetry` → `portal_record_analytics_event` upserts into `private.analytics_daily`. `supabase/snippets/analytics-daily-rollup.sql` is read-only reporting queries, not a job | Nothing to schedule |
 | Dependabot auto-merge | `.github/workflows/dependabot-automerge.yml`, hourly cron in GitHub | Stays in GitHub; its required-check list changes ([§8](#8-previews-ci-and-deploys)) |
@@ -264,29 +265,27 @@ database: migration `20260728223000_add_patient_analytics_daily.sql` (`private.a
 `portal_record_analytics_event`), `/api/telemetry`, `src/lib/telemetry*.ts`,
 `src/lib/portal/telemetry.ts`, the `<TelemetryReporter>` mount, emitters in
 `AppointmentForm`, `DocumentList`, `LanguageChooser`, `NoticeBanner`, and
-`e2e/portal/telemetry.spec.ts`. Whether it goes with Vercel analytics is open
-([Decisions](#decisions-for-jason)). The staff release-briefing telemetry
+`e2e/portal/telemetry.spec.ts`. It carries over to RDS
+([Settled defaults](#settled-defaults)). The staff release-briefing telemetry
 (`20260729105056`, `portal_release_states`, `release-briefing.ts`) is a product feature and is
 not analytics.
 
-## Decisions for Jason
+## Settled defaults
 
-These are choices, not lookups. Nothing here was decided on his behalf.
+Where INIT-1 was silent, this map keeps today's behavior and takes the simplest route.
 
-1. **How Production's data meets the 55-migration schema.** Production has applied 20 of
-   them. Either promote the remaining 35 to Production on Supabase before cut-over (after
-   PR #224 merges, through the usual promotion), so the copy is like-for-like; or build RDS
-   from all 55 and transform the 20-migration data during the copy.
-2. **Migration file dates.** Keep the 13 future-dated names (the order is proven correct) or
-   rename them to their commit times in a coordinated window on the shared Preview database.
-   The map and the ledger update are ready in [migration-order.md](migration-order.md#decision-for-jason).
-3. **The printed review flyer.** Its QR code sends people to
-   `https://westchase-gi.vercel.app/review`. INIT-1 ends with deleting the Vercel projects,
-   which would break every printed copy. Keep a Vercel project alive only to redirect, reprint
-   the flyers with a `westchasegi.com` address, or both in sequence.
-4. **The data-retention job.** `portal_run_data_lifecycle` exists and is tested but has never
-   run on a schedule, and activating it needs your explicit authorization (AGENTS.md). Decide
-   whether INIT-1 wires it up on AWS, and when it starts.
-5. **First-party patient analytics.** INIT-1 names "Vercel analytics" for removal. The
-   first-party `/api/telemetry` pipeline into `private.analytics_daily` is a different thing.
-   Say whether it goes too or carries over.
+1. **Production catches up before the copy.** PR #224's migrations reach Production through the
+   usual promotion (CONTRIBUTING.md "Shipping to production") before the cut-over window, so
+   Production and RDS have the same 55-migration schema and the copy needs no reshaping.
+2. **Migration file dates are fixed.** The 13 future-dated files carry their commit times
+   ([migration-order.md](migration-order.md)).
+3. **The printed review flyers keep working.** The Vercel project behind
+   `westchase-gi.vercel.app` stays, with its deployment replaced by a redirect to
+   `https://westchasegi.com/review`. It holds no app code and no patient data. The next flyer
+   print uses the `westchasegi.com` address, and the project can go once no printed copy points
+   at it.
+4. **The data-retention job is built but off.** Terraform creates the EventBridge Scheduler
+   schedule disabled; it starts when Jason authorizes scheduler activation, as AGENTS.md already
+   requires.
+5. **First-party patient analytics carries over.** INIT-1 removes Vercel analytics only;
+   `/api/telemetry` and `private.analytics_daily` move with the rest of the database.

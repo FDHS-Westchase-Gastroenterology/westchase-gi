@@ -1,4 +1,4 @@
--- Reverses 20261005120000_activity_log: removes the activity read, its merged stream and the
+-- Reverses 20261003155157_activity_log: removes the activity read, its merged stream and the
 -- indexes that serve it. Audit rows the portal wrote meanwhile ('auth.sign_in') stay; they are
 -- history, and every earlier reader ignores an action it has no sentence for.
 
