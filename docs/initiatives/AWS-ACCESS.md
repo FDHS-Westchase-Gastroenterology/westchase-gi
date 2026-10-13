@@ -5,7 +5,9 @@
 - **Account:** an AWS Organization in the new AWS experience (`FeatureSet: ALL`), with advanced
   features active since 2026-10-06. Jason's management account owns it; AWS added an Identity
   Delegated Admin account for IAM Identity Center. Agents work in the member project "Whimsical
-  Whiteboard" (Paid plan, $120 in credits). It is non-production, so no patient data goes into it.
+  Whiteboard" (`wgi`, Paid plan, $120 in credits). It is the only account: production, staging
+  and previews all run in it (Jason, 2026-10-13), kept apart by separate sign-in pools, database
+  servers and secrets. Production's resources will hold patient data.
 - **BAA:** the AWS Organizations BAA is active (accepted 2026-10-06 by Jason in Artifact; effective
   start 00:53 UTC on 2026-10-07). It covers the management account and every current and future
   member account, all designated HIPAA accounts, and opts them out of AWS using their content for
@@ -57,10 +59,6 @@ If AWS MCP calls still fail after that, reconnect the server from `/mcp` or star
 3. **BAA:** done 2026-10-06. Probe:
    `aws artifact list-customer-agreements --region us-east-1 --profile wgi` lists the AWS
    Organizations Business Associate Addendum as `ACTIVE`.
-4. **Accounts:** INIT-1's production and non-production accounts. Not needed to start; the INIT-1
-   agent asks for them when it reaches step 2 of its approach ("Stand up the AWS foundation").
-
-Once production exists, add its profiles to `~/.aws/config` and to the AWS MCP's `--profile`
-list, then update the AWS line in `autoMode.environment` and AGENTS.md "AWS access". The
-placeholder `wgi-nonprod`, `wgi-prod-readonly` and `wgi-prod` SSO profiles in `~/.aws/config` are
-unused until then.
+4. **Accounts:** cancelled 2026-10-13. No separate production or non-production accounts will be
+   created; everything runs in `wgi`. The placeholder `wgi-nonprod`, `wgi-prod-readonly` and
+   `wgi-prod` SSO profiles in `~/.aws/config` are dead and can be deleted.

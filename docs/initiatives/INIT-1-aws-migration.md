@@ -2,7 +2,7 @@
 
 ## Progress
 
-**Status:** Not started. No migration code yet: no Terraform, no Drizzle, and the app still runs on Supabase and Vercel. Most of Jason's AWS setup is done (see below).
+**Status:** Not started. No migration code yet: no Terraform, no Drizzle, and the app still runs on Supabase and Vercel. Nothing blocks step 2: everything, production included, runs in the existing `wgi` account (Jason, 2026-10-13).
 
 **Last updated:** 2026-10-13
 
@@ -23,12 +23,12 @@ Waiting on Jason:
 - [x] Secure the root sign-in: password plus a passkey, no access keys (2026-10-06).
 - [x] Accept the AWS BAA in AWS Artifact (active from 2026-10-07).
 - [x] Allow us-east-1 in the Organization's Region policy (2026-10-06).
-- [ ] Create the production and non-production accounts and fill in the `wgi-nonprod` / `wgi-prod` profiles in `~/.aws/config`. Being confirmed. Step 2 waits on this.
+- ~~Create the production and non-production accounts.~~ Cancelled 2026-10-13: everything runs in the existing `wgi` account. See "AWS layout" below.
 - [ ] Agree the cut-over hours with Juliet. The planned window (Sunday 2026-10-11) passed without the move happening, so it needs a new date.
 - [ ] Say go or no-go the night before the new window: go only if steps 1 to 4 have landed and the full end-to-end suite passes on staging.
 - [ ] Export the DNS zone from Porkbun, then swap the four nameservers once the Route 53 zone is ready.
 - [ ] Tell Juliet that staff will add an authenticator app or passkey at first sign-in, and may need to set a new password.
-- [ ] Put the Resend API key in Secrets Manager in both accounts, and the Supabase database connection string in production's.
+- [ ] Put the Resend API key in Secrets Manager (one secret for production, one for staging and previews), and the Supabase database connection string in a production-only secret.
 - [ ] Confirm admin on the GitHub repo and create the `production` environment with yourself as required reviewer.
 - [ ] Click the AWS notification confirmation email when it arrives, so alarms reach you.
 - [ ] Sign the BAA with FDHS (not needed for the cut-over; the eCW connection in INIT-2 needs it).
@@ -71,7 +71,10 @@ Everything after it (the eCW connection, the booking rules engine) builds on the
 
 These are settled with Jason. Build on them rather than reopening them.
 
-- **AWS layout.** An AWS Organization with separate production and non-production accounts in us-east-1. Only HIPAA-eligible services touch patient data. (*TAG: Jason, today 1 - create the production and non-production member accounts and fill in the `wgi-nonprod` / `wgi-prod` profiles in `~/.aws/config`. Every other step waits on this.*)
+- **AWS layout.** One AWS account for everything: the existing `wgi` project, production included, in us-east-1. Only HIPAA-eligible services touch patient data. (Jason, 2026-10-13. This replaces the earlier plan for separate production and non-production accounts; that step is cancelled, not postponed, and the `wgi-nonprod` / `wgi-prod` profiles are dead.)
+  - Why one account is enough: the AWS BAA has been active since 2026-10-07 and already covers `wgi`. HIPAA doesn't require separate accounts; that's only an AWS recommendation.
+  - How environments stay apart inside it: production gets its own Cognito pool, its own database server and its own secrets, never shared with staging or previews. Everything outside production uses fictional data. The developer sign-in works only outside production, and only with an explicit setting turned on.
+  - Accepted trade-off: every agent signed in to `wgi` has full admin rights over the account that will hold patient data. Record this in the risk assessment.
 - **Infrastructure.** Terraform for everything, and DNS moves to Route 53. (*TAG: Jason, today 3 - export the zone from Porkbun first. Once the agent has created the Route 53 zone with the same records, swap the four nameservers in Porkbun (Domain Management → westchasegi.com → Authoritative Nameservers). Propagation can take 48h, so if this misses tonight, keep DNS at Porkbun for Sunday and move it next week.*)
 - **Hosting.** The Next.js app runs as an always-on container on ECS Fargate behind a load balancer, with a web application firewall in front.
 - **Database.** RDS for PostgreSQL in a single zone: encrypted, private, deletion-protected, with point-in-time recovery. Multi-AZ can be switched on later.
@@ -83,16 +86,16 @@ These are settled with Jason. Build on them rather than reopening them.
   - Sessions end after 8 hours idle and 24 hours absolute, with a screen lock after inactivity.
   - Per-account throttling and lockout.
   - Deactivation takes effect on the next request.
-  - Previews and staging keep a preset developer sign-in for seeded staff accounts, held only in the non-production Cognito pool.
+  - Previews and staging keep a preset developer sign-in for seeded staff accounts, held only in the staging/preview Cognito pool, never in production's.
     - Why it's allowed: the Security Rule applies only to ePHI ([164.302](https://www.ecfr.gov/current/title-45/section-164.302)), and unique user IDs and authentication are required only for systems "that maintain electronic protected health information" ([164.312](https://www.ecfr.gov/current/title-45/section-164.312)). Fictional data isn't PHI ([160.103](https://www.ecfr.gov/current/title-45/section-160.103)). AWS's BAA only restricts where PHI goes ([AWS HIPAA FAQ](https://aws.amazon.com/compliance/hipaa-compliance/)). The MFA mandate is still a [proposed rule](https://www.govinfo.gov/content/pkg/FR-2025-01-06/html/2024-30983.htm).
-    - This holds only while non-production has no real data, so production data never goes there. The login fails closed: it works only in the non-production account with an explicit flag, unlike today's `VERCEL_ENV` check. Note the scoping in the risk assessment.
+    - This holds only while non-production has no real data, so production data never goes there. The login fails closed: it works only outside production with an explicit flag, unlike today's `VERCEL_ENV` check. Note the scoping in the risk assessment.
 - **Email.** Resend stays. No email may contain patient information, because Resend has no BAA.
   - Why it can stay: AWS's BAA covers only AWS's own services and doesn't dictate the email vendor ([AWS HIPAA FAQ](https://aws.amazon.com/compliance/hipaa-compliance/)). HIPAA requires a BAA only with vendors that create, receive, maintain or transmit PHI for us ([45 CFR 164.502(e)](https://www.ecfr.gov/current/title-45/section-164.502#p-164.502(e))). Resend "cannot sign a Business Associate Agreement" ([Resend security FAQ](https://resend.com/security/gdpr.md)), so it may only ever carry email that holds no PHI.
   - What it sends today (checked in code 2026-10-09), none of which carries PHI:
     - the new-request alert: fixed text plus a link to `/admin`, with no patient name, contact, reason or request link (`src/lib/portal/intake-notification.ts`)
     - its `[Test]` variant
     - the notification-recipient confirmation and the staff invite (`src/lib/portal/management-email.ts`)
-  - Cognito sends the sign-in emails (password reset, MFA codes, temporary passwords) itself unless a [custom email sender Lambda trigger](https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-lambda-custom-email-sender.html) routes them to a third party. Use that trigger to send them through Resend. (*TAG: Jason, today 5 - put the Resend API key in Secrets Manager in both accounts, and the Supabase database connection string in production's, so the agent can wire up email and the data copy without ever seeing the values.*)
+  - Cognito sends the sign-in emails (password reset, MFA codes, temporary passwords) itself unless a [custom email sender Lambda trigger](https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-lambda-custom-email-sender.html) routes them to a third party. Use that trigger to send them through Resend. (*TAG: Jason, today 5 - put the Resend API key in Secrets Manager (separate production and non-production secrets), and the Supabase database connection string in a production-only secret, so the agent can wire up email and the data copy without ever seeing the values.*)
   - Guardrails: never add a patient field or a request-specific link to an email template. List Resend in `docs/compliance/` as a vendor with no BAA that receives no PHI. If an email ever needs to name a patient or go to a patient, it moves to SES (HIPAA-eligible) or a vendor that signs a BAA.
 - **Environments.**
   - A preview environment per pull request: at most 2 open at once, destroyed when the PR merges or closes, sharing staging's load balancer and database server with one throwaway database each.
