@@ -6,8 +6,12 @@ import { z } from "zod";
 
 import { insertRequest } from "../boundaries/support";
 import { runId, serviceDb } from "../harness/env";
-import { savePatient } from "../harness/patients";
-import { createSchedulingFixture, disposeSchedulingFixturesAfterEach } from "../harness/scheduling";
+import { removePatients, savePatient } from "../harness/patients";
+import {
+  createSchedulingFixture,
+  disposeSchedulingFixturesAfterEach,
+  registerCleanUp,
+} from "../harness/scheduling";
 import { signIn } from "../harness/session";
 
 disposeSchedulingFixturesAfterEach();
@@ -41,17 +45,57 @@ async function search(page: Page, query: string): Promise<Locator> {
   return page.getByRole("listbox", { name: "Patients" }).getByRole("option");
 }
 
-/** Hovers an open day of the card's month until its popover is up, then picks its first start. */
-async function pickFirstStart(page: Page, card: Locator): Promise<void> {
+/**
+ * Registers removing a request the test inserted, with the bookings and the
+ * patient it led to, and returns it for the test's `finally`. These requests
+ * have no email, so the stale-fixture sweep cannot find one that a timed-out
+ * test left behind. The bookings go first because they hold the request's
+ * patient link.
+ */
+function removeRequestAfterTest(
+  db: ReturnType<typeof serviceDb>,
+  staffId: string,
+  requestId: string,
+) {
+  return registerCleanUp(async () => {
+    /* Booking registers the patient; a test that timed out never recorded them. */
+    const links = await db
+      .from("patient_request_links")
+      .select("patient_id")
+      .eq("request_id", requestId);
+    expect(links.error).toBeNull();
+    const patientIds = z
+      .array(z.object({ patient_id: z.uuid() }))
+      .parse(links.data)
+      .map((link) => link.patient_id);
+    expect((await db.from("appointments").delete().eq("created_by", staffId)).error).toBeNull();
+    expect(
+      (await db.from("patient_request_links").delete().eq("request_id", requestId)).error,
+    ).toBeNull();
+    expect((await db.from("requests").delete().eq("id", requestId)).error).toBeNull();
+    await removePatients(db, patientIds);
+  });
+}
+
+/**
+ * Hovers an open day of the card's month until its popover is up, then picks
+ * the first start of the block named `block` (provider, office), or of the
+ * first block.
+ */
+async function pickFirstStart(page: Page, card: Locator, block?: string): Promise<void> {
   const day = card.getByRole("button", { name: /, \d+ open times?$/u }).first();
   await expect(day).toBeVisible({ timeout: 20_000 });
   const popover = page.locator(".wgi-day-popover");
+  const times =
+    block === undefined
+      ? popover.getByRole("group").first()
+      : popover.getByRole("group", { name: block, exact: true });
   await expect(async () => {
     await page.mouse.move(0, 0);
     await day.hover();
-    await expect(popover).toBeVisible({ timeout: 2_000 });
+    await expect(times).toBeVisible({ timeout: 2_000 });
   }).toPass({ timeout: 20_000 });
-  await popover.getByRole("group").first().getByRole("button").first().click();
+  await times.getByRole("button").first().click();
 }
 
 test("search finds a patient by name or phone and opens their record from the keyboard, and the address reopens it", async ({
@@ -61,6 +105,7 @@ test("search finds a patient by name or phone and opens their record from the ke
   const db = serviceDb();
   const fixture = await createSchedulingFixture(db, `people-${runId}`);
   const requestId = randomUUID();
+  const removeRequest = removeRequestAfterTest(db, fixture.staff.userId, requestId);
   const name = `Tess ${Tag} Lindqvist`;
   const waiting = `Nadia ${Tag} Brooks`;
   try {
@@ -140,10 +185,7 @@ test("search finds a patient by name or phone and opens their record from the ke
     await expect(page).not.toHaveURL(/[?&]patient=/u);
     await expect(page.getByRole("combobox", { name: "Search patients" })).toBeFocused();
   } finally {
-    expect(
-      (await db.from("appointments").delete().eq("created_by", fixture.staff.userId)).error,
-    ).toBeNull();
-    expect((await db.from("requests").delete().eq("id", requestId)).error).toBeNull();
+    await removeRequest();
     await fixture.dispose();
   }
 });
@@ -153,8 +195,10 @@ test("a person known only by a request books from their record and becomes a pat
 }) => {
   test.setTimeout(120_000);
   const db = serviceDb();
-  const fixture = await createSchedulingFixture(db, `people-book-${runId}`);
+  const prefix = `people-book-${runId}`;
+  const fixture = await createSchedulingFixture(db, prefix);
   const requestId = randomUUID();
+  const removeRequest = removeRequestAfterTest(db, fixture.staff.userId, requestId);
   const name = `Owen ${Tag} Abara`;
   try {
     expect(
@@ -202,7 +246,10 @@ test("a person known only by a request books from their record and becomes a pat
     await sheet.getByRole("button", { name: "Book appointment" }).click();
     const card = page.locator(".wgi-sheet-card");
     await card.getByLabel("Visit type").selectOption(fixture.typeId);
-    await pickFirstStart(page, card);
+    /* The month offers every office for the request's location, the seed's
+       Tampa Office too, and on a day the seed providers have open starts their
+       blocks come first. Staff choose the office by choosing its block. */
+    await pickFirstStart(page, card, `TEST ${prefix} First, TEST ${prefix} First`);
     await card.getByRole("button", { name: "Book", exact: true }).click();
 
     /* The record on screen becomes the new patient's, in the same document. */
@@ -241,11 +288,7 @@ test("a person known only by a request books from their record and becomes a pat
       { source_request_id: requestId, location_id: fixture.locationIds[0] },
     ]);
   } finally {
-    expect(
-      (await db.from("appointments").delete().eq("created_by", fixture.staff.userId)).error,
-    ).toBeNull();
-    await db.from("patient_request_links").delete().eq("request_id", requestId);
-    expect((await db.from("requests").delete().eq("id", requestId)).error).toBeNull();
+    await removeRequest();
     await fixture.dispose();
   }
 });
@@ -342,6 +385,7 @@ test("Home's full record lives in the address: reload reopens it and Back closes
   const db = serviceDb();
   const fixture = await createSchedulingFixture(db, `people-home-${runId}`);
   const requestId = randomUUID();
+  const removeRequest = removeRequestAfterTest(db, fixture.staff.userId, requestId);
   const name = `TEST Home address ${runId}`;
   try {
     await insertRequest(db, { id: requestId, name, phone: "8135550177" });
@@ -369,7 +413,7 @@ test("Home's full record lives in the address: reload reopens it and Back closes
     await expect(page.getByText("That record couldn't be opened.")).toBeVisible();
     await expect(page).not.toHaveURL(/[?&]request=/u);
   } finally {
-    expect((await db.from("requests").delete().eq("id", requestId)).error).toBeNull();
+    await removeRequest();
     await fixture.dispose();
   }
 });
