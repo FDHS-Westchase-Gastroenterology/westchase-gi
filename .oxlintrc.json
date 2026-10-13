@@ -257,6 +257,7 @@
           "NextRequest",
           "NextResponse",
           "Page",
+          "PostgresJsDatabase",
           "PostgrestError",
           "PostgrestResponse",
           "PostgrestSingleResponse",
