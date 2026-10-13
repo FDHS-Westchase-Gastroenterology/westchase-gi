@@ -2,7 +2,7 @@
 
 ## Progress
 
-**Status:** Not started. No migration code yet: no Terraform, no Drizzle, and the app still runs on Supabase and Vercel. Most of Jason's AWS setup is done (see below).
+**Status:** Step 1 in progress. The dependency map and the migration-order proof are done; the file-date rename waits on Jason, and billing and Vercel analytics removal is deferred. No migration code yet: no Terraform, no Drizzle, and the app still runs on Supabase and Vercel. Most of Jason's AWS setup is done (see below).
 
 **Last updated:** 2026-10-13
 
@@ -11,6 +11,10 @@ To keep this current: when a PR finishes a step, tick its box in that same PR, a
 Steps (from "How I'd approach it"):
 
 - [ ] 1. Strip out what we're deleting (billing, Vercel analytics), fix the future-dated migration file names, and map every Supabase and Vercel touchpoint in `docs/migration/inventory.md`.
+  - [x] Map every Supabase and Vercel touchpoint in `docs/migration/inventory.md` (#PRNUM).
+  - [x] Prove the migration files build a clean database from scratch in order (`docs/migration/migration-order.md`) (#PRNUM).
+  - [ ] Fix the future-dated migration file names: waiting on Jason's keep-or-rename call in `migration-order.md`.
+  - [ ] Strip out billing and Vercel analytics: deferred; where they show up is in `inventory.md` §12.
 - [ ] 2. Stand up the AWS foundation.
 - [ ] 3. Move the database, sign-in, data access and email.
 - [ ] 4. Set up hosting and the pipeline.

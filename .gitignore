@@ -81,4 +81,5 @@ next-env.d.ts
 /MEMORY.md
 /docs/*
 !/docs/initiatives/
+!/docs/migration/
 # END generated from local-only-paths.json
