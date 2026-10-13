@@ -107,7 +107,7 @@ These are settled with Jason. Build on them rather than reopening them.
 - **Deploys.**
   - GitHub Actions authenticates to AWS with OIDC, so there are no long-lived keys.
   - Every PR runs lint, type check, and end-to-end tests, a migration dry run, a Terraform plan and a vulnerability scan.
-  - Merging to `main` deploys to staging automatically. Production waits for Jason's one-click approval in a protected GitHub environment. (*TAG: Jason, today 6 - confirm you have admin on the repo (the clinic's GitHub account owns it), then create the `aws-production` environment with a required reviewer. Done 2026-10-13; see Progress.*)
+  - Merging to the staging trunk deploys to staging automatically. The trunk is `portal/appointment-workflow-experience` (PR #224's branch) until #224 lands on `main`, then `main`. Production waits for Jason's one-click approval in a protected GitHub environment. (*TAG: Jason, today 6 - confirm you have admin on the repo (the clinic's GitHub account owns it), then create the `aws-production` environment with a required reviewer. Done 2026-10-13; see Progress.*)
   - Migrations run as a pipeline step that stops on failure.
   - `main` is branch-protected, and Renovate or Dependabot opens update PRs.
 - **Monitoring.** CloudWatch alarms (error rate, 5xx, latency, database health) go to Jason. Any third-party monitoring tool either has a BAA or receives no patient data. (*TAG: Jason, before Sunday - click the AWS notification confirmation email when it arrives, or alarms never reach you.*)
