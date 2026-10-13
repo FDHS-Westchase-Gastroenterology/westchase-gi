@@ -24,7 +24,7 @@ The paths in the table below are gitignored and never committed, even if a branc
 | `plans/` | Local planning notes. |
 | `screenshots/` | Ad-hoc screenshot scratch directory. Present untracked in the working tree on 2026-09-05; ignored before it can be committed. |
 | `MEMORY.md` | Agent memory index. The copy on origin/main is a one-line stub. |
-| `docs/` | Local briefs, screenshots and generated component inventories. The owner deleted this tree deliberately on 2026-09-05 and does not want it restored; the architecture decision records it used to hold remain in git history and are recoverable with `git show origin/main~1:docs/adr/0001-...`. |
+| `docs/` | Local briefs, screenshots and generated component inventories. The owner deleted this tree deliberately on 2026-09-05 and does not want it restored; the architecture decision records it used to hold remain in git history and are recoverable with `git show origin/main~1:docs/adr/0001-...`. The one tracked exception is `docs/initiatives/`, the initiative tickets: agents must be able to read them from the repository, so they are committed (owner decision 2026-10-13). |
 
 **Not local-only.** These look like tooling but are required; the guard refuses
 to run if the list above ever overlaps one of them.

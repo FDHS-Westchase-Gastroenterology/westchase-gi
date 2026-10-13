@@ -79,5 +79,6 @@ next-env.d.ts
 /plans/
 /screenshots/
 /MEMORY.md
-/docs/
+/docs/*
+!/docs/initiatives/
 # END generated from local-only-paths.json

@@ -20,7 +20,9 @@
     "",
     "ROOT CAUSE, measured: in every case the files were committed FIRST and the .gitignore entry was added AFTERWARDS. A .gitignore rule has no effect on a file git already tracks, so each rule looked like a fix while doing nothing. See whyItLeaked on each entry. That is why the guard checks TRACKED files rather than trusting .gitignore.",
     "",
-    "docs/ is local-only by owner decision on 2026-09-05. It previously held three architecture decision records and a workflow specification; those were deleted on purpose and are not to be restored. They remain reachable in git history if ever needed."
+    "docs/ is local-only by owner decision on 2026-09-05. It previously held three architecture decision records and a workflow specification; those were deleted on purpose and are not to be restored. They remain reachable in git history if ever needed. The one exception, since 2026-10-13, is docs/initiatives/: the initiative tickets are tracked because agents must be able to read them.",
+    "",
+    "An entry may carry \"except\": a list of paths beneath it that stay trackable. The guard does not flag them, and the generated .gitignore block writes each as a `!/path` negation after the entry's rule. That only works when the entry's gitignore value ignores the directory's contents (`/docs/*`) rather than the directory itself (`/docs/`), because git cannot re-include a file whose parent directory is excluded; the checker refuses an except under a rule that ends in `/`."
   ],
   "localOnly": [
     {
@@ -119,8 +121,9 @@
     },
     {
       "path": "docs/",
-      "gitignore": "/docs/",
-      "reason": "Local briefs, screenshots and generated component inventories. The owner deleted this tree deliberately on 2026-09-05 and does not want it restored; the architecture decision records it used to hold remain in git history and are recoverable with `git show origin/main~1:docs/adr/0001-...`.",
+      "gitignore": "/docs/*",
+      "except": ["docs/initiatives/"],
+      "reason": "Local briefs, screenshots and generated component inventories. The owner deleted this tree deliberately on 2026-09-05 and does not want it restored; the architecture decision records it used to hold remain in git history and are recoverable with `git show origin/main~1:docs/adr/0001-...`. The one tracked exception is `docs/initiatives/`, the initiative tickets: agents must be able to read them from the repository, so they are committed (owner decision 2026-10-13).",
       "firstTracked": "73fd00b3 2026-07-13",
       "ignoreRuleAdded": "455fdc2b 2026-09-02",
       "whyItLeaked": "Tracked from the first week of the project; the ignore rule arrived seven weeks later and therefore never applied."
