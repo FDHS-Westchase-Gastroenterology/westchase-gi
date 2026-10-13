@@ -2,7 +2,9 @@
 
 ## Progress
 
-**Status:** Step 1 in progress. The dependency map, the migration-order proof and the file-date fix are done; billing and Vercel analytics removal is deferred. No migration code yet: no Terraform, no Drizzle, and the app still runs on Supabase and Vercel. Most of Jason's AWS setup is done (see below).
+**Status:** Step 1's real work is done and merged into PR #224 (#402, merge `10bfd7a1`, 2026-10-13): the dependency map, the migration-order proof, the file-date fix and the settled defaults in `inventory.md`. Step 1 stays unticked only because billing and Vercel analytics removal is deferred; that removal blocks nothing. Step 2 (the AWS foundation) is next. No migration code yet: no Terraform, no Drizzle, and the app still runs on Supabase and Vercel. Most of Jason's AWS setup is done (see below).
+
+**Known CI failures, not caused by INIT-1:** `supabase-integration` fails the same 2 specs on PR #224 from at least `d7f9f4d2` (2026-10-07) and `b45cec60` (2026-10-09), before #402: `e2e/boundaries/notification-test.spec.ts` (Settings › Notifications test send) and `e2e/boundaries/schedule-month-availability.spec.ts` (month availability). The migration lineage and schema checks in that job pass. Fix them before relying on the suite as the regression contract.
 
 **Last updated:** 2026-10-13
 
@@ -14,7 +16,7 @@ Steps (from "How I'd approach it"):
   - [x] Map every Supabase and Vercel touchpoint in `docs/migration/inventory.md` (#402).
   - [x] Prove the migration files build a clean database from scratch in order (`docs/migration/migration-order.md`) (#402).
   - [x] Fix the future-dated migration file names (`docs/migration/migration-order.md`) (#402).
-  - [ ] Strip out billing and Vercel analytics: deferred; where they show up is in `inventory.md` §12.
+  - [ ] Strip out billing and Vercel analytics: deferred, later and not blocking; where they show up is in `inventory.md` §12.
 - [ ] 2. Stand up the AWS foundation.
 - [ ] 3. Move the database, sign-in, data access and email.
 - [ ] 4. Set up hosting and the pipeline.

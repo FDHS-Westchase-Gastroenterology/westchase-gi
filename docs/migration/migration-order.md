@@ -89,7 +89,7 @@ Left as they are, because they sort correctly and no file sorts between them and
   `if not exists`, `drop_portal_tour_dismissed_at` drops a column that is already gone, and
   `booking_interval` creates a table and inserts its one row. So
   `supabase_migrations.schema_migrations` was updated in place on PR #224's Preview database
-  (`gqzwcvwyhykscuidcmlh`) and on this PR's own branch database, in the same window as the
+  (`gqzwcvwyhykscuidcmlh`) and on PR #402's own branch database, in the same window as the
   push. CI's lineage check (`scripts/verify-migration-lineage.mjs`) compares that table with
   the filenames.
 
