@@ -3,7 +3,11 @@ data "aws_caller_identity" "current" {}
 data "aws_partition" "current" {}
 
 locals {
-  production_state_writer_arn = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${var.production_state_writer_role_name}"
+  role_arn_prefix             = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role"
+  production_state_writer_arn = "${local.role_arn_prefix}/${var.production_state_writer_role_name}"
+  production_plan_arn         = "${local.role_arn_prefix}/${var.production_plan_role_name}"
+  breakglass_arn              = "${local.role_arn_prefix}/${var.breakglass_role_name}"
+  state_bucket_arn            = "arn:${data.aws_partition.current.partition}:s3:::${var.state_bucket_name}"
 }
 
 module "state_key" {
@@ -14,25 +18,29 @@ module "state_key" {
   via_services = ["s3.${local.region}.amazonaws.com"]
 }
 
-# Production state is read and changed only through the production deploy role,
-# which only a GitHub Actions job in the protected production environment can
-# assume. Every other principal, the account root, administrators, agents and
-# any S3 replication role included, can neither read production state nor
-# write, lock, replicate or delete it. Editing these statements is the
-# break-glass path (infra/README.md, "Break glass"); infra/shared alarms on
-# every change to this bucket's policy, lifecycle, replication, ACL or CORS
-# configuration (protected-bucket-policy-changed) and to the production deploy
-# role (production-deploy-role-changed).
+# Production state is changed only through the production deploy role, which
+# only a GitHub Actions job in the protected aws-production environment can
+# assume. It is read by that role, the production plan role (a trunk job in the
+# aws-production-plan environment, planning with -lock=false) and the
+# break-glass role. Saved production plans under production-plans/ are written
+# only by the plan role and read only by the plan and deploy roles; they hold
+# cleartext values, so a lifecycle rule below expires them. Every other
+# principal, the account root, administrators, agents and any S3 replication
+# role included, is denied. Editing these statements is the break-glass path
+# (infra/README.md, "Break glass"); infra/shared alarms on every change to this
+# bucket's policy, lifecycle, replication, versioning, public access block, ACL
+# or CORS configuration (protected-bucket-policy-changed) and to the three roles
+# (production-deploy-role-changed).
 data "aws_iam_policy_document" "state_bucket" {
   statement {
-    sid    = "DenyProductionStateReadsExceptProductionDeployRole"
+    sid    = "DenyProductionStateReadsExceptProductionRoles"
     effect = "Deny"
     actions = [
       "s3:GetObject",
       "s3:GetObjectVersion",
       "s3:GetObjectVersionForReplication",
     ]
-    resources = ["arn:${data.aws_partition.current.partition}:s3:::${var.state_bucket_name}/production/*"]
+    resources = ["${local.state_bucket_arn}/production/*"]
 
     principals {
       type        = "*"
@@ -42,7 +50,7 @@ data "aws_iam_policy_document" "state_bucket" {
     condition {
       test     = "ArnNotEquals"
       variable = "aws:PrincipalArn"
-      values   = [local.production_state_writer_arn]
+      values   = [local.production_state_writer_arn, local.production_plan_arn, local.breakglass_arn]
     }
   }
 
@@ -57,7 +65,7 @@ data "aws_iam_policy_document" "state_bucket" {
       "s3:ReplicateObject",
       "s3:ReplicateTags",
     ]
-    resources = ["arn:${data.aws_partition.current.partition}:s3:::${var.state_bucket_name}/production/*"]
+    resources = ["${local.state_bucket_arn}/production/*"]
 
     principals {
       type        = "*"
@@ -68,6 +76,53 @@ data "aws_iam_policy_document" "state_bucket" {
       test     = "ArnNotEquals"
       variable = "aws:PrincipalArn"
       values   = [local.production_state_writer_arn]
+    }
+  }
+
+  statement {
+    sid    = "DenyProductionPlanReadsExceptPlanAndDeployRoles"
+    effect = "Deny"
+    actions = [
+      "s3:GetObject",
+      "s3:GetObjectVersion",
+      "s3:GetObjectVersionForReplication",
+    ]
+    resources = ["${local.state_bucket_arn}/production-plans/*"]
+
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+
+    condition {
+      test     = "ArnNotEquals"
+      variable = "aws:PrincipalArn"
+      values   = [local.production_state_writer_arn, local.production_plan_arn]
+    }
+  }
+
+  statement {
+    sid    = "DenyProductionPlanWritesExceptPlanRole"
+    effect = "Deny"
+    actions = [
+      "s3:DeleteObject",
+      "s3:DeleteObjectVersion",
+      "s3:PutObject",
+      "s3:ReplicateDelete",
+      "s3:ReplicateObject",
+      "s3:ReplicateTags",
+    ]
+    resources = ["${local.state_bucket_arn}/production-plans/*"]
+
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+
+    condition {
+      test     = "ArnNotEquals"
+      variable = "aws:PrincipalArn"
+      values   = [local.production_plan_arn]
     }
   }
 }
@@ -100,6 +155,29 @@ resource "aws_s3_bucket_lifecycle_configuration" "state" {
 
     abort_incomplete_multipart_upload {
       days_after_initiation = 7
+    }
+  }
+
+  # A saved plan is needed only between the plan job and the apply job that
+  # verifies its digest; it holds cleartext values, so no copy outlives a week.
+  rule {
+    id     = "expire-production-plans"
+    status = "Enabled"
+
+    filter {
+      prefix = "production-plans/"
+    }
+
+    expiration {
+      days = 7
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 7
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 1
     }
   }
 }

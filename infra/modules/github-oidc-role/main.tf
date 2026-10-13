@@ -26,12 +26,21 @@ data "aws_iam_policy_document" "trust" {
   }
 }
 
+# Every role this module makes is named somewhere by ARN: a state bucket
+# condition, a key policy, a GitHub secret. A replacement under the same name
+# keeps every grant that compares the ARN and loses every grant that stored the
+# old role's unique ID (a key policy principal), so a plan must never destroy
+# one. Removing a role means deleting this block's lifecycle first, on purpose.
 resource "aws_iam_role" "main" {
   name                 = var.name
   description          = var.description
   assume_role_policy   = data.aws_iam_policy_document.trust.json
   max_session_duration = 3600
   tags                 = var.tags
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_iam_role_policy" "main" {

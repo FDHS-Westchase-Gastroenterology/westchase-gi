@@ -10,12 +10,14 @@
 
 locals {
   # CloudWatch Logs log groups each environment's data key may encrypt. RDS log
-  # exports use fixed /aws/rds/... names, so those are listed too.
+  # exports use fixed /aws/rds/... names, and WAF logs only to a group whose
+  # name starts with aws-waf-logs-, so those are listed too.
   environment_log_groups = {
     staging = [
       "arn:${local.partition}:logs:${local.region}:${local.account_id}:log-group:/wgi/staging/*",
       "arn:${local.partition}:logs:${local.region}:${local.account_id}:log-group:/aws/rds/instance/wgi-staging-*",
       "arn:${local.partition}:logs:${local.region}:${local.account_id}:log-group:/aws/rds/cluster/wgi-staging-*",
+      "arn:${local.partition}:logs:${local.region}:${local.account_id}:log-group:aws-waf-logs-wgi-staging",
     ]
   }
 

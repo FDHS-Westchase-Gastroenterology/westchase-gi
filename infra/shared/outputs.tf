@@ -70,8 +70,14 @@ output "github_role_arns" {
   value = {
     plan              = module.github_plan.arn
     deploy_staging    = module.github_deploy_staging.arn
+    plan_production   = module.github_plan_production.arn
     deploy_production = module.github_deploy_production.arn
   }
+}
+
+output "breakglass_production_role_arn" {
+  description = "Emergency production role, assumable only from the management account with MFA."
+  value       = aws_iam_role.breakglass_production.arn
 }
 
 output "terraform_read_policy_arn" {

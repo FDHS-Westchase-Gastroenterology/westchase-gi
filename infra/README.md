@@ -19,9 +19,10 @@ multi-Region.
 | `modules/github-oidc-role/` | An IAM role that trusts exact GitHub Actions token subjects | |
 | `scripts/dns-mirror-diff.sh` | Compares the Porkbun and Route 53 answers for every mirrored name | |
 
-Environment roots (`staging/`, `production/`, previews) come in later pull requests and read
-`shared/` through its outputs. `production/` also creates production's data and secrets keys, and
-only the pipeline applies it, under `wgi-github-deploy-production`.
+Environment roots under `environments/` (`staging`, `production`, previews) come in later pull
+requests and read `shared/` through its outputs. `environments/production/` also creates
+production's data and secrets keys, and only the pipeline applies it, under
+`wgi-github-deploy-production`.
 
 Versions: Terraform `>= 1.10` (CI pins 1.16.4), AWS provider `~> 6.68`. Both roots commit
 `.terraform.lock.hcl`. The backend uses S3 native locking (`use_lockfile = true`); there is no
@@ -39,14 +40,18 @@ DynamoDB table.
 - **Security alarms.** Metric filters on the trail page the alerts topic on root user activity, a
   trail change, a KMS key disabled or scheduled for deletion, an IAM user, access key or console
   password being created, any change to the state or audit bucket's policy, lifecycle,
-  replication, ACL or CORS configuration, and `wgi-github-deploy-production` being created,
-  deleted, or having its trust or policies changed.
+  replication, versioning, public access block, ACL or CORS configuration, any of the three roles
+  that read production state (`wgi-github-deploy-production`, `wgi-github-plan-production`,
+  `wgi-breakglass-production`) being created, deleted, or having its trust, policies or
+  permissions boundary changed, a new default version of `wgi-terraform-read`, and every attempt
+  to assume the break-glass role.
 - **Account baseline.** S3 account-level public access block, EBS default encryption, GuardDuty
   and an IAM Access Analyzer in both Regions. GuardDuty runs S3, RDS login and Lambda network
   protection, and Runtime Monitoring with GuardDuty managing the agent on ECS Fargate; EKS and EBS
   malware scans are off. us-east-1 findings are forwarded to the us-east-2 event bus. GuardDuty
   findings of Medium severity and above, and every new active Access Analyzer finding, go to the
-  alerts topic.
+  alerts topic. A GuardDuty email names the finding's type, severity, Region, resource, first and
+  last sighting and ID, with a console link; the finding's JSON stays in GuardDuty.
 - **Runtime Monitoring on Fargate.** GuardDuty adds a sidecar running its security agent to each
   new Fargate task, and creates a `guardduty-data` VPC endpoint and its security group in each VPC
   that hosts a cluster. GuardDuty owns that endpoint and group; Terraform does not manage them, and
@@ -83,8 +88,8 @@ DynamoDB table.
   else. The default security group admits nothing. VPC flow logs (all traffic) go to the audit
   bucket. The S3 endpoint policy reaches only this account's buckets and the bucket ECR serves
   image layers from.
-- **GitHub OIDC.** The `token.actions.githubusercontent.com` provider and three roles; see
-  [Who can change what](#who-can-change-what).
+- **GitHub OIDC and break glass.** The `token.actions.githubusercontent.com` provider, four GitHub
+  roles and the production break-glass role; see [Who can change what](#who-can-change-what).
 - **ECR.** Repository `westchase-gi`: immutable tags, scan on push, encrypted with `wgi-artifacts`.
   Lifecycle: untagged images expire after 14 days, `production-*` tags keep the newest 30, and the
   repository keeps the newest 200 images overall.
@@ -97,7 +102,8 @@ DynamoDB table.
   path) and nothing else. It is not authoritative until the Porkbun nameservers change; see
   [Moving DNS to Route 53](#moving-dns-to-route-53).
 - **Tags.** Every resource carries `env`: `shared` from the provider default tags, `staging` on
-  staging's keys and deploy role, or `production` on the production deploy role. Guardrails that
+  staging's keys and deploy role, or `production` on the production deploy, plan and break-glass
+  roles. Guardrails that
   protect production key on `env = production`, so no other resource may carry it.
 
 ## Before the first apply
@@ -117,7 +123,12 @@ Two conditions hold before anyone applies `shared/`:
    The existing `Production` environment belongs to Vercel, which records the live site's
    deployments in it until the cut-over. Leave it alone. GitHub environment names are
    case-insensitive, so a new `production` environment would be that same environment.
-2. **The red-team review has passed** for this pull request.
+2. **The `aws-production-plan` GitHub environment exists**, for the same reason: the production
+   plan role trusts only `...:environment:aws-production-plan`. It has no reviewers, because a
+   plan changes nothing, and **Deployment branches and tags** names only
+   `portal/appointment-workflow-experience`, so a pull request job that names it is refused before
+   GitHub issues a token. Administrator bypass is off.
+3. **The red-team review has passed** for this pull request.
 
 `terraform plan` does not evaluate service control policies or resource control policies. The
 first apply is where a policy denial would show up; the likeliest places are the AWS Config
@@ -170,10 +181,11 @@ Then complete the [after-apply steps](#human-steps).
 
 ### 3. Environment roots
 
-Later pull requests. Each reads `shared/` through `terraform_remote_state` (below) and stores its
-state under its own prefix: `staging/`, `production/`, `preview/`. Nobody applies `production/` by
-hand: only the pipeline does, under `wgi-github-deploy-production`, because no other principal can
-read or write `production/` state or administer production's keys.
+Later pull requests, under `environments/`. Each reads `shared/` through `terraform_remote_state`
+(below) and stores its state under its own prefix: `staging/`, `production/`, `preview/`. Nobody
+applies `environments/production/` by hand: only the pipeline does, under
+`wgi-github-deploy-production`, because no other principal can write `production/` state or
+administer production's keys.
 
 ## Outputs contract
 
@@ -196,11 +208,12 @@ data "terraform_remote_state" "shared" {
 | `subnet_ids` | Map of tier (`public`, `app`, `db`) to subnet IDs sorted by zone |
 | `route_table_ids` | Map of tier to route table ID |
 | `vpc_endpoint_ids` | Map of service (`s3`, `ecr.api`, `ecr.dkr`, `secretsmanager`, `kms`, `logs`) to VPC endpoint ID, for `aws:SourceVpce` conditions |
-| `kms_key_arns`, `kms_key_aliases` | Maps keyed `audit`, `alerts`, `artifacts`, `staging_data`, `staging_secrets`; production's keys are outputs of `production/` |
+| `kms_key_arns`, `kms_key_aliases` | Maps keyed `audit`, `alerts`, `artifacts`, `staging_data`, `staging_secrets`; production's keys are outputs of `environments/production/` |
 | `alerts_topic_arn` | Where environment alarms publish |
 | `audit_bucket`, `state_bucket` | Bucket names |
 | `ecr_repository_url` | The image repository |
-| `github_role_arns` | Map with `plan`, `deploy_staging`, `deploy_production` |
+| `github_role_arns` | Map with `plan`, `plan_production`, `deploy_staging`, `deploy_production` |
+| `breakglass_production_role_arn` | The break-glass role, for production key policies |
 | `terraform_read_policy_arn` | The read-only policy the plan and deploy roles share |
 | `route53_zone_id`, `route53_name_servers` | The public zone |
 
@@ -211,20 +224,40 @@ Renaming or removing an output breaks every environment root that reads it.
 | Role | Trusted subject | State | AWS permissions |
 | --- | --- | --- | --- |
 | `wgi-github-plan` | `repo:FDHS-Westchase-Gastroenterology/westchase-gi:pull_request` | reads `bootstrap/`, `shared/`, `staging/`, `preview/`; never `production/`; writes nothing | `wgi-terraform-read`: metadata reads only, no object, log, secret or finding contents |
-| `wgi-github-deploy-staging` | `...:ref:refs/heads/portal/appointment-workflow-experience` (`var.staging_branch`) | reads `shared/`, reads and writes `staging/` | push to ECR; register task definitions; run, describe and stop tasks and update services in `wgi-staging*` clusters; pass `wgi-staging-*` roles to ECS tasks; read `/wgi/staging/*` task logs |
-| `wgi-github-deploy-production` | `...:environment:aws-production` (`var.production_environment`) | reads `shared/`, reads and writes `production/` | the same for `wgi-production*`, except that it can pull and tag existing images but not upload layers, and reads no logs |
+| `wgi-github-plan-production` | `...:environment:aws-production-plan` (`var.production_plan_environment`) | reads `shared/` and `production/`; writes only saved plans under `production-plans/` | `wgi-terraform-read`, with explicit denies on every content read (below) |
+| `wgi-github-deploy-staging` | `...:ref:refs/heads/portal/appointment-workflow-experience` (`var.staging_branch`) | reads `shared/`, reads and writes `staging/` and `preview/` | push to ECR; register task definitions; run, describe and stop tasks and update services in `wgi-staging*` clusters; pass `wgi-staging-*` roles to ECS tasks; read `/wgi/staging/*` task logs |
+| `wgi-github-deploy-production` | `...:environment:aws-production` (`var.production_environment`) | reads `shared/`, reads and writes `production/`, reads `production-plans/` | the same for `wgi-production*`, except that it can pull and tag existing images but not upload layers, and reads no logs |
+| `wgi-breakglass-production` | the management account, with MFA | exempt from the `production/` read deny | none of its own; see [Break glass](#break-glass) |
 
 - Every role session lasts at most one hour. Fork pull requests never receive an OIDC token.
-- The state bucket policy denies reads, writes, deletes and replication under `production/` to
-  every principal except `wgi-github-deploy-production`, the account root and administrators
-  included. An administrator can still get around it by changing the bucket policy, adding a
-  lifecycle rule that expires production state, or changing that role's trust or policies (or
-  deleting it and recreating it under the same name). Each of those pages the alerts topic
-  (`protected-bucket-policy-changed`, `production-deploy-role-changed`); none is prevented. The
-  sanctioned path is [Break glass](#break-glass).
-- The pull request that adds `production/` also extends `wgi-github-deploy-production` with the
-  permissions to create and administer production's KMS keys. No administrator or agent shell
-  creates or administers a production key.
+- The state bucket policy denies, to every principal not named, the account root and
+  administrators included:
+
+  | Prefix | Read | Write, delete, replicate |
+  | --- | --- | --- |
+  | `production/` | deploy-production, plan-production, break-glass | deploy-production |
+  | `production-plans/` | deploy-production, plan-production | plan-production |
+
+  Saved plans hold cleartext values, so a lifecycle rule expires `production-plans/` objects,
+  current and noncurrent, after 7 days. An administrator can still get around the denies by
+  changing the bucket policy, its lifecycle, versioning or public access block, by changing one of
+  the three roles' trust, policies or permissions boundary (or deleting one and recreating it
+  under the same name, which keeps every ARN-based grant), or by publishing a new default version
+  of `wgi-terraform-read`. Each of those pages the alerts topic (`protected-bucket-policy-changed`,
+  `production-deploy-role-changed`, `terraform-read-policy-changed`); none is prevented. Terraform
+  refuses to destroy any GitHub role or the break-glass role (`prevent_destroy`). The sanctioned
+  path is [Break glass](#break-glass).
+- `wgi-github-plan-production` reads production metadata through `wgi-terraform-read` and nothing
+  else. Explicit denies, which no later allow can lift, cover secret values
+  (`secretsmanager:GetSecretValue`, `BatchGetSecretValue`), `kms:Decrypt` on any key but the state
+  key, object reads in the state bucket outside `production/`, `production-plans/` and `shared/`,
+  log contents (`GetLogEvents`, `FilterLogEvents`, `StartQuery`, `GetQueryResults`,
+  `StartLiveTail`, `GetLogRecord`), `rds-db:connect`, Cognito user reads (`ListUsers`,
+  `ListUsersInGroup`, `AdminGetUser`, `AdminListGroupsForUser`), SSM parameter values and
+  `ecs:ExecuteCommand`.
+- The pull request that adds `environments/production/` also extends `wgi-github-deploy-production`
+  with the permissions to create and administer production's KMS keys. No administrator or agent
+  shell creates or administers a production key.
 - The staging deploy job must not name a GitHub environment: a job that names one gets an
   environment subject, which the staging role does not trust.
 - The staging role is exactly as trustworthy as the staging branch. Anyone who can push to
@@ -232,25 +265,39 @@ Renaming or removing an output breaks every environment root that reads it.
 - The deploy roles carry deploy primitives only. The pull request that adds an environment root
   adds the permissions its `terraform apply` needs, and extends `wgi-terraform-read` with the
   services that root refreshes.
-- CI plans run with `-lock=false`, because `wgi-github-plan` cannot write the lock file.
+- CI plans run with `-lock=false`, because neither plan role can write a lock file.
 
 ### Break glass
 
-This is the emergency access procedure for production state (45 CFR 164.312(a)(2)(ii)). Use it
-only when production state must be read or repaired and the pipeline cannot do it: the production
-deploy role or its trust is broken, a lock is stuck, or a state version is corrupt. Jason decides
-to break glass; an agent never does.
+This is the emergency access procedure for production (45 CFR 164.312(a)(2)(ii)). Use it only
+when production must be read or repaired and the pipeline cannot do it: the production deploy role
+or its trust is broken, a production key policy lost an administrator or a key is pending
+deletion, a lock is stuck, a state version is corrupt, or GitHub is unavailable. Jason decides to
+break glass; an agent never does.
 
-1. With administrator credentials, edit the bucket policy of `westchase-gi-tfstate-use2`: remove
-   `DenyProductionStateReadsExceptProductionDeployRole` and, if a write is needed,
-   `DenyProductionStateWritesExceptProductionDeployRole`, or add your role's ARN to their
-   `ArnNotEquals` list. The change fires the `protected-bucket-policy-changed` alarm, which pages
-   the alerts topic.
-2. Do the repair. CloudTrail records every object read and write on the state bucket.
-3. Restore the policy with `terraform -chdir=infra/bootstrap apply`. `bootstrap/` owns the bucket
-   policy, so the apply puts the committed statements back. The alarm fires again.
-4. Record who broke glass, when, why, what was read or changed and when the policy was restored,
-   with the CloudTrail event IDs of both policy changes, in the security incident records.
+`wgi-breakglass-production` trusts only the Organization's management account, and only a session
+authenticated with MFA. Its account ID comes from the Organization at plan time, so it is written
+nowhere in the repository. The role has no IAM policy. The state bucket exempts it from the
+`production/` read deny, and every production key policy must name it as a second administrator,
+so an emergency adds only the permission that emergency needs. Every attempt to assume it pages the
+alerts topic (`breakglass-production-assumed`), and so does any policy attached to it
+(`production-deploy-role-changed`).
+
+1. For a key administration repair (`PutKeyPolicy`, `CancelKeyDeletion`), Jason assumes the role
+   from the management account; the key policy is the grant.
+2. To read production state, an administrator attaches an inline policy to the role granting
+   `s3:GetObject` and `s3:ListBucket` on the state bucket's `production/` prefix and `kms:Decrypt`
+   on the `wgi-tfstate` key, and Jason assumes it. To write production state, also edit the bucket
+   policy of `westchase-gi-tfstate-use2`: add the role's ARN to the `ArnNotEquals` list of
+   `DenyProductionStateWritesExceptProductionDeployRole`. That change fires
+   `protected-bucket-policy-changed`.
+3. Do the repair. CloudTrail records every object read and write on the state bucket.
+4. Remove the inline policy, and restore the bucket policy with
+   `terraform -chdir=infra/bootstrap apply`. `bootstrap/` owns the bucket policy, so the apply puts
+   the committed statements back. The alarms fire again.
+5. Record who broke glass, when, why, what was read or changed and when access was removed, with
+   the CloudTrail event IDs of the assumption and of every policy change, in the security incident
+   records.
 
 ### Naming contract
 
@@ -263,7 +310,8 @@ gets access denied.
 | ECS services | any service in a `wgi-<env>*` cluster |
 | Task definition families | `wgi-<env>*` |
 | Task and execution roles | `wgi-<env>-*` |
-| Application log groups | `/wgi/<env>/*` (the `wgi-<env>-data` key may encrypt only these and RDS exports) |
+| Application log groups | `/wgi/<env>/*` (the `wgi-<env>-data` key may encrypt only these, RDS exports and the WAF log group) |
+| WAF log group | `aws-waf-logs-wgi-<env>` (WAF logs only to a group whose name starts with `aws-waf-logs-`) |
 | RDS instances and clusters | `wgi-<env>-*` |
 
 `<env>` is `staging` or `production`. Previews either live inside the staging names
@@ -321,12 +369,12 @@ minutes, so a longer suite polls `describe-tasks` in a loop.
 
 ### Production keys
 
-`wgi-production-data` and `wgi-production-secrets` are not in `shared/`. The `production/` root
-creates them, and only the pipeline applies it, under `wgi-github-deploy-production`. Their key
-policy grants the account root no `kms:*`, so no IAM policy, an administrator's included, reaches
-a production key on its own; only the principals the key policy names do. The `shared/` keys keep
-the root statement, because administrators apply `shared/`. The red-team gate checks the
-production key policy (G4) before that root's first apply.
+`wgi-production-data` and `wgi-production-secrets` are not in `shared/`. The
+`environments/production/` root creates them, and only the pipeline applies it, under
+`wgi-github-deploy-production`. Their key policy grants the account root no `kms:*`, so no IAM
+policy, an administrator's included, reaches a production key on its own; only the principals the
+key policy names do. The `shared/` keys keep the root statement, because administrators apply
+`shared/`. The red-team gate checks the production key policy (G4) before that root's first apply.
 
 ### Other choices
 
@@ -345,10 +393,14 @@ production key policy (G4) before that root's first apply.
 ## Known properties
 
 - **The alarm address is in `shared/` state in clear text**, as the SNS subscription endpoint.
-  Anyone who can read that state can read it: administrators and all three GitHub roles. The CI
+  Anyone who can read that state can read it: administrators and all four GitHub roles. The CI
   plan summary redacts it, along with every 12-digit number.
-- **Expect IAM Access Analyzer findings** for the three GitHub roles, which trust an external
-  identity provider. Jason reviews each and archives it once he agrees it is intended.
+- **Expect IAM Access Analyzer findings** for the four GitHub roles, which trust an external
+  identity provider, and for the break-glass role, which trusts the management account. Jason
+  reviews each and archives it once he agrees it is intended.
+- **The management account's ID and email address are in `shared/` state and plans**, from the
+  Organization data source the break-glass trust reads. The CI plan summary redacts every 12-digit
+  number; it prints no attribute values.
 - **Bucket names.** The state bucket name is global and fixed in every backend block. To rebuild in
   another account, choose a new name, set `state_bucket_name` in both roots and edit each backend
   block. The audit bucket name includes the account ID and follows automatically.
@@ -364,7 +416,7 @@ production key policy (G4) before that root's first apply.
 
 Before `shared/` is applied:
 
-1. Create and protect the `aws-production` environment, as in
+1. Create and protect the `aws-production` and `aws-production-plan` environments, as in
    [Before the first apply](#before-the-first-apply).
 
 After `shared/` is applied:
@@ -376,6 +428,9 @@ After `shared/` is applied:
      value.
    - `ALARM_EMAIL`: the same address as `TF_VAR_alarm_email`, so the CI plan matches.
 
+   In the `aws-production-plan` environment, add the environment secret
+   `PLAN_PRODUCTION_ROLE_ARN`: the `plan_production` value of the same output.
+
    Then, at <https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/settings/variables/actions>,
    add the repository variable `TF_PLAN_ENABLED` with the value `true`. Role ARNs are secrets, not
    variables, because this repository is public and Actions prints step inputs in its logs; the
@@ -383,7 +438,8 @@ After `shared/` is applied:
 4. Protect `portal/appointment-workflow-experience` (require pull requests, block force pushes and
    deletion) at <https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/settings/branches>
    before the staging deploy pipeline goes live. Today only `main` is protected.
-5. Review the IAM Access Analyzer findings for the GitHub roles and archive the intended ones.
+5. Review the IAM Access Analyzer findings for the GitHub and break-glass roles and archive the
+   intended ones.
 
 DNS, after the mirror in `shared/dns.tf` is applied:
 
@@ -465,7 +521,7 @@ Estimated for the foundation alone in us-east-2, before any environment exists.
 | AWS Config recording | $1 to $3 |
 | ECR storage | $1 to $4 |
 | CloudWatch Logs (CloudTrail stream, 365 days) | $0.50 to $1 |
-| CloudWatch alarms (5) | $0.50 |
+| CloudWatch alarms (8) | $0.80 |
 | Route 53 hosted zone | $0.50 |
 | VPC flow logs to S3 | about $0.50 |
 | S3 (state, audit) | under $1 |
@@ -474,5 +530,5 @@ Estimated for the foundation alone in us-east-2, before any environment exists.
 
 Runtime Monitoring bills per vCPU of the Fargate tasks it watches, averaged over the month, so
 an always-on 1 vCPU task adds about $1.50; the endpoint GuardDuty creates for its agent is free.
-Production's two keys add $2 when `production/` creates them. Options that would add to this: a
-second NAT gateway (about $36.50), Security Hub (about $10 to $30).
+Production's two keys add $2 when `environments/production/` creates them. Options that would add to
+this: a second NAT gateway (about $36.50), Security Hub (about $10 to $30).

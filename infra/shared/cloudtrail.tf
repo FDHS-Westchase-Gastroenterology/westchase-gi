@@ -137,20 +137,34 @@ locals {
       pattern     = "{ ($.eventSource = \"iam.amazonaws.com\") && (($.eventName = \"CreateUser\") || ($.eventName = \"CreateAccessKey\") || ($.eventName = \"CreateLoginProfile\")) }"
     }
     # Both policies hold a deny that only a policy change can lift: production
-    # state reads and writes on the state bucket, record deletion on the audit
-    # bucket. A lifecycle rule expires objects without a DeleteObject call the
-    # deny could stop, and replication copies them out, so those changes alarm
-    # too.
+    # state and saved-plan access on the state bucket, record deletion on the
+    # audit bucket. A lifecycle rule expires objects without a DeleteObject
+    # call the deny could stop, replication copies them out, and suspending
+    # versioning or removing the public access block weakens what the deny
+    # protects, so those changes alarm too.
     protected-bucket-policy-changed = {
-      description = "The Terraform state or audit bucket's policy, lifecycle, replication, ACL or CORS configuration was changed (the break-glass path for production state and audit records)"
-      pattern     = "{ ($.eventSource = \"s3.amazonaws.com\") && (($.eventName = \"PutBucketPolicy\") || ($.eventName = \"DeleteBucketPolicy\") || ($.eventName = \"PutBucketLifecycle\") || ($.eventName = \"DeleteBucketLifecycle\") || ($.eventName = \"PutBucketReplication\") || ($.eventName = \"DeleteBucketReplication\") || ($.eventName = \"PutBucketAcl\") || ($.eventName = \"PutBucketCors\")) && (($.requestParameters.bucketName = \"${var.state_bucket_name}\") || ($.requestParameters.bucketName = \"${local.audit_bucket_name}\")) }"
+      description = "The Terraform state or audit bucket's policy, lifecycle, replication, versioning, public access block, ACL or CORS configuration was changed (the break-glass path for production state and audit records)"
+      pattern     = "{ ($.eventSource = \"s3.amazonaws.com\") && (($.eventName = \"PutBucketPolicy\") || ($.eventName = \"DeleteBucketPolicy\") || ($.eventName = \"PutBucketLifecycle\") || ($.eventName = \"DeleteBucketLifecycle\") || ($.eventName = \"PutBucketReplication\") || ($.eventName = \"DeleteBucketReplication\") || ($.eventName = \"PutBucketVersioning\") || ($.eventName = \"PutBucketPublicAccessBlock\") || ($.eventName = \"DeleteBucketPublicAccessBlock\") || ($.eventName = \"PutBucketAcl\") || ($.eventName = \"PutBucketCors\")) && (($.requestParameters.bucketName = \"${var.state_bucket_name}\") || ($.requestParameters.bucketName = \"${local.audit_bucket_name}\")) }"
     }
-    # The state bucket admits this role by ARN, so a role recreated under the
-    # same name, or one whose trust or policies change, inherits production
-    # state.
+    # The state bucket admits these roles by ARN, so a role recreated under the
+    # same name, or one whose trust, policies or permissions boundary change,
+    # inherits production state.
     production-deploy-role-changed = {
-      description = "The production deploy role, the only principal that reads production state, was created, deleted, or had its trust or policies changed"
-      pattern     = "{ ($.eventSource = \"iam.amazonaws.com\") && ($.requestParameters.roleName = \"${module.github_deploy_production.name}\") && (($.eventName = \"CreateRole\") || ($.eventName = \"DeleteRole\") || ($.eventName = \"UpdateAssumeRolePolicy\") || ($.eventName = \"PutRolePolicy\") || ($.eventName = \"AttachRolePolicy\")) }"
+      description = "A role that reads production state (deploy, plan or break-glass) was created or deleted, or had its trust, policies or permissions boundary changed"
+      pattern     = "{ ($.eventSource = \"iam.amazonaws.com\") && (($.requestParameters.roleName = \"${module.github_deploy_production.name}\") || ($.requestParameters.roleName = \"${module.github_plan_production.name}\") || ($.requestParameters.roleName = \"${aws_iam_role.breakglass_production.name}\")) && (($.eventName = \"CreateRole\") || ($.eventName = \"DeleteRole\") || ($.eventName = \"UpdateAssumeRolePolicy\") || ($.eventName = \"PutRolePolicy\") || ($.eventName = \"DeleteRolePolicy\") || ($.eventName = \"AttachRolePolicy\") || ($.eventName = \"DetachRolePolicy\") || ($.eventName = \"PutRolePermissionsBoundary\") || ($.eventName = \"DeleteRolePermissionsBoundary\")) }"
+    }
+    # wgi-terraform-read is customer managed and attached to those roles, so a
+    # new default version changes what they can do without touching the role.
+    terraform-read-policy-changed = {
+      description = "wgi-terraform-read, the managed policy on every GitHub role including the production plan and deploy roles, got a new or different default version"
+      pattern     = "{ ($.eventSource = \"iam.amazonaws.com\") && (($.eventName = \"CreatePolicyVersion\") || ($.eventName = \"SetDefaultPolicyVersion\")) && ($.requestParameters.policyArn = \"${aws_iam_policy.terraform_read.arn}\") }"
+    }
+    # Each use of the role is emergency access and is recorded as such. The
+    # role's account logs a cross-account AssumeRole, refused attempts
+    # included.
+    breakglass-production-assumed = {
+      description = "Someone assumed, or tried to assume, the production break-glass role"
+      pattern     = "{ ($.eventSource = \"sts.amazonaws.com\") && ($.eventName = \"AssumeRole\") && ($.requestParameters.roleArn = \"${aws_iam_role.breakglass_production.arn}\") }"
     }
   }
 }

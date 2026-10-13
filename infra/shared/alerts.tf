@@ -128,10 +128,49 @@ resource "aws_cloudwatch_event_rule" "guardduty_findings" {
   })
 }
 
+# The email names the finding instead of carrying its full JSON: what fired,
+# how severe, where, on which resource, when, and the ID to look it up or
+# archive it by. The JSON stays in GuardDuty, behind the console link. A finding
+# fills only the resource path for its own resource type; EventBridge leaves a
+# path the event lacks out of the output. Nothing here carries the account ID.
 resource "aws_cloudwatch_event_target" "guardduty_findings" {
   rule      = aws_cloudwatch_event_rule.guardduty_findings.name
   target_id = "wgi-alerts"
   arn       = aws_sns_topic.alerts.arn
+
+  input_transformer {
+    input_paths = {
+      type         = "$.detail.type"
+      title        = "$.detail.title"
+      severity     = "$.detail.severity"
+      region       = "$.detail.region"
+      resourceType = "$.detail.resource.resourceType"
+      instance     = "$.detail.resource.instanceDetails.instanceId"
+      accessKey    = "$.detail.resource.accessKeyDetails.userName"
+      bucket       = "$.detail.resource.s3BucketDetails[0].name"
+      database     = "$.detail.resource.rdsDbInstanceDetails.dbInstanceIdentifier"
+      ecsCluster   = "$.detail.resource.ecsClusterDetails.name"
+      function     = "$.detail.resource.lambdaDetails.functionName"
+      firstSeen    = "$.detail.service.eventFirstSeen"
+      lastSeen     = "$.detail.service.eventLastSeen"
+      count        = "$.detail.service.count"
+      findingId    = "$.detail.id"
+    }
+    input_template = <<-EOT
+      "GuardDuty finding, severity <severity>: <title>"
+      ""
+      "Type: <type>"
+      "Severity: <severity>"
+      "Region: <region>"
+      "Resource type: <resourceType>"
+      "Resource: <instance><accessKey><bucket><database><ecsCluster><function>"
+      "First seen: <firstSeen>"
+      "Last seen: <lastSeen> (<count> occurrences)"
+      "Finding ID: <findingId>"
+      ""
+      "https://<region>.console.aws.amazon.com/guardduty/home?region=<region>#/findings?macros=current&fId=<findingId>"
+    EOT
+  }
 }
 
 resource "aws_cloudwatch_event_rule" "access_analyzer_findings" {

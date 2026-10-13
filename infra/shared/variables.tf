@@ -38,6 +38,17 @@ variable "production_environment" {
   }
 }
 
+variable "production_plan_environment" {
+  type        = string
+  description = "GitHub environment whose jobs may assume the production plan role. It must have no reviewers and a deployment-branch policy that allows only the trunk. Lower case, because the role compares the name case-sensitively."
+  default     = "aws-production-plan"
+
+  validation {
+    condition     = can(regex("^[a-z0-9-]+$", var.production_plan_environment))
+    error_message = "production_plan_environment must be lower-case letters, digits and hyphens."
+  }
+}
+
 variable "state_bucket_name" {
   type        = string
   description = "Terraform state bucket created by infra/bootstrap."

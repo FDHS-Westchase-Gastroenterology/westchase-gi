@@ -4,7 +4,11 @@
 #
 #   wgi-github-plan               any pull request in the repository; reads
 #                                 metadata and non-production state, writes nothing
-#   wgi-github-deploy-staging     a workflow run on the staging branch
+#   wgi-github-deploy-staging     a workflow run on the staging branch; staging
+#                                 and preview state
+#   wgi-github-plan-production    a job in the aws-production-plan environment,
+#                                 which only the trunk may use; reads production
+#                                 state and writes saved plans, nothing else
 #   wgi-github-deploy-production  a job in the aws-production environment,
 #                                 which Jason must approve
 #
@@ -71,6 +75,7 @@ data "aws_iam_policy_document" "terraform_read" {
       "logs:DescribeMetricFilters",
       "logs:ListTagsForResource",
       "logs:ListTagsLogGroup",
+      "organizations:DescribeOrganization",
       "route53:GetHostedZone",
       "route53:ListResourceRecordSets",
       "route53:ListTagsForResource",
@@ -98,11 +103,16 @@ resource "aws_iam_policy" "terraform_read" {
 }
 
 # Read and write a set of state keys, and use the state key only through S3.
+# Previews keep one state per pull request under preview/, applied by the
+# staging deploy role. The production plan role writes only saved plans; it
+# plans with -lock=false, so it never writes production/. The production deploy
+# role reads the saved plan it applies.
 data "aws_iam_policy_document" "state_access" {
   for_each = {
-    plan       = { read = ["bootstrap", "shared", "staging", "preview"], write = [] }
-    staging    = { read = ["shared"], write = ["staging"] }
-    production = { read = ["shared"], write = ["production"] }
+    plan            = { read = ["bootstrap", "shared", "staging", "preview"], write = [] }
+    staging         = { read = ["shared"], write = ["staging", "preview"] }
+    plan_production = { read = ["shared", "production"], write = ["production-plans"] }
+    production      = { read = ["shared", "production-plans"], write = ["production"] }
   }
 
   statement {
@@ -161,6 +171,118 @@ module "github_plan" {
   managed_policy_arns = {
     terraform_read = aws_iam_policy.terraform_read.arn
   }
+}
+
+# What a production plan may never do, whatever a later policy allows: read a
+# secret value, decrypt with any key but the state key, read state outside the
+# production plan's own prefixes, read log contents, open a database session,
+# read users, read parameter values, or open a shell in a container. A saved
+# plan holds cleartext values, and merged trunk code runs this role without a
+# reviewer, so these denies are what keep its output to metadata. shared/ is
+# readable because every environment root reads the shared outputs through
+# terraform_remote_state. No production root reads an SSM parameter yet; one
+# that does names its String parameters in not_resources here.
+data "aws_kms_alias" "tfstate" {
+  name = "alias/wgi-tfstate"
+}
+
+data "aws_iam_policy_document" "plan_production" {
+  source_policy_documents = [data.aws_iam_policy_document.state_access["plan_production"].json]
+
+  statement {
+    sid       = "DenySecretValues"
+    effect    = "Deny"
+    actions   = ["secretsmanager:BatchGetSecretValue", "secretsmanager:GetSecretValue"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid           = "DenyDecryptExceptStateKey"
+    effect        = "Deny"
+    actions       = ["kms:Decrypt"]
+    not_resources = [data.aws_kms_alias.tfstate.target_key_arn]
+  }
+
+  statement {
+    sid     = "DenyObjectReadsOutsideProductionPlanState"
+    effect  = "Deny"
+    actions = ["s3:GetObject", "s3:GetObjectVersion"]
+    not_resources = [
+      "${local.state_bucket_arn}/production/*",
+      "${local.state_bucket_arn}/production-plans/*",
+      "${local.state_bucket_arn}/shared/*",
+    ]
+  }
+
+  statement {
+    sid    = "DenyLogContents"
+    effect = "Deny"
+    actions = [
+      "logs:FilterLogEvents",
+      "logs:GetLogEvents",
+      "logs:GetLogRecord",
+      "logs:GetQueryResults",
+      "logs:StartLiveTail",
+      "logs:StartQuery",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid       = "DenyDatabaseSessions"
+    effect    = "Deny"
+    actions   = ["rds-db:connect"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "DenyUserReads"
+    effect = "Deny"
+    actions = [
+      "cognito-idp:AdminGetUser",
+      "cognito-idp:AdminListGroupsForUser",
+      "cognito-idp:ListUsers",
+      "cognito-idp:ListUsersInGroup",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "DenyParameterValues"
+    effect = "Deny"
+    actions = [
+      "ssm:GetParameter",
+      "ssm:GetParameterHistory",
+      "ssm:GetParameters",
+      "ssm:GetParametersByPath",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid       = "DenyContainerShells"
+    effect    = "Deny"
+    actions   = ["ecs:ExecuteCommand"]
+    resources = ["*"]
+  }
+}
+
+# The environment has no reviewer and a trunk-only branch policy; that policy
+# and the exact subject are the protection. A pull request job without the
+# environment gets the pull_request subject, and one that names it is refused
+# by the branch policy before GitHub issues a token.
+module "github_plan_production" {
+  source = "../modules/github-oidc-role"
+
+  name              = "wgi-github-plan-production"
+  description       = "Production terraform plan from trunk jobs in the ${var.production_plan_environment} environment: reads production state, writes saved plans; no secret, log or user contents"
+  oidc_provider_arn = aws_iam_openid_connect_provider.github.arn
+  subjects          = ["${local.github_subject_prefix}:environment:${var.production_plan_environment}"]
+  policy_json       = data.aws_iam_policy_document.plan_production.json
+  managed_policy_arns = {
+    terraform_read = aws_iam_policy.terraform_read.arn
+  }
+  tags = { env = "production" }
 }
 
 # Deploy permissions for one environment: push or pull the image, register task
