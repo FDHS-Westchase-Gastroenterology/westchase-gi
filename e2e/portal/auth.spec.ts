@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { test, expect } from "@playwright/test";
 import { z } from "zod";
 
+import { devSignInEnabled } from "../../src/lib/portal/dev-sign-in";
 import { signInIdentifierField } from "../../src/lib/portal/staff-language";
 import { expectDenied, requireDecoded, requireText } from "../harness/assert";
 import { publishableDb, seedAdmin, serviceDb } from "../harness/env";
@@ -10,7 +11,7 @@ import { publishableDb, seedAdmin, serviceDb } from "../harness/env";
 const { email: SEED_ADMIN_EMAIL, password: SEED_ADMIN_PASSWORD } = seedAdmin();
 const PREVIEW_USERNAME = process.env.PORTAL_PREVIEW_USERNAME ?? "";
 const PREVIEW_PASSWORD = process.env.PORTAL_PREVIEW_PASSWORD ?? "";
-const SIGN_IN_IDENTIFIER = signInIdentifierField(process.env.VERCEL_ENV !== "production");
+const SIGN_IN_IDENTIFIER = signInIdentifierField(devSignInEnabled());
 const GENERIC_LOGIN_ERROR = "Unable to sign in. Check your credentials and try again.";
 const RESET_REQUEST_MESSAGE =
   "If an active staff account exists for that email, you’ll receive a password reset link.";

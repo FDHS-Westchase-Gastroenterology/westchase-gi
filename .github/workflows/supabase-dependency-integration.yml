@@ -91,6 +91,9 @@ jobs:
       # Next dev serves its client chunks only to origins it knows, so a setup
       # Link on 127.0.0.1 opens a page that never hydrates.
       PORTAL_BASE_URL: http://localhost:3100
+      # Dev sign-in fails closed (src/lib/portal/dev-sign-in.ts); the login
+      # Label the auth specs expect follows it.
+      PORTAL_DEV_SIGN_IN: enabled
       PORTAL_SEED_ADMIN_EMAIL: ${{ secrets.PORTAL_PREVIEW_ADMIN_EMAIL }}
       PORTAL_SEED_ADMIN_PASSWORD: ${{ secrets.PORTAL_PREVIEW_ADMIN_PASSWORD }}
       SUPABASE_PARENT_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_ID }}

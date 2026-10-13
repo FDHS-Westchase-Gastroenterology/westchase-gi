@@ -59,4 +59,6 @@ jobs:
       # Chooser, leak hygiene. Everything that needs a database runs in the
       # Supabase-integration workflow against a Preview Branch.
       - name: Run public browser specs
+        env:
+          PORTAL_DEV_SIGN_IN: enabled
         run: npm run test:e2e:public

@@ -128,7 +128,7 @@ All in the server; there is no browser Supabase client.
 | Recovery email template | `supabase/templates/recovery.html` | Cognito custom email sender Lambda → Resend |
 | Local Auth settings | `supabase/config.toml` `[auth]`: JWT 3600 s, refresh rotation, signup off, 12-character passwords, OTP 3600 s, 60 s resend, rate limits | Cognito pool settings; INIT-1 sets 8 h idle and 24 h absolute sessions, MFA, lockout |
 | Hosted Auth settings (dashboard only) | Site URL, redirect allowlist, recovery template, OTP expiry, resend cooldown, custom SMTP, signup off, per environment (CONTRIBUTING.md "Shipping to production" item 5) | Cognito pool settings in Terraform |
-| Preview sign-in alias | `PORTAL_PREVIEW_USERNAME`/`PASSWORD` mapped to the seed admin when `VERCEL_ENV !== "production"` (`actions.ts:72`, `login/page.tsx:43`) | Preset developer sign-in in non-production only, behind an explicit flag (INIT-1) |
+| Preview sign-in alias | `PORTAL_PREVIEW_USERNAME`/`PASSWORD` mapped to the seed admin when `devSignInEnabled()` (`src/lib/portal/dev-sign-in.ts`): on for `VERCEL_ENV` preview or development, or `PORTAL_DEV_SIGN_IN=enabled`; off whenever `APP_ENV` or `VERCEL_ENV` is production, and off when none is set | Preset developer sign-in in non-production only, behind the explicit flag (INIT-1) |
 | Users to carry over | 10 rows in Production `auth.users` | Recreated in Cognito; staff set a new password and enrol MFA (INIT-1) |
 
 The SMTP provider behind Supabase's recovery email is a dashboard setting that is not in the
@@ -148,7 +148,7 @@ Today these live in the Vercel environment store (Production and Preview) and `.
 | `PORTAL_BASE_URL` | Redirect and invite URLs | Task environment |
 | `PORTAL_GITHUB_APP_ID`, `_INSTALLATION_ID`, `_PRIVATE_KEY` | `src/lib/portal/integrations.ts` | Secrets Manager |
 | `PORTAL_PREVIEW_USERNAME`/`PASSWORD`, `PORTAL_SEED_ADMIN_*`, `PORTAL_PROD_ADMIN_*` | Preview alias, seed and verification scripts, CI | Non-production secrets only |
-| `VERCEL_ENV`, `VERCEL_GIT_COMMIT_SHA` | Injected by Vercel; read in `actions.ts`, `login/page.tsx`, `/api/preview-environment` | An explicit environment flag and the image's commit SHA |
+| `VERCEL_ENV`, `VERCEL_GIT_COMMIT_SHA` | Injected by Vercel; read in `src/lib/portal/dev-sign-in.ts` and `/api/preview-environment` | `APP_ENV` and `PORTAL_DEV_SIGN_IN` (already read by `dev-sign-in.ts`) and the image's commit SHA |
 | Script/CI-only: `SUPABASE_URL`, `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_SECRET_KEY`, `POSTGRES_URL`, `POSTGRES_URL_NON_POOLING`, `SUPABASE_DISPOSABLE_WORKDIR`, `PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF`, the `*_PROD` family, `SUPABASE_DEV_*`, `DEV_SEED_ALLOWED_PROJECT_REF` | `scripts/`, `e2e/`, workflows | Database URLs for each environment; the guard variables are rewritten for RDS hosts |
 
 **The service-role key doubles as four HMAC secrets.** Besides opening the database, it signs
