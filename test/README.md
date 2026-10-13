@@ -35,9 +35,13 @@ before the first database call.
 
 - `node:test` on Node's own type stripping, loaded through `test/register.mjs`, so a test
   imports product modules by their `@/` paths. Files are `test/unit/**/*.test.ts`.
-- A suite that needs a database skips unless `POSTGRES_URL` is set, and only reads. Point it at
-  a local cluster built from the migrations (the way `npm run db:generate` builds one) or at the
-  Preview Branch; the suites that hold a lock run only against a loopback database.
+- A suite that needs a database skips unless `POSTGRES_URL` is set, and only reads; the one
+  write is the scrub test's temporary table, which lives in its own session and is dropped when
+  its transaction rolls back. Point it at a local cluster built from the migrations (the way
+  `npm run db:generate` builds one) or at the Preview Branch; the suites that hold a lock run
+  only against a loopback database, and the TLS suite only against the Supavisor pooler.
+- `test/unit/db/sentinel-probe.ts` is not a suite. `failure.test.ts` runs it in a child process
+  so it can read every byte the process writes.
 - `npm run db:parity` (`scripts/verify-drizzle-parity.mjs`) calls the same functions through
   PostgREST and through the Drizzle `rpc()` helper and requires equal results and errors. It
   refuses any target but the allowlisted Preview Branch, through `e2e/harness/target-guard.ts`.

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { connectionSettings, supabaseProjectRef } from "@/lib/db/connection";
+import { SUPABASE_ROOT_CA } from "@/lib/db/supabase-root-ca";
 
 const REF = "abcdefghijklmnopqrst";
 const OTHER_REF = "tsrqponmlkjihgfedcba";
@@ -9,6 +10,7 @@ const POOLER_URL =
   `postgres://postgres.${REF}:p%40ss%2Fword@aws-0-us-east-2.pooler.supabase.com:6543/postgres` +
   "?sslmode=require&supa=base-pooler.x&pgbouncer=true";
 const DIRECT_URL = `postgresql://postgres:secret@db.${REF}.supabase.co:5432/postgres`;
+const VERIFIED_TLS = { rejectUnauthorized: true, ca: SUPABASE_ROOT_CA };
 
 void describe("supabaseProjectRef", () => {
   void it("reads the pooler user, the direct host and the API host", () => {
@@ -31,7 +33,7 @@ void describe("connectionSettings", () => {
       database: "postgres",
       username: `postgres.${REF}`,
       password: "p@ss/word",
-      ssl: "require",
+      ssl: VERIFIED_TLS,
       prepare: false,
       max: 5,
       idle_timeout: 20,
@@ -39,11 +41,11 @@ void describe("connectionSettings", () => {
     });
   });
 
-  void it("prepares statements on a direct connection and requires TLS", () => {
+  void it("prepares statements on a direct connection and verifies its certificate", () => {
     const settings = connectionSettings(DIRECT_URL, undefined);
     assert.equal(settings.host, `db.${REF}.supabase.co`);
     assert.equal(settings.port, 5432);
-    assert.equal(settings.ssl, "require");
+    assert.deepEqual(settings.ssl, VERIFIED_TLS);
     assert.equal(settings.prepare, true);
     assert.equal(settings.max, 10);
   });
@@ -57,18 +59,31 @@ void describe("connectionSettings", () => {
     assert.equal(settings.max, 5);
   });
 
-  void it("leaves TLS off for a loopback database unless sslmode asks for it", () => {
+  void it("leaves TLS off only for a loopback database", () => {
     const local = connectionSettings("postgresql://postgres@127.0.0.1:54411/wgi_fresh", undefined);
     assert.equal(local.ssl, false);
     assert.equal(local.database, "wgi_fresh");
     assert.equal(local.password, "");
     assert.equal(
-      connectionSettings("postgresql://postgres@localhost/x?sslmode=require", undefined).ssl,
-      "require",
-    );
-    assert.equal(
-      connectionSettings("postgresql://postgres@db.example.com/x?sslmode=disable", undefined).ssl,
+      connectionSettings("postgresql://postgres@localhost/x?sslmode=disable", undefined).ssl,
       false,
+    );
+    assert.throws(
+      () => connectionSettings("postgresql://postgres@localhost/x?sslmode=require", undefined),
+      /may not ask for TLS to a database on this machine/u,
+    );
+  });
+
+  void it("verifies TLS for any other host, whatever sslmode says, and refuses to turn it off", () => {
+    for (const mode of ["", "?sslmode=require", "?sslmode=prefer", "?sslmode=verify-full"]) {
+      assert.deepEqual(
+        connectionSettings(`postgresql://postgres@db.example.com/x${mode}`, undefined).ssl,
+        VERIFIED_TLS,
+      );
+    }
+    assert.throws(
+      () => connectionSettings("postgresql://postgres@db.example.com/x?sslmode=disable", undefined),
+      /may not turn TLS off for a database on another machine/u,
     );
   });
 

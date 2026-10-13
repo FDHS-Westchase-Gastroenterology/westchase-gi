@@ -1,5 +1,13 @@
 import "server-only";
 
+import { SUPABASE_ROOT_CA } from "./supabase-root-ca";
+
+/**
+ * TLS for a connection: the server's certificate must chain to Supabase's root and name the
+ * host connected to, or the connection is refused. Off only for a database on this machine.
+ */
+export type TlsSettings = false | { readonly rejectUnauthorized: true; readonly ca: string };
+
 /** The postgres.js options this app derives from one connection URL. */
 export interface ConnectionSettings {
   readonly host: string;
@@ -7,7 +15,7 @@ export interface ConnectionSettings {
   readonly database: string;
   readonly username: string;
   readonly password: string;
-  readonly ssl: "require" | false;
+  readonly ssl: TlsSettings;
   /** Transaction-mode poolers cannot keep a prepared statement between transactions. */
   readonly prepare: boolean;
   readonly max: number;
@@ -30,10 +38,22 @@ export function supabaseProjectRef(url: Readonly<URL>): string | null {
   return host === null ? null : host[1];
 }
 
+function tlsSettings(hostname: string, sslmode: string | null): TlsSettings {
+  if (LOOPBACK_HOSTS.has(hostname)) {
+    if (sslmode === null || sslmode === "disable") return false;
+    throw new Error("POSTGRES_URL may not ask for TLS to a database on this machine");
+  }
+  if (sslmode === "disable") {
+    throw new Error("POSTGRES_URL may not turn TLS off for a database on another machine");
+  }
+  return { rejectUnauthorized: true, ca: SUPABASE_ROOT_CA };
+}
+
 /**
  * Parses `POSTGRES_URL` into postgres.js options. Query parameters are read, not forwarded:
- * `sslmode=disable` turns TLS off and `connect_timeout` is kept; the pooler hints Supabase and
- * Vercel append (`pgbouncer`, `supa`) are dropped. A Supavisor transaction pooler (its host
+ * `connect_timeout` is kept and the pooler hints Supabase and Vercel append (`pgbouncer`,
+ * `supa`) are dropped. Any other host than this machine gets verified TLS whatever the URL's
+ * `sslmode` says, short of `disable`, which is refused; a loopback database gets plain TCP. A Supavisor transaction pooler (its host
  * or port 6543) gets no prepared statements and a small pool, since each serverless instance
  * holds its own.
  *
@@ -59,8 +79,6 @@ export function connectionSettings(
 
   const port = url.port === "" ? 5432 : Number(url.port);
   const pooled = url.hostname.endsWith(POOLER_HOST_SUFFIX) || port === POOLER_PORT;
-  const sslmode = url.searchParams.get("sslmode");
-  const loopback = LOOPBACK_HOSTS.has(url.hostname);
   const connectTimeout = Number(url.searchParams.get("connect_timeout") ?? "10");
   return {
     host: url.hostname,
@@ -68,7 +86,7 @@ export function connectionSettings(
     database: decodeURIComponent(url.pathname.slice(1)) || "postgres",
     username: decodeURIComponent(url.username),
     password: decodeURIComponent(url.password),
-    ssl: sslmode === "disable" || (loopback && sslmode === null) ? false : "require",
+    ssl: tlsSettings(url.hostname, url.searchParams.get("sslmode")),
     prepare: !pooled,
     max: pooled ? 5 : 10,
     idle_timeout: 20,
