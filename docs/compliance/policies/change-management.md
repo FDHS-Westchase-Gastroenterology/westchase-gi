@@ -63,7 +63,7 @@ Every change to:
    database server with a throwaway database each (step 4).
 5. **Staging.** Merging to `main` deploys to staging automatically (step 4).
 6. **Production.** A production deploy waits for the security official's approval in the
-   protected GitHub `production` environment. Migrations run as a pipeline step that stops the
+   protected GitHub `aws-production` environment. Migrations run as a pipeline step that stops the
    deploy on failure (step 4).
 7. **Verification.** Production smoke tests run after each deploy (step 4).
 

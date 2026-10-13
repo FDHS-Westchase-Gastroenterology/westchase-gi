@@ -173,10 +173,8 @@ business associate tells the covered entity about the request in the same notice
   determination, every notice sent (to whom, when and what), any law enforcement statement, and
   the lessons and risk-register changes.
 - Records are kept for six years from creation or last effect
-  ([164.316(b)(2)(i)](https://www.ecfr.gov/current/title-45/section-164.316#p-164.316(b)(2)(i)),
-  and [164.530(j)](https://www.ecfr.gov/current/title-45/section-164.530#p-164.530(j)) through
-  [164.414(a)](https://www.ecfr.gov/current/title-45/section-164.414#p-164.414(a))). That also
-  covers Florida's five-year retention for a written no-harm determination (section
+  ([164.316(b)(2)(i)](https://www.ecfr.gov/current/title-45/section-164.316#p-164.316(b)(2)(i))).
+  That also covers Florida's five-year retention for a written no-harm determination (section
   501.171(4)(c)).
 - A record that contains PHI, patient identities, account identifiers or security details that
   would help an attacker is kept outside this repository, in encrypted AWS storage under a

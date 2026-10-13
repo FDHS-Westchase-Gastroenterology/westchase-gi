@@ -22,7 +22,7 @@ The security official:
 - owns the [risk analysis](risk-analysis.md) and decides each risk treatment, including every
   accepted risk;
 - authorizes access to production and removes it ([access control](policies/access-control.md));
-- approves every production deploy in the protected GitHub `production` environment
+- approves every production deploy in the protected GitHub `aws-production` environment
   ([change management](policies/change-management.md));
 - leads incident response and makes the business associate's breach determination and its
   notice to the covered entity ([incident response](policies/incident-response.md));

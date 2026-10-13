@@ -38,7 +38,7 @@ delivers it is named.
 | Clinic staff (the covered entity's workforce) | The `/admin` portal, with the `staff` or `admin` role | Today: Supabase Auth password. Target: the production Cognito user pool with two-step login (step 3) | The Practice Manager asks; a portal admin invites |
 | Business associate workforce (the security official) | The AWS `wgi` account, the GitHub repository, the vendor consoles in [vendors.md](../vendors.md) and approval of production deploys | `aws login` to AWS; MFA on GitHub and every vendor console | The security official, recorded in the access register |
 | AI coding agents | Non-production resources and the repository, under the session of the workforce member who runs them | That member's session; agents have no identity or standing credential of their own | The workforce member running the agent ([AI coding agents](#ai-coding-agents)) |
-| The CI/CD pipeline (GitHub Actions) | Deploys, migrations and Terraform plans; production only from the protected `production` environment | OpenID Connect to an IAM role, no stored keys (step 4) | The security official approves each production deploy (step 4) |
+| The CI/CD pipeline (GitHub Actions) | Deploys, migrations and Terraform plans; production only from the protected `aws-production` environment | OpenID Connect to an IAM role, no stored keys (step 4) | The security official approves each production deploy (step 4) |
 | The application | Production database through a least-privilege app role; its own secrets | ECS task role; database credentials from Secrets Manager (step 3) | Terraform, reviewed through [change management](change-management.md) |
 | The AWS root user | Everything in the account | Password plus a passkey; no access keys | Emergency use only ([Emergency access procedure](#emergency-access-procedure)) |
 
@@ -87,7 +87,7 @@ Access authorization and access establishment and modification
   the compensating controls listed there.
 - **Production changes.** Production infrastructure, schema and code change only through the
   GitHub Actions pipeline after the security official approves the deploy in the protected
-  `production` environment (step 4). No one runs `terraform apply` against production state, or
+  `aws-production` environment (step 4). No one runs `terraform apply` against production state, or
   writes to the production user pool, database or hosting, from a shell.
 - **Secrets.** Production secrets are readable by the production application and pipeline roles.
   No person or agent retrieves a secret value; values are moved into Secrets Manager without being
@@ -102,10 +102,10 @@ Access authorization and access establishment and modification
 
 - Each clinic staff member has their own portal account (in place), moving to their own
   Cognito user in the production pool (step 3). Shared or role accounts are not created.
-- Today's shared preview sign-in (`src/app/admin/actions.ts`, gated by `VERCEL_ENV`) reaches
-  preview data only. Step 3 replaces it with a preset developer sign-in that exists only in the
-  non-production user pool, works only behind an explicit flag and fails closed; production's pool
-  never has it (risk R-03).
+- Today's shared preview sign-in (`src/app/admin/actions.ts`) is gated by `VERCEL_ENV`, which
+  AWS never sets, so it fails open there until an explicit flag replaces it. Step 3 makes that
+  change: a preset developer sign-in that exists only in the non-production user pool, works only
+  behind an explicit flag and fails closed; production's pool never has it (risk R-03).
 - Each workforce member signs in to AWS, GitHub and vendor consoles as themselves. An agent acts
   under the session of the person running it, so CloudTrail attributes its actions to that
   person.
@@ -126,7 +126,8 @@ addressable, implemented).
   offers it.
 - **Machines.** The pipeline authenticates to AWS with OpenID Connect and short-lived credentials
   (step 4). The application authenticates to the database with credentials from Secrets Manager
-  over TLS (step 3).
+  over TLS with server-certificate verification (`verify-full` against the RDS CA bundle;
+  step 3).
 - **Passwords.** Each password is unique to its service, kept in a password manager, never shared
   and never written into the repository, an issue, a pull request or a chat with an agent.
 

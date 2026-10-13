@@ -132,7 +132,7 @@ merge of this record), **Step N** (an INIT-1 step delivers the technical control
 | 164.308(a)(7)(ii)(D) | Testing and revision procedures | A | [contingency-plan.md §Testing](policies/contingency-plan.md#testing-and-revision): implemented | Rehearsal before step 5, then annual |
 | 164.308(a)(7)(ii)(E) | Applications and data criticality analysis | A | [contingency-plan.md §Criticality](policies/contingency-plan.md#applications-and-data-criticality-analysis): implemented | Adopted |
 | 164.308(a)(8) | Evaluation | | [security-official.md §Periodic evaluation](security-official.md#periodic-evaluation) | Adopted |
-| 164.308(b)(1) | Business associate contracts and other arrangements | | [vendors.md](vendors.md), [baa-template.md](baa-template.md) | FDHS agreement unsigned (Jason) |
+| 164.308(b)(1) | Business associate contracts and other arrangements | | [vendors.md](vendors.md), [baa-template.md](baa-template.md) | FDHS agreement unsigned (Jason); gates the cut-over (R-23) |
 | 164.308(b)(2) | Subcontractor assurances | | [vendors.md §AWS](vendors.md#vendors) | In place (AWS Organizations BAA) |
 | 164.308(b)(3) | Written contract or other arrangement | R | [baa-template.md](baa-template.md); AWS BAA in AWS Artifact | AWS in place; FDHS unsigned |
 
@@ -166,9 +166,9 @@ merge of this record), **Step N** (an INIT-1 step delivers the technical control
 | 164.312(c)(1) | Integrity | | [risk-analysis.md](risk-analysis.md); database constraints, version checks, revision history, append-only audit | In place (constraints); Step 3 (grants) |
 | 164.312(c)(2) | Mechanism to authenticate ePHI | A | Implemented: revision tables, idempotency receipts, HMAC-signed workflow commands, storage checksums and encryption | In place; Step 3 (dedicated HMAC secret) |
 | 164.312(d) | Person or entity authentication | | [access-control.md §Authentication](policies/access-control.md#authentication): Cognito with MFA | Step 3 |
-| 164.312(e)(1) | Transmission security | | TLS at the load balancer and to RDS | Step 3 (RDS TLS), Step 4 (ALB, HSTS) |
+| 164.312(e)(1) | Transmission security | | TLS at the load balancer, and to RDS with server-certificate verification (`verify-full`) | Step 3 (RDS TLS), Step 4 (ALB, HSTS) |
 | 164.312(e)(2)(i) | Integrity controls | A | Implemented: TLS integrity on every hop; WAF in front of the load balancer | Step 4 |
-| 164.312(e)(2)(ii) | Encryption | A | Implemented: HTTPS only with HSTS; TLS required on database connections | Steps 3 and 4 |
+| 164.312(e)(2)(ii) | Encryption | A | Implemented: HTTPS only with HSTS; TLS with server-certificate verification (`verify-full` against the RDS CA bundle) on database connections | Steps 3 and 4 |
 
 ### Organizational requirements: [164.314](https://www.ecfr.gov/current/title-45/section-164.314)
 
