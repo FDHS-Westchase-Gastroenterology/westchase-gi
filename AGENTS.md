@@ -286,8 +286,8 @@ stop you, ask; do not route around them with another tool or a split command.
 
 - AWS is an Organization in the new AWS experience with advanced features active. Jason's
   management account owns it, and AWS added an Identity Delegated Admin account for IAM Identity
-  Center. Agents work in the `wgi` project, a non-production member account: Region us-east-2, AWS
-  CLI profile `wgi`, signed in with `aws login`. There are no IAM users and no access keys.
+  Center. Agents work in the `wgi` project, the one member account that hosts every environment:
+  Region us-east-2, AWS CLI profile `wgi`, signed in with `aws login`. There are no IAM users and no access keys.
 - Start AWS work with `aws sts get-caller-identity --profile wgi`.
 - Credentials last 12 hours and refresh by themselves for 90 days. When a call fails for expired
   or missing credentials, run `aws login --region us-east-2 --profile wgi` as a background
@@ -298,16 +298,20 @@ stop you, ask; do not route around them with another tool or a split command.
 - The Organization's BAA is active. It covers the management account and every current and
   future member account, and accepting it designated them all as HIPAA accounts.
   `aws artifact list-customer-agreements --region us-east-1 --profile wgi` lists it as `ACTIVE`.
-  Patient data needs HIPAA-eligible services and encryption in transit and at rest, and it stays
-  out of non-production: the `wgi` project never holds it.
+  Patient data needs HIPAA-eligible services and encryption in transit and at rest. It lives only
+  in production's resources inside `wgi`; staging, previews and every other non-production
+  resource hold fictional data only.
 - The Organization's Region policy allows us-east-1 and us-east-2, limits us-west-2 to Bedrock,
   and denies every other Region. The us-east-1 check is
   `aws ec2 describe-availability-zones --region us-east-1 --profile wgi`, which lists its zones.
-- Production does not exist yet. Creating accounts, editing service control policies, securing
-  root users and accepting agreements are Jason's steps in AWS Settings or the management
-  account. When work needs one, tell him exactly what it needs and continue with the work that
-  does not depend on it. When a new account exists, add its CLI profile to `~/.aws/config` and
-  to this section.
+- No production or non-production accounts are created. Jason decided on 2026-10-13 that INIT-1
+  builds every environment, production included, in `wgi`, separated by resource rather than
+  by account. [`docs/initiatives/AWS-ACCOUNT-DECISION.md`](docs/initiatives/AWS-ACCOUNT-DECISION.md)
+  records it and overrides any rule, ticket or note that says otherwise. Do not ask for accounts
+  or wait on them.
+- Editing service control policies, securing root users and accepting agreements are Jason's
+  steps in the management account. When work needs one, tell him exactly what it needs and
+  continue with the work that does not depend on it.
 
 ## GitHub conventions
 

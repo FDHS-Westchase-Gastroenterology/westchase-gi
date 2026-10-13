@@ -5,7 +5,9 @@
 - **Account:** an AWS Organization in the new AWS experience (`FeatureSet: ALL`), with advanced
   features active since 2026-10-06. Jason's management account owns it; AWS added an Identity
   Delegated Admin account for IAM Identity Center. Agents work in the member project "Whimsical
-  Whiteboard" (Paid plan, $120 in credits). It is non-production, so no patient data goes into it.
+  Whiteboard" (Paid plan, $120 in credits). It is the only workload account: INIT-1 builds every
+  environment there, production included ([`AWS-ACCOUNT-DECISION.md`](AWS-ACCOUNT-DECISION.md),
+  2026-10-13). It holds no patient data until INIT-1's cut-over.
 - **BAA:** the AWS Organizations BAA is active (accepted 2026-10-06 by Jason in Artifact; effective
   start 00:53 UTC on 2026-10-07). It covers the management account and every current and future
   member account, all designated HIPAA accounts, and opts them out of AWS using their content for
@@ -57,10 +59,10 @@ If AWS MCP calls still fail after that, reconnect the server from `/mcp` or star
 3. **BAA:** done 2026-10-06. Probe:
    `aws artifact list-customer-agreements --region us-east-1 --profile wgi` lists the AWS
    Organizations Business Associate Addendum as `ACTIVE`.
-4. **Accounts:** INIT-1's production and non-production accounts. Not needed to start; the INIT-1
-   agent asks for them when it reaches step 2 of its approach ("Stand up the AWS foundation").
+4. **Accounts:** dropped 2026-10-13. Jason decided that no production or non-production accounts
+   are created; every environment runs in `wgi` (see
+   [`AWS-ACCOUNT-DECISION.md`](AWS-ACCOUNT-DECISION.md), which overrides anything that says
+   otherwise). Nothing waits on accounts.
 
-Once production exists, add its profiles to `~/.aws/config` and to the AWS MCP's `--profile`
-list, then update the AWS line in `autoMode.environment` and AGENTS.md "AWS access". The
-placeholder `wgi-nonprod`, `wgi-prod-readonly` and `wgi-prod` SSO profiles in `~/.aws/config` are
-unused until then.
+The placeholder `wgi-nonprod`, `wgi-prod-readonly` and `wgi-prod` SSO profiles in `~/.aws/config`
+are dead. Agents use `wgi` only.
