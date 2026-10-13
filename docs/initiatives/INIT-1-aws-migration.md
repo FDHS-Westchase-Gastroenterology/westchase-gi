@@ -2,7 +2,7 @@
 
 ## Progress
 
-**Status:** Step 1's real work is done and merged into PR #224 (#402, merge `10bfd7a1`, 2026-10-13): the dependency map, the migration-order proof, the file-date fix and the settled defaults in `inventory.md`. Step 1 stays unticked only because billing and Vercel analytics removal is deferred; that removal blocks nothing. Step 2 (the AWS foundation) is next. No migration code yet: no Terraform, no Drizzle, and the app still runs on Supabase and Vercel. Most of Jason's AWS setup is done (see below).
+**Status:** Step 1's real work is done and merged into PR #224 (#402, merge `10bfd7a1`, 2026-10-13): the dependency map, the migration-order proof, the file-date fix and the settled defaults in `inventory.md`. Step 1 stays unticked only because billing and Vercel analytics removal is deferred; that removal blocks nothing. Step 2 (the AWS foundation) is next. No migration code yet: no Terraform, no Drizzle, and the app still runs on Supabase and Vercel. Most of Jason's AWS setup is done (see below). The HIPAA documents are in `docs/compliance/` (#405): risk analysis, policies, security official, vendor list, AWS eligibility check and a BAA template that awaits legal review.
 
 **Known CI failures, not caused by INIT-1:** `supabase-integration` fails the same 2 specs on PR #224 from at least `d7f9f4d2` (2026-10-07) and `b45cec60` (2026-10-09), before #402: `e2e/boundaries/notification-test.spec.ts` (Settings › Notifications test send) and `e2e/boundaries/schedule-month-availability.spec.ts` (month availability). The migration lineage and schema checks in that job pass. Fix them before relying on the suite as the regression contract.
 
@@ -160,12 +160,12 @@ Prove each item with evidence in the PRs: test output, a Terraform plan, a scree
 - [ ] The full existing end-to-end suite passes on staging, and production smoke tests pass.
 - [ ] Cut-over row counts and checksums match for every table, and the clinic confirms the data looks right.
 - [ ] A final encrypted export is stored in AWS, and only then are the Supabase and Vercel projects deleted.
-- [ ] `docs/compliance/` holds:
-  - [ ] the security risk assessment
-  - [ ] policies for access control, change management, incident response and breach notification, backup and restore, and workstation use
-  - [ ] Jason named as security official
-  - [ ] a vendor list with BAA status
-  - [ ] a BAA template for FDHS
+- [x] `docs/compliance/` holds: (#405)
+  - [x] the security risk assessment (#405)
+  - [x] policies for access control, change management, incident response and breach notification, backup and restore, and workstation use (#405)
+  - [x] Jason named as security official (#405)
+  - [x] a vendor list with BAA status (#405)
+  - [x] a BAA template for FDHS (#405)
 - [ ] The README and ARCHITECTURE.md describe the new stack.
 
 ## Only Jason can do
