@@ -38,6 +38,19 @@ export function supabaseProjectRef(url: Readonly<URL>): string | null {
   return host === null ? null : host[1];
 }
 
+/**
+ * Reads `POSTGRES_URL` as a URL. A malformed one throws an error with a fixed message and no
+ * cause: Node's own parse error keeps the whole input, password included, in its `input`
+ * property, where a logger or an uncaught-error report would print it.
+ */
+export function parsePostgresUrl(postgresUrl: string): URL {
+  try {
+    return new URL(postgresUrl);
+  } catch {
+    throw new Error("POSTGRES_URL is not a valid URL");
+  }
+}
+
 function tlsSettings(hostname: string, sslmode: string | null): TlsSettings {
   if (LOOPBACK_HOSTS.has(hostname)) {
     if (sslmode === null || sslmode === "disable") return false;
@@ -64,7 +77,7 @@ export function connectionSettings(
   postgresUrl: string,
   supabaseUrl: string | undefined,
 ): ConnectionSettings {
-  const url = new URL(postgresUrl);
+  const url = parsePostgresUrl(postgresUrl);
   if (url.protocol !== "postgres:" && url.protocol !== "postgresql:") {
     throw new Error("POSTGRES_URL must be a postgres:// or postgresql:// URL");
   }

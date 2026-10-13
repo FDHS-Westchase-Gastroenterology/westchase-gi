@@ -21,7 +21,7 @@ import { isDeepStrictEqual } from "node:util";
 import { createClient } from "@supabase/supabase-js";
 
 import { openDatabase } from "@/lib/db/client";
-import { supabaseProjectRef } from "@/lib/db/connection";
+import { parsePostgresUrl, supabaseProjectRef } from "@/lib/db/connection";
 import { databaseFunctions } from "@/lib/db/functions";
 import { rpc } from "@/lib/db/rpc";
 
@@ -43,7 +43,7 @@ function target() {
     throw new Error("Parity runs only against a hosted Preview Branch");
   }
   const postgresUrl = requireEnv("POSTGRES_URL");
-  if (supabaseProjectRef(new URL(postgresUrl)) !== ref) {
+  if (supabaseProjectRef(parsePostgresUrl(postgresUrl)) !== ref) {
     throw new Error("POSTGRES_URL does not name the allowlisted Preview Branch");
   }
   return {

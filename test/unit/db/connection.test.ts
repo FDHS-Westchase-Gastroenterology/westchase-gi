@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { describe, it } from "node:test";
+import { inspect } from "node:util";
 
-import { connectionSettings, supabaseProjectRef } from "@/lib/db/connection";
+import { connectionSettings, parsePostgresUrl, supabaseProjectRef } from "@/lib/db/connection";
 import { SUPABASE_ROOT_CA } from "@/lib/db/supabase-root-ca";
 
 const REF = "abcdefghijklmnopqrst";
@@ -125,5 +127,66 @@ void describe("connectionSettings", () => {
   void it("accepts an API URL that names no project", () => {
     assert.equal(connectionSettings(POOLER_URL, "http://127.0.0.1:54321").host.length > 0, true);
     assert.equal(connectionSettings(POOLER_URL, "").username, `postgres.${REF}`);
+  });
+});
+
+/* Every way a caller, a logger or an uncaught-error report could print an error: its message,
+   its stack, its own enumerable properties, its JSON, and `util.inspect` with hidden properties
+   and the whole cause chain. */
+function printedForms(error: Readonly<Error>): string[] {
+  return [
+    error.message,
+    error.stack ?? "",
+    ...Object.entries(error).map(([key, value]) => `${key}=${inspect(value)}`),
+    JSON.stringify(error),
+    inspect(error, { depth: Infinity, showHidden: true }),
+  ];
+}
+
+function thrownBy(run: () => object): Error {
+  try {
+    run();
+  } catch (error) {
+    assert.ok(error instanceof Error);
+    return error;
+  }
+  throw new assert.AssertionError({ message: "expected a throw" });
+}
+
+void describe("a malformed POSTGRES_URL", () => {
+  const sentinel = `ZZSENTINEL${randomUUID().replaceAll("-", "")}`;
+  // Each is refused by the WHATWG URL parser: a port out of range, and a broken IPv6 host.
+  const malformed = [
+    `postgres://postgres.${REF}:${sentinel}@aws-0-us-east-2.pooler.supabase.com:99999/postgres`,
+    `postgresql://postgres:${sentinel}@[db.${REF}.supabase.co:5432/postgres`,
+  ];
+
+  void it("would leak its password through Node's own parse error", () => {
+    // Shows the check below can see a leak: ERR_INVALID_URL keeps the whole input.
+    for (const url of malformed) {
+      const raw = thrownBy(() => new URL(url));
+      assert.ok(printedForms(raw).some((form) => form.includes(sentinel)));
+    }
+  });
+
+  void it("throws a fixed message with no cause and no trace of the password", () => {
+    for (const url of malformed) {
+      for (const run of [
+        () => parsePostgresUrl(url),
+        () => connectionSettings(url, `https://${REF}.supabase.co`),
+      ]) {
+        const error = thrownBy(run);
+        assert.equal(error.message, "POSTGRES_URL is not a valid URL");
+        assert.equal(Object.hasOwn(error, "cause"), false);
+        assert.deepEqual(Object.keys(error), []);
+        for (const form of printedForms(error)) assert.equal(form.includes(sentinel), false);
+      }
+    }
+  });
+
+  void it("keeps the password out of a percent-encoding error too", () => {
+    const url = `postgres://postgres:${sentinel}%zz@db.${REF}.supabase.co:5432/postgres`;
+    const error = thrownBy(() => connectionSettings(url, undefined));
+    for (const form of printedForms(error)) assert.equal(form.includes(sentinel), false);
   });
 });
