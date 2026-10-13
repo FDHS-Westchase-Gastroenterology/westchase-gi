@@ -34,7 +34,7 @@ is seconds. The Chrome extension route cost most of an hour on 2026-09-06:
 `save_to_disk` wrote nothing, `screencapture` returned only wallpaper without a
 Screen Recording grant, and the Chrome window was not in the window list.
 
-**How.** `.claude/launch.json` (local-only, not committed) attaches to the dev
+**How.** `.claude/launch.json` (tracked in this repository) attaches to the dev
 server the owner already runs on http://localhost:3000 under the name
 `portal-dev`; open it with `preview_start`. Never start a second Next dev server
 and never kill the owner's. Local dev credentials are for the owner to type, not
