@@ -153,6 +153,7 @@ Prove each item with evidence in the PRs: test output, a Terraform plan, a scree
 - [ ] Every view of a patient, request or appointment writes an append-only access row naming the staff member.
 - [ ] App roles can't update or delete audit or access rows.
 - [ ] Every response carries security headers: a Content-Security-Policy, `frame-ancestors 'none'`, HSTS and a strict referrer policy.
+  - `next.config.ts` sends HSTS, `frame-ancestors 'none'`, a strict referrer policy, `nosniff`, `X-Frame-Options` and a `Permissions-Policy` on every response except its own legacy-URL redirects, which carry none of them on `next start`. Those redirects stay in `next.config.ts` by decision: the load balancer inserts HSTS and `nosniff` on every response, and the other headers have no effect on a redirect to a same-origin page. The full Content-Security-Policy is still to do.
 - [ ] Logs, errors, URLs and emails contain no patient details, shown by a written review plus a log sample.
 - [ ] A no-op change flows from PR to preview to staging to an approved production deploy.
 - [ ] A deliberately failing test blocks that flow.
