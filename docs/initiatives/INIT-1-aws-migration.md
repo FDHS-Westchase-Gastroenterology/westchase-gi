@@ -11,8 +11,8 @@ To keep this current: when a PR finishes a step, tick its box in that same PR, a
 Steps (from "How I'd approach it"):
 
 - [ ] 1. Strip out what we're deleting (billing, Vercel analytics), fix the future-dated migration file names, and map every Supabase and Vercel touchpoint in `docs/migration/inventory.md`.
-  - [x] Map every Supabase and Vercel touchpoint in `docs/migration/inventory.md` (#PRNUM).
-  - [x] Prove the migration files build a clean database from scratch in order (`docs/migration/migration-order.md`) (#PRNUM).
+  - [x] Map every Supabase and Vercel touchpoint in `docs/migration/inventory.md` (#402).
+  - [x] Prove the migration files build a clean database from scratch in order (`docs/migration/migration-order.md`) (#402).
   - [ ] Fix the future-dated migration file names: waiting on Jason's keep-or-rename call in `migration-order.md`.
   - [ ] Strip out billing and Vercel analytics: deferred; where they show up is in `inventory.md` §12.
 - [ ] 2. Stand up the AWS foundation.
