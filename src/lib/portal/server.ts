@@ -4,6 +4,9 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
+import { openDatabase } from "@/lib/db/client";
+import type { Database } from "@/lib/db/client";
+
 function requiredEnv(names: readonly string[]): string {
   for (const name of names) {
     const value = process.env[name]?.trim();
@@ -97,3 +100,15 @@ export function serviceClient() {
 }
 
 export type ServiceClient = ReturnType<typeof serviceClient>;
+
+let sharedDatabase: Database | undefined;
+
+/**
+ * The portal's database: a direct Postgres connection to the same Supabase database the
+ * service client reaches through PostgREST, from `POSTGRES_URL`. One pool per server
+ * instance, opened on first use, so a build without the variable still succeeds.
+ */
+export function database(): Database {
+  sharedDatabase ??= openDatabase(requiredEnv(["POSTGRES_URL"]), supabaseUrl());
+  return sharedDatabase;
+}

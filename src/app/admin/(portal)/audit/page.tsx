@@ -23,7 +23,7 @@ import { PORTAL_RELEASE_BRIEFING } from "@/lib/portal/release-briefing-content";
 import { getPortalReleaseEngagement } from "@/lib/portal/release-engagement";
 import { parsePage } from "@/lib/portal/request-query";
 import { executeSchedulingOperation } from "@/lib/portal/scheduling/service";
-import { serviceClient } from "@/lib/portal/server";
+import { database, serviceClient } from "@/lib/portal/server";
 import { displayNameOrEmail, fetchStaffNameMap } from "@/lib/portal/staff-identity";
 
 import { ActivityLog } from "./activity-log";
@@ -76,12 +76,11 @@ function parseAuditEntries(rows: Json): AuditEntry[] {
 }
 
 async function readFirstPage(
-  db: SupabaseClient,
   actorId: string,
   filters: Readonly<ActivityUrlFilters>,
 ): Promise<ActivityPage> {
   try {
-    return await readActivity(db, actorId, filters, null);
+    return await readActivity(database(), actorId, filters, null);
   } catch {
     return { ok: false, code: "unavailable" };
   }
@@ -135,7 +134,7 @@ export default async function AdminAuditPage({
   const now = new Date();
   const db = serviceClient();
   const [firstPage, providers] = await Promise.all([
-    readFirstPage(db, session.id, filters),
+    readFirstPage(session.id, filters),
     readProviders(db, session.id),
   ]);
 
