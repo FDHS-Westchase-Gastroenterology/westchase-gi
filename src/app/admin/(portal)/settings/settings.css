@@ -761,16 +761,20 @@
 
 /* ---- Locations ---- */
 
+/* Office cards share one row while each card is at least 15.25rem wide,
+   then wrap. 15.25rem is the narrowest card whose Closed days row still
+   holds its label, a closure and the Add command, and four cards fit the
+   1440px stage at that width. */
 .settings-locations {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15.25rem), 1fr));
+  align-items: start;
   gap: 1rem;
 }
 
 .settings-location {
   display: flex;
   min-width: 0;
-  flex: 1 1 0;
   flex-direction: column;
   overflow: clip;
   border: 1px solid var(--wgi-rule);
