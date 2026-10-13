@@ -40,6 +40,8 @@ for (const status of ["new", "contacted"] as const) {
         id,
         name,
         phone: "8135550199",
+        /* The address lets global setup sweep a request this test leaves behind when it times out. */
+        email: `home-completion-${runId}@example.test`,
         location: "tampa",
         preferred_time: "morning",
         locale: "en",
