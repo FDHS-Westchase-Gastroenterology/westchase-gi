@@ -13,10 +13,11 @@ multi-Region.
 | Path | What it manages | State key |
 | --- | --- | --- |
 | `bootstrap/` | The state bucket `westchase-gi-tfstate-use2` and its key `alias/wgi-tfstate` | `bootstrap/terraform.tfstate` |
-| `shared/` | Account baseline, audit trail, KMS keys, VPC, GitHub OIDC roles, ECR, alerts, DNS zone | `shared/terraform.tfstate` |
+| `shared/` | Account baseline, audit trail, KMS keys, VPC, GitHub OIDC roles, ECR, alerts, DNS zone and records | `shared/terraform.tfstate` |
 | `modules/kms-key/` | A customer managed key with rotation and a guard that admits IAM principals only through named services | |
 | `modules/s3-bucket/` | A private, versioned, CMK-encrypted, TLS-only bucket | |
 | `modules/github-oidc-role/` | An IAM role that trusts exact GitHub Actions token subjects | |
+| `scripts/dns-mirror-diff.sh` | Compares the Porkbun and Route 53 answers for every mirrored name | |
 
 Environment roots (`staging/`, `production/`, previews) come in later pull requests and read
 `shared/` through its outputs. `production/` also creates production's data and secrets keys, and
@@ -91,8 +92,10 @@ DynamoDB table.
   whose address is `var.alarm_email` (no default; never committed). A monthly cost budget
   (`var.monthly_budget_usd`, default $200) alerts at 80% of actual and 100% of forecast spend.
   Each environment root that adds standing cost raises it in the same pull request.
-- **DNS.** Public hosted zone `westchasegi.com` with no records beyond the zone's own NS and SOA.
-  It is not authoritative until the Porkbun nameservers change.
+- **DNS.** Public hosted zone `westchasegi.com`. It mirrors the five records Porkbun serves (apex
+  and `www` to Vercel, Resend's DKIM key, and the `send` MX and SPF records for Resend's return
+  path) and nothing else. It is not authoritative until the Porkbun nameservers change; see
+  [Moving DNS to Route 53](#moving-dns-to-route-53).
 - **Tags.** Every resource carries `env`: `shared` from the provider default tags, `staging` on
   staging's keys and deploy role, or `production` on the production deploy role. Guardrails that
   protect production key on `env = production`, so no other resource may carry it.
@@ -382,11 +385,43 @@ After `shared/` is applied:
    before the staging deploy pipeline goes live. Today only `main` is protected.
 5. Review the IAM Access Analyzer findings for the GitHub roles and archive the intended ones.
 
-DNS, when the records are ready:
+DNS, after the mirror in `shared/dns.tf` is applied:
 
-6. Export the zone from Porkbun. A later pull request adds the verified records to Route 53. Then
-   swap the four nameservers in Porkbun (Domain Management, westchasegi.com, Authoritative
-   Nameservers) to the `route53_name_servers` output.
+6. Move the domain's nameservers to Route 53, as in
+   [Moving DNS to Route 53](#moving-dns-to-route-53).
+
+### Moving DNS to Route 53
+
+`shared/dns.tf` mirrors the records Porkbun served on 2026-10-13. They were read through two public
+resolvers because the Porkbun export was not yet available, so the export is checked against this
+table before the nameservers change.
+
+| Name | Type | TTL | Value |
+| --- | --- | --- | --- |
+| `westchasegi.com` | A | 600 | `76.76.21.21` (Vercel) |
+| `www.westchasegi.com` | A | 600 | `76.76.21.21` (Vercel) |
+| `resend._domainkey.westchasegi.com` | TXT | 600 | Resend's DKIM public key |
+| `send.westchasegi.com` | MX | 600 | `10 feedback-smtp.us-east-1.amazonses.com` |
+| `send.westchasegi.com` | TXT | 600 | `v=spf1 include:amazonses.com ~all` |
+
+The mirror matches Porkbun exactly, so the comparison before the nameserver change has no
+expected differences. Porkbun serves no CAA record, which lets any certificate authority issue,
+and the mirror keeps it that way: a CAA policy now would also govern the certificate Vercel renews
+for apex and `www`, and Vercel chooses that authority. The hosting cut-over adds `0 issue
+"amazon.com"` once ACM is the only issuer.
+
+Public DNS shows no apex MX, SPF or DMARC record, so the domain receives no mail and publishes no
+DMARC policy. The mirror does not add them; a DMARC record is a later change to the zone.
+
+1. Export the zone from Porkbun and compare every record with the table. A record the table lacks
+   is added to `shared/dns.tf` and to the names in `scripts/dns-mirror-diff.sh`, and applied,
+   before the next step.
+2. Run `infra/scripts/dns-mirror-diff.sh <nameserver>` for each of the four `route53_name_servers`
+   from a network that reaches nameservers directly, such as a GitHub-hosted runner. Each run must
+   exit 0. A network that answers port 53 itself makes the script exit 2.
+3. In Porkbun (Domain Management, westchasegi.com, Authoritative Nameservers), replace the four
+   nameservers with the `route53_name_servers` output. The `.com` delegation can take up to 48
+   hours to expire; ACM validation of the staging certificate waits for it.
 
 ## CI
 
