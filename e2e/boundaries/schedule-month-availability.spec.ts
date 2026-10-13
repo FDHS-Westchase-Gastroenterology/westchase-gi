@@ -7,7 +7,7 @@ import { monthAvailabilityOutcomeSchema } from "../../src/lib/portal/scheduling/
 import type { MonthAvailability } from "../../src/lib/portal/scheduling/read-contracts";
 import { resolveAppointmentStart } from "../../src/lib/portal/scheduling/time";
 import { serviceDb } from "../harness/env";
-import { createSchedulingFixture } from "../harness/scheduling";
+import { createSchedulingFixture, restoreBookingInterval } from "../harness/scheduling";
 
 function at(date: string, time: string) {
   const instant = resolveAppointmentStart({ date, time });
@@ -29,7 +29,10 @@ function futureMonth() {
 test("month availability lists open starts per provider and office, with a reason for every closed day", async () => {
   const db = serviceDb();
   const fixture = await createSchedulingFixture(db, "card-month");
+  const actor = fixture.staff.userId;
   try {
+    // The booking interval is one practice-wide setting; start from the hourly default.
+    await restoreBookingInterval(db, actor);
     const save = fixture.save;
     const [tampa, lutz] = fixture.locationIds;
     for (const [id, office] of [
@@ -193,8 +196,11 @@ test("month availability lists open starts per provider and office, with a reaso
     ]);
 
     // The patient's own 09:00-09:30 visit on the full day blocks overlapping starts at Lutz.
-    // Patient overlap is visit time, not buffers, so 09:30 is the first start left.
+    // A half-hour interval puts the next mark at 09:30, and 10:00 would run past 10:20.
+    // Patient overlap is visit time, not buffers, so 09:30 is the one start left.
+    await restoreBookingInterval(db, actor, 30);
     const forPatient = await read("any", fixture.patientIds[0]);
+    await restoreBookingInterval(db, actor);
     expect(entries(forPatient, fullDay, double)).toEqual([
       { locationId: lutz, open: ["09:30"], booked: 0, capacity: 1, reason: null },
     ]);
@@ -230,6 +236,10 @@ test("month availability lists open starts per provider and office, with a reaso
       expect(result.data).toEqual({ ok: false, code });
     }
   } finally {
-    await fixture.dispose();
+    try {
+      await restoreBookingInterval(db, actor);
+    } finally {
+      await fixture.dispose();
+    }
   }
 });
