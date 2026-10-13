@@ -40,16 +40,19 @@ resource "aws_guardduty_detector" "account" {
 locals {
   guardduty_features = {
     S3_DATA_EVENTS         = "ENABLED"
-    RDS_LOGIN_EVENTS       = "ENABLED"
     LAMBDA_NETWORK_LOGS    = "ENABLED"
     RUNTIME_MONITORING     = "ENABLED"
     EKS_AUDIT_LOGS         = "DISABLED"
     EBS_MALWARE_PROTECTION = "DISABLED"
   }
 
-  # Agent management for Runtime Monitoring: Fargate only.
+  # Agent management for Runtime Monitoring: Fargate only. GuardDuty reports
+  # the EC2 and EKS settings even while they are off, so they are declared too
+  # and a plan stays clean.
   guardduty_runtime_agent_management = {
     ECS_FARGATE_AGENT_MANAGEMENT = "ENABLED"
+    EC2_AGENT_MANAGEMENT         = "DISABLED"
+    EKS_ADDON_MANAGEMENT         = "DISABLED"
   }
 
   guardduty_region_features = {
@@ -78,6 +81,32 @@ resource "aws_guardduty_detector_feature" "account" {
       status = additional_configuration.value
     }
   }
+}
+
+# RDS login events, apart from the other plans because GuardDuty enables an
+# RDS_DATA_RISK sub-feature with them that the AWS provider cannot yet declare.
+# Ignoring additional_configuration here keeps that from showing as drift.
+resource "aws_guardduty_detector_feature" "rds_login_events" {
+  for_each = local.baseline_regions
+
+  region      = each.key
+  detector_id = aws_guardduty_detector.account[each.key].id
+  name        = "RDS_LOGIN_EVENTS"
+  status      = "ENABLED"
+
+  lifecycle {
+    ignore_changes = [additional_configuration]
+  }
+}
+
+moved {
+  from = aws_guardduty_detector_feature.account["us-east-2/RDS_LOGIN_EVENTS"]
+  to   = aws_guardduty_detector_feature.rds_login_events["us-east-2"]
+}
+
+moved {
+  from = aws_guardduty_detector_feature.account["us-east-1/RDS_LOGIN_EVENTS"]
+  to   = aws_guardduty_detector_feature.rds_login_events["us-east-1"]
 }
 
 # IAM Access Analyzer reports any resource in the Region that is shared outside
