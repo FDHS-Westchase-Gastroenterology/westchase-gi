@@ -629,6 +629,7 @@ test.describe("portal management server boundaries", () => {
       idRowSchema.safeParse(externalAudit),
       "External audit fixture was not created",
     );
+    const fixtureIds = [externalAuditRow.id];
     try {
       await adminPage.goto("/admin/audit");
       const auditRow = adminPage
@@ -637,8 +638,32 @@ test.describe("portal management server boundaries", () => {
         .filter({ hasText: targetLogin });
       await expect(auditRow).toContainText(targetLogin);
       await expect(auditRow).toContainText("Outcome unconfirmed");
+
+      // The outcome arrives as a row of its own; the pending row above is never edited.
+      const { data: outcomeAudit, error: outcomeAuditError } = await db
+        .from("audit_log")
+        .insert({
+          actor_email: SEED_ADMIN_EMAIL,
+          action: "audit.external_outcome",
+          entity: "audit_log",
+          entity_id: externalAuditRow.id,
+          source: "acceptance",
+          correlation_id: randomUUID(),
+          detail: { outcome: "succeeded" },
+        })
+        .select("id")
+        .single();
+      expect(outcomeAuditError).toBeNull();
+      fixtureIds.push(
+        requireDecoded(
+          idRowSchema.safeParse(outcomeAudit),
+          "External outcome fixture was not created",
+        ).id,
+      );
+      await adminPage.reload();
+      await expect(auditRow).toContainText("Outcome succeeded");
     } finally {
-      await deleteAuditRows({ ids: [externalAuditRow.id] });
+      await deleteAuditRows({ ids: fixtureIds });
     }
   });
 

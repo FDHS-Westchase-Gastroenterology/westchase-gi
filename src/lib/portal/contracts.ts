@@ -182,6 +182,8 @@ export const AUDIT_ACTIONS = {
   MAINTAINERS_INVITE: "maintainers.invite",
   MAINTAINERS_CANCEL: "maintainers.cancel",
   MAINTAINERS_REVOKE: "maintainers.revoke",
+  /** How an outside change begun under another row ended; that row is never edited. */
+  AUDIT_EXTERNAL_OUTCOME: "audit.external_outcome",
   REQUEST_CREATE: "request.create",
   REQUESTS_EXPORT: "requests.export",
   REQUESTS_PRINT_NEW: "requests.print_new",
