@@ -23,6 +23,18 @@ data "aws_iam_policy_document" "trust" {
       variable = "token.actions.githubusercontent.com:sub"
       values   = var.subjects
     }
+
+    # A negated condition matches a token that lacks the claim; GitHub puts
+    # actor_id in every token, so none does.
+    dynamic "condition" {
+      for_each = length(var.denied_actor_ids) > 0 ? [1] : []
+
+      content {
+        test     = "StringNotEquals"
+        variable = "token.actions.githubusercontent.com:actor_id"
+        values   = var.denied_actor_ids
+      }
+    }
   }
 }
 
@@ -36,6 +48,7 @@ resource "aws_iam_role" "main" {
   description          = var.description
   assume_role_policy   = data.aws_iam_policy_document.trust.json
   max_session_duration = 3600
+  permissions_boundary = var.permissions_boundary
   tags                 = var.tags
 
   lifecycle {

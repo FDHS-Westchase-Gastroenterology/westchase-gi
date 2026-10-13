@@ -159,6 +159,12 @@ locals {
       description = "wgi-terraform-read, the managed policy on every GitHub role including the production plan and deploy roles, got a new or different default version"
       pattern     = "{ ($.eventSource = \"iam.amazonaws.com\") && (($.eventName = \"CreatePolicyVersion\") || ($.eventName = \"SetDefaultPolicyVersion\")) && ($.requestParameters.policyArn = \"${aws_iam_policy.terraform_read.arn}\") }"
     }
+    # A boundary is the ceiling on every role an environment root creates, so
+    # a new default version widens all of them at once.
+    environment-boundary-changed = {
+      description = "wgi-staging-boundary or wgi-production-boundary, the ceiling on every environment role, got a new or different default version"
+      pattern     = "{ ($.eventSource = \"iam.amazonaws.com\") && (($.eventName = \"CreatePolicyVersion\") || ($.eventName = \"SetDefaultPolicyVersion\")) && (($.requestParameters.policyArn = \"${aws_iam_policy.environment_boundary["staging"].arn}\") || ($.requestParameters.policyArn = \"${aws_iam_policy.environment_boundary["production"].arn}\")) }"
+    }
     # Each use of the role is emergency access and is recorded as such. The
     # role's account logs a cross-account AssumeRole, refused attempts
     # included.

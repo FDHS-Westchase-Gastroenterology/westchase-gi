@@ -4,8 +4,8 @@ name: Infrastructure
 #
 # static  runs on every pull request that touches infra/. It needs no AWS
 #         credentials: formatting, validation of each root without a backend,
-#         and a checkov scan. Skips are written inline next to the resource,
-#         each with its reason.
+#         a checkov scan, and the unit tests of the environment-boundary check.
+#         Skips are written inline next to the resource, each with its reason.
 # plan    runs once the plan role exists, its ARN is stored as the repository
 #         secret TF_PLAN_ROLE_ARN and the repository variable TF_PLAN_ENABLED is
 #         "true" (see infra/README.md). The ARN is a secret, not a variable,
@@ -14,7 +14,10 @@ name: Infrastructure
 #         metadata and non-production state only, and plans without taking the
 #         state lock. The job summary lists each resource address and its
 #         planned action, never attribute values. Pull requests from forks
-#         never get it.
+#         never get it. The saved plan then goes through
+#         infra/checks/env-boundary.mjs, which fails the job when a policy the
+#         plan would write reaches another environment's resources
+#         (hosting-pipeline-design §5.1).
 
 on:
   pull_request:
@@ -66,6 +69,13 @@ jobs:
 
       - name: Scan with checkov
         run: uvx "checkov@${CHECKOV_VERSION}" --directory infra --framework terraform --compact --quiet
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: "22"
+
+      - name: Test the environment-boundary check
+        run: node --test infra/checks/env-boundary.test.mjs
 
   plan:
     name: plan (${{ matrix.root }})
@@ -139,3 +149,18 @@ jobs:
             jq -r '.resource_changes[]? | select(.change.actions != ["no-op"]) | "\(.change.actions | join("/")) \(.address)"' plan.json | sed -E 's/[0-9]{12}/<acct>/g'
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: "22"
+
+      # Every environment shares one account, so this is what keeps a staging
+      # policy off production's resources and the reverse. The report names
+      # resource addresses, statement IDs and rules, never attribute values.
+      - name: Check the environment boundary
+        env:
+          ROOT: ${{ matrix.root }}
+        run: |
+          set -euo pipefail
+          terraform -chdir="$TF_ROOT" show -json tfplan > plan.json
+          node infra/checks/env-boundary.mjs --root "$ROOT" plan.json | sed -E 's/[0-9]{12}/<acct>/g'

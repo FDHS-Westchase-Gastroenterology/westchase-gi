@@ -11,6 +11,8 @@
 #                                 state and writes saved plans, nothing else
 #   wgi-github-deploy-production  a job in the aws-production environment,
 #                                 which Jason must approve
+#   wgi-github-e2e-staging        any pull request not opened by Dependabot;
+#                                 the e2e harness's calls on the staging pool
 #
 # A job that names an environment gets an environment subject instead of a
 # branch subject, so the staging deploy job must not name one.
@@ -21,14 +23,22 @@ resource "aws_iam_openid_connect_provider" "github" {
 }
 
 locals {
-  state_key_alias_arn = "arn:${local.partition}:kms:${local.region}:${local.account_id}:alias/wgi-tfstate"
-  ecr_repository_arn  = "arn:${local.partition}:ecr:${local.region}:${local.account_id}:repository/${local.ecr_repository_name}"
-  ecs_arn_prefix      = "arn:${local.partition}:ecs:${local.region}:${local.account_id}"
+  ecr_repository_arn = "arn:${local.partition}:ecr:${local.region}:${local.account_id}:repository/${local.ecr_repository_name}"
+  ecs_arn_prefix     = "arn:${local.partition}:ecs:${local.region}:${local.account_id}"
+}
+
+# The state key, named by its exact ARN: KMS crypto actions do not accept an
+# alias ARN as their resource, and key/* with an alias condition is a pattern
+# the environment-boundary check refuses (§5.1, L443-445).
+data "aws_kms_alias" "tfstate" {
+  name = "alias/wgi-tfstate"
 }
 
 # Metadata reads that `terraform plan` needs to refresh this root. It grants no
-# object, log, secret or finding contents. Environment roots extend it with
-# their own services in the pull request that adds them.
+# object, log, secret, user or finding contents. The RDS, Cognito and DynamoDB
+# reads serve discovery.tf, which finds each environment's database, user pool
+# and capture table by name. Environment roots extend it with their own
+# services in the pull request that adds them.
 data "aws_iam_policy_document" "terraform_read" {
   # checkov:skip=CKV_AWS_356: read-only metadata across every resource the roots manage
   statement {
@@ -51,6 +61,13 @@ data "aws_iam_policy_document" "terraform_read" {
       "config:DescribeConfigurationRecorders",
       "config:DescribeDeliveryChannels",
       "config:ListTagsForResource",
+      "cognito-idp:DescribeUserPool",
+      "cognito-idp:ListUserPools",
+      "dynamodb:DescribeContinuousBackups",
+      "dynamodb:DescribeTable",
+      "dynamodb:DescribeTimeToLive",
+      "dynamodb:ListTables",
+      "dynamodb:ListTagsOfResource",
       "ec2:Describe*",
       "ec2:GetEbsDefaultKmsKeyId",
       "ec2:GetEbsEncryptionByDefault",
@@ -76,6 +93,8 @@ data "aws_iam_policy_document" "terraform_read" {
       "logs:ListTagsForResource",
       "logs:ListTagsLogGroup",
       "organizations:DescribeOrganization",
+      "rds:DescribeDBInstances",
+      "rds:ListTagsForResource",
       "route53:GetHostedZone",
       "route53:ListResourceRecordSets",
       "route53:ListTagsForResource",
@@ -144,13 +163,7 @@ data "aws_iam_policy_document" "state_access" {
       "kms:Encrypt",
       "kms:GenerateDataKey",
     ] : ["kms:Decrypt"]
-    resources = ["arn:${local.partition}:kms:${local.region}:${local.account_id}:key/*"]
-
-    condition {
-      test     = "ForAnyValue:StringEquals"
-      variable = "kms:ResourceAliases"
-      values   = ["alias/wgi-tfstate"]
-    }
+    resources = [data.aws_kms_alias.tfstate.target_key_arn]
 
     condition {
       test     = "StringEquals"
@@ -182,10 +195,6 @@ module "github_plan" {
 # readable because every environment root reads the shared outputs through
 # terraform_remote_state. No production root reads an SSM parameter yet; one
 # that does names its String parameters in not_resources here.
-data "aws_kms_alias" "tfstate" {
-  name = "alias/wgi-tfstate"
-}
-
 data "aws_iam_policy_document" "plan_production" {
   source_policy_documents = [data.aws_iam_policy_document.state_access["plan_production"].json]
 
@@ -287,7 +296,8 @@ module "github_plan_production" {
 
 # Deploy permissions for one environment: push or pull the image, register task
 # definitions, start one-off tasks and roll services, all limited to the
-# environment's own ECS names and task roles.
+# environment's own ECS names and task roles, and create those roles inside the
+# environment's permissions boundary (boundaries.tf).
 data "aws_iam_policy_document" "deploy" {
   for_each = {
     staging    = { push = true }
@@ -326,16 +336,29 @@ data "aws_iam_policy_document" "deploy" {
     resources = [local.ecr_repository_arn]
   }
 
+  # DescribeTaskDefinition accepts only "*" (https://docs.aws.amazon.com/
+  # service-authorization/latest/reference/list_ecs.html). Everything else
+  # names the environment's families, cluster, services and tasks (§2, L65;
+  # §5.1, L452-454). The cluster is wgi-<env>.
   statement {
-    sid       = "EcsTaskDefinitions"
-    actions   = ["ecs:DescribeTaskDefinition", "ecs:RegisterTaskDefinition"]
+    sid       = "EcsDescribeTaskDefinitions"
+    actions   = ["ecs:DescribeTaskDefinition"]
     resources = ["*"]
   }
 
   statement {
-    sid       = "EcsTagOnCreate"
-    actions   = ["ecs:TagResource"]
-    resources = ["*"]
+    sid       = "EcsRegisterTaskDefinitions"
+    actions   = ["ecs:RegisterTaskDefinition"]
+    resources = ["${local.ecs_arn_prefix}:task-definition/wgi-${each.key}-*"]
+  }
+
+  statement {
+    sid     = "EcsTagOnCreate"
+    actions = ["ecs:TagResource"]
+    resources = [
+      "${local.ecs_arn_prefix}:task-definition/wgi-${each.key}-*",
+      "${local.ecs_arn_prefix}:task/wgi-${each.key}/*",
+    ]
 
     condition {
       test     = "StringEquals"
@@ -347,37 +370,92 @@ data "aws_iam_policy_document" "deploy" {
   statement {
     sid       = "EcsServices"
     actions   = ["ecs:DescribeServices", "ecs:UpdateService"]
-    resources = ["${local.ecs_arn_prefix}:service/wgi-${each.key}*/*"]
+    resources = ["${local.ecs_arn_prefix}:service/wgi-${each.key}/*"]
   }
 
   statement {
     sid       = "EcsRunTask"
     actions   = ["ecs:RunTask"]
-    resources = ["${local.ecs_arn_prefix}:task-definition/wgi-${each.key}*:*"]
+    resources = ["${local.ecs_arn_prefix}:task-definition/wgi-${each.key}-*:*"]
 
     condition {
-      test     = "ArnLike"
+      test     = "ArnEquals"
       variable = "ecs:cluster"
-      values   = ["${local.ecs_arn_prefix}:cluster/wgi-${each.key}*"]
+      values   = ["${local.ecs_arn_prefix}:cluster/wgi-${each.key}"]
     }
   }
 
   statement {
     sid       = "EcsTasks"
     actions   = ["ecs:DescribeTasks", "ecs:StopTask"]
-    resources = ["${local.ecs_arn_prefix}:task/wgi-${each.key}*/*"]
+    resources = ["${local.ecs_arn_prefix}:task/wgi-${each.key}/*"]
   }
 
   statement {
-    sid       = "PassEnvironmentTaskRoles"
-    actions   = ["iam:PassRole"]
-    resources = ["arn:${local.partition}:iam::${local.account_id}:role/wgi-${each.key}-*"]
+    sid     = "PassEnvironmentTaskRoles"
+    actions = ["iam:PassRole"]
+    resources = [for suffix in ["exec", "task"] :
+      "arn:${local.partition}:iam::${local.account_id}:role/wgi-${each.key}-*-${suffix}"
+    ]
 
     condition {
       test     = "StringEquals"
       variable = "iam:PassedToService"
       values   = ["ecs-tasks.amazonaws.com"]
     }
+  }
+
+  # iam:PermissionsBoundary is evaluated only on these actions, so a role
+  # without the boundary can be neither created nor given a policy. Roles get
+  # inline policies only; no managed policy is created or attached.
+  statement {
+    sid = "CreateBoundedRoles"
+    actions = [
+      "iam:CreateRole",
+      "iam:DeleteRolePolicy",
+      "iam:PutRolePermissionsBoundary",
+      "iam:PutRolePolicy",
+    ]
+    resources = ["arn:${local.partition}:iam::${local.account_id}:role/wgi-${each.key}-*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PermissionsBoundary"
+      values   = [local.environment_boundary_arns[each.key]]
+    }
+  }
+
+  # These actions take no boundary condition, so the name alone limits them.
+  statement {
+    sid = "ManageEnvironmentRoles"
+    actions = [
+      "iam:DeleteRole",
+      "iam:TagRole",
+      "iam:UntagRole",
+      "iam:UpdateAssumeRolePolicy",
+      "iam:UpdateRole",
+      "iam:UpdateRoleDescription",
+    ]
+    resources = ["arn:${local.partition}:iam::${local.account_id}:role/wgi-${each.key}-*"]
+  }
+
+  statement {
+    sid       = "DenyBoundaryRemoval"
+    effect    = "Deny"
+    actions   = ["iam:DeleteRolePermissionsBoundary"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "DenyBoundaryChanges"
+    effect = "Deny"
+    actions = [
+      "iam:CreatePolicyVersion",
+      "iam:DeletePolicy",
+      "iam:DeletePolicyVersion",
+      "iam:SetDefaultPolicyVersion",
+    ]
+    resources = values(local.environment_boundary_arns)
   }
 
   # Staging one-off task output (migrations, e2e runs) is fictional data and
@@ -425,4 +503,99 @@ module "github_deploy_production" {
     terraform_read = aws_iam_policy.terraform_read.arn
   }
   tags = { env = "production" }
+}
+
+# Pull request e2e runs use the staging Cognito pool: the harness creates, signs
+# in and removes fictional users, computes SECRET_HASH from the staging client
+# secret, and reads the recovery links the staging mail Lambda captured. Staging
+# holds fictional data only. The role gets the harness's exact Cognito calls,
+# never ListUsers, AdminUpdateUserAttributes or PutSecretValue, and it carries
+# the staging boundary as well. Fork pull requests get no OIDC token, so a token
+# with the pull_request subject comes from a branch of this repository;
+# Dependabot's runs (actor_id 49699333, the dependabot[bot] account) are
+# refused. The e2e job condition repeats both checks before asking for a token.
+#
+# Each grant names the staging resource exactly (§5.1, L451 and L458-459; §7,
+# L544-556). Until the staging root creates the pool and the capture table,
+# those statements are left out.
+data "aws_iam_policy_document" "e2e_staging" {
+  dynamic "statement" {
+    for_each = length(local.environment_resources.staging.user_pool_arns) > 0 ? [1] : []
+
+    content {
+      sid = "HarnessUsers"
+      actions = [
+        "cognito-idp:AdminCreateUser",
+        "cognito-idp:AdminDeleteSoftwareToken",
+        "cognito-idp:AdminDeleteUser",
+        "cognito-idp:AdminDisableUser",
+        "cognito-idp:AdminGetUser",
+        "cognito-idp:AdminInitiateAuth",
+        "cognito-idp:AdminRespondToAuthChallenge",
+        "cognito-idp:AdminSetUserPassword",
+        "cognito-idp:AdminUserGlobalSignOut",
+        "cognito-idp:DescribeUserPool",
+      ]
+      resources = local.environment_resources.staging.user_pool_arns
+    }
+  }
+
+  statement {
+    sid       = "StagingClientSecret"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = ["arn:${local.partition}:secretsmanager:${local.region}:${local.account_id}:secret:wgi/staging/cognito/client-secret-??????"]
+  }
+
+  statement {
+    sid       = "CapturedRecoveryLinks"
+    actions   = ["dynamodb:GetItem", "dynamodb:Query"]
+    resources = ["arn:${local.partition}:dynamodb:${local.region}:${local.account_id}:table/wgi-staging-e2e-mail"]
+  }
+
+  # Each key only through the service that holds the data; never the mail
+  # sender's key.
+  dynamic "statement" {
+    for_each = {
+      for sid, grant in {
+        DecryptClientSecret = { keys = [module.kms["staging_secrets"].arn], service = "secretsmanager" }
+        DecryptCapturedLink = { keys = local.environment_resources.staging.capture_key_arns, service = "dynamodb" }
+      } : sid => grant if length(grant.keys) > 0
+    }
+
+    content {
+      sid       = statement.key
+      actions   = ["kms:Decrypt"]
+      resources = statement.value.keys
+
+      condition {
+        test     = "StringEquals"
+        variable = "kms:ViaService"
+        values   = ["${statement.value.service}.${local.region}.amazonaws.com"]
+      }
+    }
+  }
+
+  statement {
+    sid    = "DenyOutsideHarness"
+    effect = "Deny"
+    actions = [
+      "cognito-idp:AdminUpdateUserAttributes",
+      "cognito-idp:ListUsers",
+      "secretsmanager:PutSecretValue",
+    ]
+    resources = ["*"]
+  }
+}
+
+module "github_e2e_staging" {
+  source = "../modules/github-oidc-role"
+
+  name                 = "wgi-github-e2e-staging"
+  description          = "Pull request e2e runs: harness users on the staging Cognito pool, the staging client secret and captured recovery links"
+  oidc_provider_arn    = aws_iam_openid_connect_provider.github.arn
+  subjects             = ["${local.github_subject_prefix}:pull_request"]
+  denied_actor_ids     = ["49699333"]
+  permissions_boundary = aws_iam_policy.environment_boundary["staging"].arn
+  policy_json          = data.aws_iam_policy_document.e2e_staging.json
+  tags                 = { env = "staging" }
 }

@@ -72,7 +72,13 @@ output "github_role_arns" {
     deploy_staging    = module.github_deploy_staging.arn
     plan_production   = module.github_plan_production.arn
     deploy_production = module.github_deploy_production.arn
+    e2e_staging       = module.github_e2e_staging.arn
   }
+}
+
+output "environment_boundary_arns" {
+  description = "Permissions boundary every role an environment root creates must carry, by environment."
+  value       = { for env, policy in aws_iam_policy.environment_boundary : env => policy.arn }
 }
 
 output "breakglass_production_role_arn" {

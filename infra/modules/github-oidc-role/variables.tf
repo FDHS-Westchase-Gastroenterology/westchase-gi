@@ -23,6 +23,18 @@ variable "subjects" {
   }
 }
 
+variable "denied_actor_ids" {
+  type        = list(string)
+  description = "GitHub account IDs (the token's actor_id claim) refused a session even when the subject matches, for example Dependabot's."
+  default     = []
+}
+
+variable "permissions_boundary" {
+  type        = string
+  description = "ARN of a managed policy that caps the role's permissions, or null for none."
+  default     = null
+}
+
 variable "policy_json" {
   type        = string
   description = "Inline permissions policy for the role."

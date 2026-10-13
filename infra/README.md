@@ -18,6 +18,7 @@ multi-Region.
 | `modules/s3-bucket/` | A private, versioned, CMK-encrypted, TLS-only bucket | |
 | `modules/github-oidc-role/` | An IAM role that trusts exact GitHub Actions token subjects | |
 | `scripts/dns-mirror-diff.sh` | Compares the Porkbun and Route 53 answers for every mirrored name | |
+| `checks/env-boundary.mjs` | Fails a saved plan whose policies reach another environment's resources; see [CI](#ci) | |
 
 Environment roots under `environments/` (`staging`, `production`, previews) come in later pull
 requests and read `shared/` through its outputs. `environments/production/` also creates
@@ -43,8 +44,9 @@ DynamoDB table.
   replication, versioning, public access block, ACL or CORS configuration, any of the three roles
   that read production state (`wgi-github-deploy-production`, `wgi-github-plan-production`,
   `wgi-breakglass-production`) being created, deleted, or having its trust, policies or
-  permissions boundary changed, a new default version of `wgi-terraform-read`, and every attempt
-  to assume the break-glass role.
+  permissions boundary changed, a new default version of `wgi-terraform-read` or of either
+  environment boundary (`wgi-staging-boundary`, `wgi-production-boundary`), and every attempt to
+  assume the break-glass role.
 - **Account baseline.** S3 account-level public access block, EBS default encryption, GuardDuty
   and an IAM Access Analyzer in both Regions. GuardDuty runs S3, RDS login and Lambda network
   protection, and Runtime Monitoring with GuardDuty managing the agent on ECS Fargate; EKS and EBS
@@ -88,8 +90,8 @@ DynamoDB table.
   else. The default security group admits nothing. VPC flow logs (all traffic) go to the audit
   bucket. The S3 endpoint policy reaches only this account's buckets and the bucket ECR serves
   image layers from.
-- **GitHub OIDC and break glass.** The `token.actions.githubusercontent.com` provider, four GitHub
-  roles and the production break-glass role; see [Who can change what](#who-can-change-what).
+- **GitHub OIDC and break glass.** The `token.actions.githubusercontent.com` provider, five GitHub
+  roles, the production break-glass role and the two environment permissions boundaries; see [Who can change what](#who-can-change-what).
 - **ECR.** Repository `westchase-gi`: immutable tags, scan on push, encrypted with `wgi-artifacts`.
   Lifecycle: untagged images expire after 14 days, `production-*` tags keep the newest 30, and the
   repository keeps the newest 200 images overall.
@@ -102,9 +104,11 @@ DynamoDB table.
   path) and nothing else. It is not authoritative until the Porkbun nameservers change; see
   [Moving DNS to Route 53](#moving-dns-to-route-53).
 - **Tags.** Every resource carries `env`: `shared` from the provider default tags, `staging` on
-  staging's keys and deploy role, or `production` on the production deploy, plan and break-glass
-  roles. Guardrails that
-  protect production key on `env = production`, so no other resource may carry it.
+  staging's keys, deploy and e2e roles and boundary, or `production` on the production deploy,
+  plan and break-glass roles and boundary. Environment roots set `env = <env>` in their provider
+  default tags. Guardrails key on it: each environment boundary denies every action on a resource
+  whose `env` or `environment` tag names the other environment, ignoring case, and the guardrails
+  that protect production key on `env = production`, so no other resource may carry it.
 
 ## Before the first apply
 
@@ -212,7 +216,8 @@ data "terraform_remote_state" "shared" {
 | `alerts_topic_arn` | Where environment alarms publish |
 | `audit_bucket`, `state_bucket` | Bucket names |
 | `ecr_repository_url` | The image repository |
-| `github_role_arns` | Map with `plan`, `plan_production`, `deploy_staging`, `deploy_production` |
+| `github_role_arns` | Map with `plan`, `plan_production`, `deploy_staging`, `deploy_production`, `e2e_staging` |
+| `environment_boundary_arns` | Map of environment to the permissions boundary every role its root creates must carry |
 | `breakglass_production_role_arn` | The break-glass role, for production key policies |
 | `terraform_read_policy_arn` | The read-only policy the plan and deploy roles share |
 | `route53_zone_id`, `route53_name_servers` | The public zone |
@@ -225,8 +230,9 @@ Renaming or removing an output breaks every environment root that reads it.
 | --- | --- | --- | --- |
 | `wgi-github-plan` | `repo:FDHS-Westchase-Gastroenterology/westchase-gi:pull_request` | reads `bootstrap/`, `shared/`, `staging/`, `preview/`; never `production/`; writes nothing | `wgi-terraform-read`: metadata reads only, no object, log, secret or finding contents |
 | `wgi-github-plan-production` | `...:environment:aws-production-plan` (`var.production_plan_environment`) | reads `shared/` and `production/`; writes only saved plans under `production-plans/` | `wgi-terraform-read`, with explicit denies on every content read (below) |
-| `wgi-github-deploy-staging` | `...:ref:refs/heads/portal/appointment-workflow-experience` (`var.staging_branch`) | reads `shared/`, reads and writes `staging/` and `preview/` | push to ECR; register task definitions; run, describe and stop tasks and update services in `wgi-staging*` clusters; pass `wgi-staging-*` roles to ECS tasks; read `/wgi/staging/*` task logs |
-| `wgi-github-deploy-production` | `...:environment:aws-production` (`var.production_environment`) | reads `shared/`, reads and writes `production/`, reads `production-plans/` | the same for `wgi-production*`, except that it can pull and tag existing images but not upload layers, and reads no logs |
+| `wgi-github-deploy-staging` | `...:ref:refs/heads/portal/appointment-workflow-experience` (`var.staging_branch`) | reads `shared/`, reads and writes `staging/` and `preview/` | push to ECR; register task definitions; run, describe and stop tasks and update services in `wgi-staging*` clusters; pass `wgi-staging-*` roles to ECS tasks; read `/wgi/staging/*` task logs; create, change and delete `wgi-staging-*` roles that carry `wgi-staging-boundary`, with inline policies only |
+| `wgi-github-deploy-production` | `...:environment:aws-production` (`var.production_environment`) | reads `shared/`, reads and writes `production/`, reads `production-plans/` | the same for `wgi-production*` and `wgi-production-boundary`, except that it can pull and tag existing images but not upload layers, and reads no logs |
+| `wgi-github-e2e-staging` | `...:pull_request`, refused to Dependabot (`actor_id` 49699333) | none | the e2e harness's ten Cognito calls on the `wgi-staging-staff` pool (by exact ARN), the staging client secret, reads of the `wgi-staging-e2e-mail` capture table; carries `wgi-staging-boundary` |
 | `wgi-breakglass-production` | the management account, with MFA | exempt from the `production/` read deny | none of its own; see [Break glass](#break-glass) |
 
 - Every role session lasts at most one hour. Fork pull requests never receive an OIDC token.
@@ -265,6 +271,23 @@ Renaming or removing an output breaks every environment root that reads it.
 - The deploy roles carry deploy primitives only. The pull request that adds an environment root
   adds the permissions its `terraform apply` needs, and extends `wgi-terraform-read` with the
   services that root refreshes.
+- Every role an environment root creates carries `wgi-<env>-boundary` (`boundaries.tf`): a deploy
+  role can create a `wgi-<env>-*` role, or put or delete its inline policy, only with that
+  boundary attached, and can neither remove a boundary nor change either boundary policy. The
+  boundary caps such a role at its own environment's images, log streams, secret and parameter
+  reads, tables, bucket objects and one-off tasks, matched by the names in the
+  [naming contract](#naming-contract), and at its own database's master secret and logins, its
+  own user pool and its own keys, each named by exact ARN (see
+  [Environment boundary](#environment-boundary)). It denies every other IAM call, the state
+  bucket, and anything tagged or named for the other environment. It does not limit whom a
+  created role trusts; the saved-plan review and IAM Access Analyzer's findings on new external
+  access are the controls for that.
+- `wgi-github-e2e-staging` serves pull request e2e runs, which use the runner's own Postgres and
+  the staging Cognito pool. Fork pull requests get no OIDC token while the repository's "Send
+  write tokens to workflows from fork pull requests" setting stays off, so its subject comes only
+  from a branch of this repository; the role refuses Dependabot's token by `actor_id`, and the e2e
+  job's condition repeats both checks before asking for one. It is denied `ListUsers`,
+  `AdminUpdateUserAttributes` and `PutSecretValue` outright.
 - CI plans run with `-lock=false`, because neither plan role can write a lock file.
 
 ### Break glass
@@ -301,22 +324,54 @@ alerts topic (`breakglass-production-assumed`), and so does any policy attached 
 
 ### Naming contract
 
-The deploy role policies match these names. An environment root that names things differently
-gets access denied.
+The deploy role policies and the environment boundaries match these names. An environment root
+that names things differently gets access denied.
 
 | Resource | Name |
 | --- | --- |
-| ECS clusters | `wgi-<env>*` |
-| ECS services | any service in a `wgi-<env>*` cluster |
-| Task definition families | `wgi-<env>*` |
-| Task and execution roles | `wgi-<env>-*` |
+| ECS cluster | `wgi-<env>` |
+| ECS services | any service in the `wgi-<env>` cluster |
+| Task definition families | `wgi-<env>-*` |
+| Task, execution, Lambda and Scheduler roles | `wgi-<env>-*`, carrying `wgi-<env>-boundary`, inline policies only |
+| Lambda functions and their log groups | `wgi-<env>-*`, `/aws/lambda/wgi-<env>-*` |
+| Secrets | `wgi/<env>/*`; the RDS-managed master secret (`rds!db-<uuid>`) carries no environment, so the boundary names the `wgi-<env>-db` instance's secret by exact ARN |
+| SSM parameters | `/wgi/<env>/*` |
+| DynamoDB tables | `wgi-<env>-*` (the staging mail capture table is `wgi-staging-e2e-mail`) |
+| S3 buckets | `wgi-<env>-*`, including the run-artifacts bucket `wgi-<env>-artifacts` |
+| KMS keys used by environment roles | aliased `alias/wgi-<env>-*` (the capture table's key is `alias/wgi-staging-e2e-mail`); the boundary names each by exact ARN |
+| Cognito user pool | `wgi-<env>-staff`, one pool per name, tagged `env=<env>` |
 | Application log groups | `/wgi/<env>/*` (the `wgi-<env>-data` key may encrypt only these, RDS exports and the WAF log group) |
 | WAF log group | `aws-waf-logs-wgi-<env>` (WAF logs only to a group whose name starts with `aws-waf-logs-`) |
-| RDS instances and clusters | `wgi-<env>-*` |
+| RDS instances and clusters | `wgi-<env>-*`; the environment's database instance is `wgi-<env>-db` |
 
 `<env>` is `staging` or `production`. Previews either live inside the staging names
 (`wgi-staging-pr-<n>`) or get their own role in the pull request that adds them; the plan role
 already reads `preview/` state.
+
+### Environment boundary
+
+Every environment shares the one account, so a grant on a pattern such as `rds!db-*`,
+`userpool/*` or `key/*` reaches the other environment as well (hosting-pipeline-design §5.1).
+Names that carry the environment (`wgi-<env>-*`, `wgi/<env>/*`, `/wgi/<env>/*`) are granted by
+pattern. The rest are granted by exact ARN, which `shared/discovery.tf` looks up by name when
+`shared/` is planned:
+
+| Boundary statement | Looked up from |
+| --- | --- |
+| `OwnMasterSecret` | the master secret of RDS instance `wgi-<env>-db` |
+| `ConnectToOwnDatabase` | that instance's resource ID |
+| `OwnUserPool` | user pool `wgi-<env>-staff` |
+| `UseOwnKeys` | the `shared/` keys for the environment, and the keys that instance, its master secret, that pool's custom sender and (staging) the `wgi-staging-e2e-mail` table use |
+
+Until an environment root creates one of these, its lookup is empty, the statement is left out
+and the boundary allows nothing on it. After each environment root apply that creates or replaces
+the database, the user pool, the capture table or one of their keys, plan and apply `shared/`
+again; the environment's roles reach the new resource only then. A `shared/` plan that changes
+`wgi-<env>-boundary` after such an apply is this step, not drift. Two pools with the same
+`wgi-<env>-staff` name fail the `shared/` plan rather than letting the boundary name either.
+
+Every plan in CI also goes through `checks/env-boundary.mjs` (see [CI](#ci)), so a policy that
+reaches across environments fails before anyone applies it.
 
 ## Decisions
 
@@ -363,9 +418,11 @@ The database tier has no route to the internet, so a GitHub-hosted runner cannot
 
 Option A uses the same primitive as migrations (a one-off task that must succeed before a deploy
 continues), keeps database credentials inside the VPC, and adds no standing infrastructure. The
-deploy roles already allow `RunTask`, `DescribeTasks` and `StopTask` on `wgi-<env>*`, and the
+deploy roles already allow `RunTask`, `DescribeTasks` and `StopTask` in the `wgi-<env>` cluster, and the
 staging role can read the task's logs. `aws ecs wait tasks-stopped` gives up after about ten
-minutes, so a longer suite polls `describe-tasks` in a loop.
+minutes, so a longer suite polls `describe-tasks` in a loop. Pull request runs never reach the
+database: they replay the migrations into a Postgres service container on the runner and use the
+staging Cognito pool through `wgi-github-e2e-staging`.
 
 ### Production keys
 
@@ -393,9 +450,9 @@ key policy names do. The `shared/` keys keep the root statement, because adminis
 ## Known properties
 
 - **The alarm address is in `shared/` state in clear text**, as the SNS subscription endpoint.
-  Anyone who can read that state can read it: administrators and all four GitHub roles. The CI
-  plan summary redacts it, along with every 12-digit number.
-- **Expect IAM Access Analyzer findings** for the four GitHub roles, which trust an external
+  Anyone who can read that state can read it: administrators and the four GitHub roles that read
+  `shared/` state. The CI plan summary redacts it, along with every 12-digit number.
+- **Expect IAM Access Analyzer findings** for the five GitHub roles, which trust an external
   identity provider, and for the break-glass role, which trusts the management account. Jason
   reviews each and archives it once he agrees it is intended.
 - **The management account's ID and email address are in `shared/` state and plans**, from the
@@ -484,13 +541,33 @@ DMARC policy. The mirror does not add them; a DMARC record is a later change to 
 `.github/workflows/infra.yml` runs on pull requests that touch `infra/` or the workflow itself.
 
 - **static** needs no AWS credentials: `terraform fmt -check -recursive`, `init -backend=false`
-  and `validate` for each root, and a checkov scan. Each checkov skip is written inline next to its
-  resource with the reason.
+  and `validate` for each root, a checkov scan, and the unit tests of the environment-boundary
+  check. Each checkov skip is written inline next to its resource with the reason.
 - **plan** runs once `TF_PLAN_ENABLED` is `true` and only for pull requests from this repository.
   It assumes `wgi-github-plan`, plans `bootstrap/` and `shared/` without the lock, and lists each
   resource address with its planned action in the job summary. Attribute values stay on the
   runner, because the repository is public. Plan errors reach the log with every ARN and account
   ID replaced.
+- **The environment boundary.** The plan job then runs `checks/env-boundary.mjs --root <root>`
+  on `terraform show -json` of the saved plan (hosting-pipeline-design §5.1). It fails the job
+  when an Allow statement in a policy the plan would write:
+  1. names the other environment: `production` in a staging or preview policy; `staging`,
+     `preview` or `pr-` in a production policy; or a key, user pool, database or RDS master
+     secret that the plan's state traces to the other environment;
+  2. uses a wildcard whose fixed part does not name its own environment;
+  3. names a key, user pool, database or RDS master secret that nothing in the plan holds.
+
+  Resource `*` passes only for actions that accept nothing else (the `ONLY_STAR_ACTIONS` table,
+  each with its Service Authorization Reference page) and in resource policies. `userpool/*`,
+  `key/*`, `certificate/*` and `security-group/*` pass only with `StringEquals
+  aws:ResourceTag/env` equal to the role's environment, plus `aws:RequestTag/env` on create
+  actions, and only when the reference lists that key for every action in the statement (the
+  `CARVE_OUT` table). `ecr:BatchDeleteImage` fails in any policy; the repository's lifecycle
+  policy deletes images. In `bootstrap/` and `shared/` each policy belongs to the environment its
+  address, name, role or `env` tag carries; a policy with none is shared and is listed as
+  skipped. In an environment root every policy belongs to that environment. A policy the plan
+  cannot know yet fails. The output names resource addresses, statement IDs and rule numbers,
+  never ARNs.
 
 Local checks before pushing:
 
@@ -500,7 +577,13 @@ for root in bootstrap shared; do
   terraform -chdir="infra/$root" init -backend=false && terraform -chdir="infra/$root" validate
 done
 uvx checkov@3.3.28 --directory infra --framework terraform --compact --quiet
+node --test infra/checks/env-boundary.test.mjs
 ```
+
+To run the environment-boundary check on a local plan, save it with `terraform plan -out=tfplan`
+and run `terraform show -json tfplan > plan.json` and
+`node infra/checks/env-boundary.mjs --root <root> plan.json`. The JSON holds every planned
+value, including the alarm address; delete it, and never commit it.
 
 To plan against the account without the CI role, add a gitignored `backend_override.tf` pointing
 at a local backend, export credentials as above and run `terraform plan`. Never commit the
@@ -521,7 +604,7 @@ Estimated for the foundation alone in us-east-2, before any environment exists.
 | AWS Config recording | $1 to $3 |
 | ECR storage | $1 to $4 |
 | CloudWatch Logs (CloudTrail stream, 365 days) | $0.50 to $1 |
-| CloudWatch alarms (8) | $0.80 |
+| CloudWatch alarms (9) | $0.90 |
 | Route 53 hosted zone | $0.50 |
 | VPC flow logs to S3 | about $0.50 |
 | S3 (state, audit) | under $1 |
