@@ -140,20 +140,18 @@ export function renderGitignoreBlock(manifest) {
 }
 
 export function renderRulesDoc(manifest) {
-  const lines = [DOC_BEGIN, "", "| Path | Why it is local-only |", "| --- | --- |"];
-  for (const e of manifest.localOnly) lines.push(`| \`${e.path}\` | ${e.reason} |`);
-  lines.push("");
-  lines.push("**Not local-only.** These look like tooling but are required; the guard refuses");
-  lines.push("to run if the list above ever overlaps one of them.");
-  lines.push("");
-  lines.push("| Path | Why it must stay tracked |");
-  lines.push("| --- | --- |");
-  for (const e of manifest.loadBearing) {
-    lines.push(`| \`${e.path}\` | ${e.reason}${e.incident ? ` _${e.incident}_` : ""} |`);
-  }
-  lines.push("");
-  lines.push(DOC_END);
-  return lines.join("\n");
+  const list = (entries) => entries.map((e) => `\`${e.path}\``).join(", ");
+  return [
+    DOC_BEGIN,
+    "",
+    `Local-only (gitignored, never committed, even if a branch already carried them): ${list(manifest.localOnly)}.`,
+    "Reasons, first-tracked dates and leak history: `local-only-paths.json`.",
+    "",
+    `**Must stay tracked** (the guard refuses to run if the list above overlaps one): ${list(manifest.loadBearing)}.`,
+    "Reasons and incidents: `local-only-paths.json`.",
+    "",
+    DOC_END,
+  ].join("\n");
 }
 
 /** Replace the managed block in `text`, or append it if no block exists yet. */

@@ -303,6 +303,10 @@ Oxlint must report zero warnings and errors, oxfmt must report no drift, React D
 adds coverage for the changed behavior; it does not replace these gates. UI-visible changes also
 require the [visual evidence](#ui-changes) described below.
 
+`npm run gates` runs the four in that order: one line for each clean gate, the full output of a
+failing one, and a non-zero exit when any fails. In a checkout without `.env.local` it builds
+against the no-credentials placeholders below.
+
 ### What to run — without credentials
 
 This set is exactly the CI `quality` job (`.github/workflows/ci.yml`). It needs no
@@ -377,6 +381,20 @@ map them to the names in `.env.example`, and set `SUPABASE_PREVIEW_BRANCH=1`.
 `e2e/harness/target-guard.ts` binds the project reference to the URL, requires the hosted-branch
 marker, and rejects Production before the first database call. [`test/README.md`](test/README.md)
 describes the test tiers and shared harness.
+
+`npm run e2e -- <playwright arguments>` is the workstation entry point for these runs. It sets
+`SUPABASE_PREVIEW_BRANCH=1` and `NEXT_DIST_DIR=.next-e2e` unless they are already set, stops before
+starting anything when another checkout's server holds :3100 (Playwright reuses whatever answers
+there, so the run would test that checkout's code), and keeps the machine awake until the run ends.
+`--branch-env <path>` loads the branch's variables from a file; a value already in the environment
+wins over the file, and the file wins over `.env.local`. The target guard still decides whether the
+database is safe.
+
+`.next-e2e` is the only alternate build directory. An output directory that is not ignored enters
+Tailwind's source scan and breaks the stylesheet of a dev server already running from the same
+checkout, so do not introduce another one. A worktree installs from the lockfile; `node_modules` is
+never linked or copied between checkouts, because Turbopack rejects a linked tree and `npm ci` can
+follow the link and empty the other checkout's dependencies.
 
 Coordinate use of the database across the entire branch stack. Never run two Playwright
 processes, fixture resets, or conflicting migrations against it concurrently, including CI jobs
@@ -502,6 +520,58 @@ score of 100 on the exact head.
 **Direct push to `main`** is for urgent production hotfixes only (admin), and must carry the
 same verification evidence a PR would (CI green, live spot-check, rollback noted). Normal
 changes never request a bypass.
+
+## shadcn registry procedure
+
+AGENTS.md "shadcn/ui" holds the rules; this section holds the procedure those rules point at. The
+paragraphs below moved here from AGENTS.md unchanged.
+
+Use the package's named exports when separate class joining, merging, or types are needed;
+do not recreate the `clsx` plus `tailwind-merge` wrapper. The project uses Tailwind v4, which
+the `cn` merge engine supports. Dependencies still used by other packages may remain in
+`package-lock.json`; that does not make them direct application dependencies.
+
+For helper migrations, follow `CONTRIBUTING.md` "Class-name helper updates". Apply them to
+both approved components and registry bundle inputs, record mechanical stock-source changes
+in `src/components/stock/MANIFEST.json`, and regenerate the local design bundle. Class merging
+must preserve the existing recipes, brand tokens, and call-site overrides.
+
+`.ds-sync/` is the machine-local toolchain; `.design-sync/` holds project-specific pipeline
+source and previews; `ds-bundle/` is generated output. `local-only-paths.json` governs all three.
+Run `npm run local-only:write` after changing their reasons. First run
+`node .design-sync/ds/build-ds.mjs`, then regenerate the bundle with
+`node .ds-sync/package-build.mjs --config .design-sync/config.json --node-modules node_modules --entry .design-sync/ds/entry.ts --out ds-bundle`,
+then `node .design-sync/ds/copy-assets.mjs`.
+
+Reconciliation procedure — run after **every** CLI operation that touches CSS:
+
+1. Commit or stash a clean checkpoint of `src/app/globals.css` **before** running the command.
+2. Run the command, then `git diff src/app/globals.css` and reject or rewrite anything that:
+   - adds OKLCH color literals to the semantic `:root` / `.dark` blocks — every semantic token
+     must reference a brand `--color-*` token. Light `--destructive` reads the coral ramp
+     (`--color-coral-700`); the single permitted literal is the dark `--destructive`, because
+     dark mode is not a shipped surface;
+   - touches the brand `@theme` block, its comment header, or any brand token value;
+   - re-declares `--radius-*` inside the bridge's `@theme inline` block — the brand `@theme`
+     owns the radius namespace (`--radius` 0.625rem, sm 0.375rem, lg 0.875rem);
+   - injects `@apply` into the base layer (`border-border`, `outline-ring/50`, `font-sans`,
+     `bg-background text-foreground`) — the existing base rules already carry brand values;
+   - changes the font mappings — `--font-sans`/`--font-heading` resolve to the body sans (Lato).
+3. New semantic tokens a component introduces get mapped onto brand tokens in the bridge, with a
+   comment naming the brand pair.
+4. Rerun the full contribution loop and capture before/after screenshots — palette drift is a
+   UI-visible change.
+
+shadcn and the brand share the Tailwind `--color-*` namespace, and the later `@theme` block wins.
+The brand's secondary text ink is `--color-muted-ink`, not `--color-muted`, because shadcn's
+`--color-muted` is a surface tint. Before adopting a component, list the semantic utilities it
+uses (`bg-*`, `text-*`, `border-*`) and check each for a brand-token collision.
+
+Adoption starts with existing repository components and shadcn registry source. If a CLI command is needed to
+supply its behavior, run `add --dry-run` / `--diff` before touching an existing recipe. Review
+all generated changes, meet the repo lint bar, and preserve the token mappings. Add a product
+component when a real surface consumes it. The dependencies of `stock/` remain required by
+the bundle even when they have no product importer; see `src/components/stock/README.md`.
 
 ## Dependency updates
 

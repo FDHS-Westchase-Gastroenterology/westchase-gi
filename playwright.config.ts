@@ -7,8 +7,9 @@ import { defineConfig, devices } from "@playwright/test";
    Projects stay `chromium` and `no-js` because every spec's skip guard reads
    the project name. The stack runs on port 3100 (3000 is off-limits here);
    webServer boots the same command the humans use (`npm run dev:mission`),
-   which first clears any zombie holding the port so tests never hit stale
-   code. Credential-bearing runs retain no browser artifacts. */
+   which replaces this checkout's previous server on the port and refuses to
+   start while another checkout's server holds it, so tests never hit stale or
+   foreign code. Credential-bearing runs retain no browser artifacts. */
 
 /* Dev sign-in fails closed (src/lib/portal/dev-sign-in.ts). The suite runs
    with it on unless the caller already chose, and sets it here so the runner

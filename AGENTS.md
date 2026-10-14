@@ -4,6 +4,19 @@ Read this first. It has the hard rules, environment facts, and pointers to the r
 
 Invoke every skill whose trigger the work meets, each at the point its trigger is met; `.claude/rules/ui-skills.md` lists the triggers for UI work. The skills hold repo-specific procedure that the code and these docs do not repeat.
 
+## Non-negotiables
+
+Each of these has been corrected more than once; each links to the section that owns it.
+
+- Surfaces and components come from the shadcn registry through `ui/` recipes, never hand-rolled
+  ([shadcn/ui](#shadcnui)).
+- The agent that picks up a task does all of it, backend included; nothing is left for another
+  harness ([Task ownership](#task-ownership)).
+- Every gate in [Contribution loop](#contribution-loop) is clean before a pull request or a merge,
+  and the pull-request conversation carries the visual evidence.
+- Fictional data only: never Production, never real patient or staff data, never the sign-in form
+  ([Visual evidence](#visual-evidence), [Demo data](#demo-data)).
+
 ## Rule authority and ramp-up
 
 Read in this order, as the task requires:
@@ -31,6 +44,9 @@ scope, and neither does a file's server/client directive.
 
 - The agent may delegate part of the task to a subagent in its own harness. It stays accountable
   for the result and verifies it before sharing.
+- A delegation names the model and effort it runs at instead of inheriting the parent's. Read-only
+  lanes (audits, ledgers, fact-finding) run at medium effort; `max` is for work Jason asks to run
+  at `max`.
 - It never defers part of the task to a different harness, such as backend work left for Codex.
   A backend gap the task depends on is closed in the same task.
 - Every harness has the Supabase skills for database, Auth, and RLS work; see
@@ -64,6 +80,10 @@ The standing gates are:
 - `npm run build` completes a production compile and typecheck with no errors. Oxlint, oxfmt, and React Doctor can all pass while this fails, so they do not replace it. Do not skip it, narrow it, or substitute `tsc --noEmit`. Use the no-credentials environment in [`CONTRIBUTING.md`](CONTRIBUTING.md#verification) when `.env.local` is absent. If the build cannot run, say so; the loop has not passed.
 - A diff that adds or changes motion (`transition`, `animation`, `@starting-style`, `--motion-*`, `motion/react`) carries a `review-animations` verdict in the turn's report, in the Before / After / Why table from `.claude/rules/design-eng.md`. Lint, format, React Doctor, and the build cannot see motion quality, so they do not replace it.
 - Visual evidence is in the pull-request conversation for every UI-visible change. A single-state change needs before and after screenshots. A new workflow or a feature with more than one authored step needs a video of that path. A clean lint score with no visual evidence is a failed loop.
+
+`npm run gates` runs the four command gates above in order, prints one line for a clean gate and the
+full output of a failing one, and exits non-zero when any of them fails. It does not check the
+motion review or the visual evidence.
 
 An extra check you are asked to run, including a single oxlint rule, is added to this list and does not replace it. Run the extra check first, then the standing gates; if a gate fails, fix it and rerun everything that already passed, because a later fix can reopen an earlier one.
 
@@ -116,15 +136,10 @@ Import `cn` directly from the `cn` package in components and route surfaces:
 `import { cn } from "cn";`. `src/lib/utils.ts` keeps `export { cn } from "cn";` for compatibility
 with existing consumers and the `components.json` utils alias. Keep it browser-safe.
 
-Use the package's named exports when separate class joining, merging, or types are needed;
-do not recreate the `clsx` plus `tailwind-merge` wrapper. The project uses Tailwind v4, which
-the `cn` merge engine supports. Dependencies still used by other packages may remain in
-`package-lock.json`; that does not make them direct application dependencies.
-
-For helper migrations, follow `CONTRIBUTING.md` "Class-name helper updates". Apply them to
-both approved components and registry bundle inputs, record mechanical stock-source changes
-in `src/components/stock/MANIFEST.json`, and regenerate the local design bundle. Class merging
-must preserve the existing recipes, brand tokens, and call-site overrides.
+The `cn` package details, the helper-migration procedure, the bundle regeneration commands, the
+`globals.css` reconciliation procedure and the adoption procedure live in CONTRIBUTING.md
+["shadcn registry procedure"](CONTRIBUTING.md#shadcn-registry-procedure). Run the reconciliation
+procedure after **every** CLI operation that touches CSS; palette drift is a UI-visible change.
 
 #### Design authority and brand protection
 
@@ -141,13 +156,6 @@ and `stock/toggle-group.tsx` directly; preserve that behavior until approved `ui
 them. `MANIFEST.json` records source provenance. Do not treat the registry defaults as approved
 brand design.
 
-`.ds-sync/` is the machine-local toolchain; `.design-sync/` holds project-specific pipeline
-source and previews; `ds-bundle/` is generated output. `local-only-paths.json` governs all three.
-Run `npm run local-only:write` after changing their reasons. First run
-`node .design-sync/ds/build-ds.mjs`, then regenerate the bundle with
-`node .ds-sync/package-build.mjs --config .design-sync/config.json --node-modules node_modules --entry .design-sync/ds/entry.ts --out ds-bundle`,
-then `node .design-sync/ds/copy-assets.mjs`.
-
 Components resolve every color through **semantic tokens** (`--background`, `--primary`,
 `--muted`, …) that are bridged onto the committed brand palette in `src/app/globals.css`. The
 bridge is the only place shadcn's tokens exist; the brand `@theme` block above it belongs to the
@@ -160,30 +168,6 @@ neutral OKLCH literals, a `@theme inline` block that re-declares the Tailwind ra
 radius and repaint the page white. Registry defaults may be explored in Claude Design; neutral
 preset literals must not replace the repository's semantic brand mappings.
 
-Reconciliation procedure — run after **every** CLI operation that touches CSS:
-
-1. Commit or stash a clean checkpoint of `src/app/globals.css` **before** running the command.
-2. Run the command, then `git diff src/app/globals.css` and reject or rewrite anything that:
-   - adds OKLCH color literals to the semantic `:root` / `.dark` blocks — every semantic token
-     must reference a brand `--color-*` token. Light `--destructive` reads the coral ramp
-     (`--color-coral-700`); the single permitted literal is the dark `--destructive`, because
-     dark mode is not a shipped surface;
-   - touches the brand `@theme` block, its comment header, or any brand token value;
-   - re-declares `--radius-*` inside the bridge's `@theme inline` block — the brand `@theme`
-     owns the radius namespace (`--radius` 0.625rem, sm 0.375rem, lg 0.875rem);
-   - injects `@apply` into the base layer (`border-border`, `outline-ring/50`, `font-sans`,
-     `bg-background text-foreground`) — the existing base rules already carry brand values;
-   - changes the font mappings — `--font-sans`/`--font-heading` resolve to the body sans (Lato).
-3. New semantic tokens a component introduces get mapped onto brand tokens in the bridge, with a
-   comment naming the brand pair.
-4. Rerun the full contribution loop and capture before/after screenshots — palette drift is a
-   UI-visible change.
-
-shadcn and the brand share the Tailwind `--color-*` namespace, and the later `@theme` block wins.
-The brand's secondary text ink is `--color-muted-ink`, not `--color-muted`, because shadcn's
-`--color-muted` is a surface tint. Before adopting a component, list the semantic utilities it
-uses (`bg-*`, `text-*`, `border-*`) and check each for a brand-token collision.
-
 Surfaces and components come from the shadcn registry, never hand-rolled. A route composes
 `ui/` recipes and `patterns/`. A primitive no recipe covers (a popover, menu, combobox, calendar,
 switch, sheet, tabs, toast, collapsible and the like) is adopted from its registry source in
@@ -191,18 +175,12 @@ switch, sheet, tabs, toast, collapsible and the like) is adopted from its regist
 exceptions in design-system/adoption.md stay: modals on the native `<dialog>`, and route
 navigation as links.
 
-Adoption starts with existing repository components and shadcn registry source. If a CLI command is needed to
-supply its behavior, run `add --dry-run` / `--diff` before touching an existing recipe. Review
-all generated changes, meet the repo lint bar, and preserve the token mappings. Add a product
-component when a real surface consumes it. The dependencies of `stock/` remain required by
-the bundle even when they have no product importer; see `src/components/stock/README.md`.
-
 Motion: two engines, one registry. CSS reads the `--motion-*` tokens; `motion/react` reads the
 presets in `src/lib/motion.ts`, which are the same temperaments. Use whichever fits the job.
 Neither engine invents a curve or duration — DESIGN.md "Motion".
 
 `apply --preset` / `init --preset <code>` overwrite preset-driven CSS wholesale. Do not run one
-without the reconciliation review above, and never let a preset's palette reach a commit.
+without the reconciliation procedure in CONTRIBUTING.md, and never let a preset's palette reach a commit.
 
 ## Backend development
 
