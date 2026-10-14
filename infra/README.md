@@ -19,6 +19,7 @@ multi-Region.
 | `modules/github-oidc-role/` | An IAM role that trusts exact GitHub Actions token subjects | |
 | `scripts/dns-mirror-diff.sh` | Compares the Porkbun and Route 53 answers for every mirrored name | |
 | `checks/env-boundary.mjs` | Fails a saved plan whose policies reach another environment's resources; see [CI](#ci) | |
+| `scp/` | The two service control policies Jason attaches to `wgi` from the management account; see [`scp/README.md`](scp/README.md) | |
 
 Environment roots under `environments/` (`staging`, `production`, previews) come in later pull
 requests and read `shared/` through its outputs. `environments/production/` also creates
@@ -510,10 +511,12 @@ After `shared/` is applied:
    before the staging deploy pipeline goes live. Today only `main` is protected.
 5. Review the IAM Access Analyzer findings for the GitHub and break-glass roles and archive the
    intended ones.
+6. Once the apply policies and service-linked roles are applied, create and attach the two SCPs in
+   `scp/`, as in [`scp/README.md`](scp/README.md).
 
 DNS, after the mirror in `shared/dns.tf` is applied:
 
-6. Move the domain's nameservers to Route 53, as in
+7. Move the domain's nameservers to Route 53, as in
    [Moving DNS to Route 53](#moving-dns-to-route-53).
 
 ### Moving DNS to Route 53

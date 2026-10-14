@@ -1,0 +1,221 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "L420EcsExec",
+      "Effect": "Deny",
+      "Action": ["ecs:ExecuteCommand"],
+      "Resource": [
+        "arn:aws:ecs:*:*:cluster/wgi-production",
+        "arn:aws:ecs:*:*:task/wgi-production/*"
+      ]
+    },
+    {
+      "Sid": "L421EcsDeploy",
+      "Effect": "Deny",
+      "Action": ["ecs:RunTask", "ecs:UpdateService", "ecs:RegisterTaskDefinition"],
+      "Resource": [
+        "arn:aws:ecs:*:*:task-definition/wgi-production*",
+        "arn:aws:ecs:*:*:service/wgi-production/*"
+      ],
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::*:role/wgi-github-deploy-production",
+            "arn:aws:iam::*:role/wgi-production-retention-scheduler"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "L421EcsCluster",
+      "Effect": "Deny",
+      "Action": ["ecs:RunTask"],
+      "Resource": ["*"],
+      "Condition": {
+        "ArnLike": { "ecs:cluster": "arn:aws:ecs:*:*:cluster/wgi-production" },
+        "ArnNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::*:role/wgi-github-deploy-production",
+            "arn:aws:iam::*:role/wgi-production-retention-scheduler"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "L422ControlPlane",
+      "Effect": "Deny",
+      "Action": [
+        "rds:ModifyActivityStream",
+        "rds:ModifyCurrentDBClusterCapacity",
+        "rds:ModifyCustomDBEngineVersion",
+        "rds:ModifyDBCluster",
+        "rds:ModifyDBClusterEndpoint",
+        "rds:ModifyDBClusterParameterGroup",
+        "rds:ModifyDBClusterSnapshotAttribute",
+        "rds:ModifyDBInstance",
+        "rds:ModifyDBParameterGroup",
+        "rds:ModifyDBProxy",
+        "rds:ModifyDBProxyEndpoint",
+        "rds:ModifyDBProxyTargetGroup",
+        "rds:ModifyDBShardGroup",
+        "rds:ModifyDBSnapshot",
+        "rds:ModifyDBSnapshotAttribute",
+        "rds:ModifyDBSubnetGroup",
+        "rds:ModifyEventSubscription",
+        "rds:ModifyGlobalCluster",
+        "rds:ModifyIntegration",
+        "rds:ModifyOptionGroup",
+        "rds:ModifyTenantDatabase",
+        "rds:Delete*",
+        "rds:Copy*",
+        "rds:Restore*",
+        "elasticloadbalancing:Delete*",
+        "elasticloadbalancing:Modify*",
+        "wafv2:DeleteFirewallManagerRuleGroups",
+        "wafv2:DeleteIPSet",
+        "wafv2:DeleteLoggingConfiguration",
+        "wafv2:DeletePermissionPolicy",
+        "wafv2:DeleteRegexPatternSet",
+        "wafv2:DeleteRuleGroup",
+        "wafv2:DeleteWebACL",
+        "wafv2:UpdateIPSet",
+        "wafv2:UpdateRegexPatternSet",
+        "wafv2:UpdateRuleGroup",
+        "wafv2:UpdateWebACL",
+        "wafv2:Put*Policy",
+        "ecs:DeleteAttributes",
+        "ecs:DeleteCapacityProvider",
+        "ecs:DeleteCluster",
+        "ecs:DeleteDaemon",
+        "ecs:DeleteDaemonTaskDefinition",
+        "ecs:DeleteExpressGatewayService",
+        "ecs:DeleteService",
+        "ecs:DeleteTaskDefinitions",
+        "ecs:DeleteTaskSet",
+        "ecs:Update*",
+        "cognito-idp:DeleteGroup",
+        "cognito-idp:DeleteIdentityProvider",
+        "cognito-idp:DeleteManagedLoginBranding",
+        "cognito-idp:DeleteResourceServer",
+        "cognito-idp:DeleteTerms",
+        "cognito-idp:DeleteUserPool",
+        "cognito-idp:DeleteUserPoolClient",
+        "cognito-idp:DeleteUserPoolClientSecret",
+        "cognito-idp:DeleteUserPoolDomain",
+        "cognito-idp:DeleteUserPoolReplica",
+        "cognito-idp:UpdateAuthEventFeedback",
+        "cognito-idp:UpdateGroup",
+        "cognito-idp:UpdateIdentityProvider",
+        "cognito-idp:UpdateManagedLoginBranding",
+        "cognito-idp:UpdateResourceServer",
+        "cognito-idp:UpdateTerms",
+        "cognito-idp:UpdateUserPool",
+        "cognito-idp:UpdateUserPoolClient",
+        "cognito-idp:UpdateUserPoolDomain",
+        "cognito-idp:UpdateUserPoolReplica",
+        "kms:ScheduleKeyDeletion",
+        "kms:DisableKey",
+        "kms:PutKeyPolicy",
+        "logs:DeleteLogGroup",
+        "logs:PutRetentionPolicy",
+        "logs:DisassociateKmsKey"
+      ],
+      "Resource": ["*"],
+      "Condition": {
+        "StringEquals": { "aws:ResourceTag/env": "production" },
+        "ArnNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::*:role/wgi-github-deploy-production",
+            "arn:aws:iam::*:role/wgi-breakglass-production"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "L422Buckets",
+      "Effect": "Deny",
+      "Action": ["s3:DeleteBucket*", "s3:Put*Policy"],
+      "Resource": ["arn:aws:s3:::wgi-production-*"],
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::*:role/wgi-github-deploy-production",
+            "arn:aws:iam::*:role/wgi-breakglass-production"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "EnvTagGuard",
+      "Effect": "Deny",
+      "Action": [
+        "kms:TagResource",
+        "kms:UntagResource",
+        "rds:AddTagsToResource",
+        "rds:RemoveTagsFromResource",
+        "elasticloadbalancing:AddTags",
+        "elasticloadbalancing:RemoveTags",
+        "wafv2:TagResource",
+        "wafv2:UntagResource",
+        "ecs:TagResource",
+        "ecs:UntagResource",
+        "cognito-idp:TagResource",
+        "cognito-idp:UntagResource",
+        "logs:TagResource",
+        "logs:UntagResource",
+        "logs:TagLogGroup",
+        "logs:UntagLogGroup"
+      ],
+      "Resource": ["*"],
+      "Condition": {
+        "StringEquals": { "aws:ResourceTag/env": "production" },
+        "ForAnyValue:StringEquals": { "aws:TagKeys": "env" },
+        "ArnNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::*:role/wgi-github-deploy-production",
+            "arn:aws:iam::*:role/wgi-breakglass-production"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "L424LogRead",
+      "Effect": "Deny",
+      "Action": [
+        "logs:GetLogEvents",
+        "logs:FilterLogEvents",
+        "logs:StartQuery",
+        "logs:StartLiveTail",
+        "logs:GetLogRecord",
+        "logs:CreateExportTask",
+        "logs:GetQueryResults"
+      ],
+      "Resource": [
+        "arn:aws:logs:*:*:log-group:/wgi/production/*",
+        "arn:aws:logs:*:*:log-group:aws-waf-logs-wgi-production*"
+      ],
+      "Condition": {
+        "ArnNotLike": { "aws:PrincipalArn": ["arn:aws:iam::*:role/wgi-breakglass-production"] }
+      }
+    },
+    {
+      "Sid": "L425Audit",
+      "Effect": "Deny",
+      "Action": [
+        "cloudtrail:StopLogging",
+        "cloudtrail:DeleteTrail",
+        "cloudtrail:UpdateTrail",
+        "cloudtrail:PutEventSelectors",
+        "guardduty:DeleteDetector",
+        "guardduty:UpdateDetector",
+        "config:StopConfigurationRecorder",
+        "config:DeleteConfigurationRecorder",
+        "config:DeleteDeliveryChannel",
+        "config:PutConfigurationRecorder",
+        "config:PutDeliveryChannel"
+      ],
+      "Resource": ["*"]
+    }
+  ]
+}

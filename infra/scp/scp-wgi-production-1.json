@@ -1,0 +1,178 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "L413PipelineRoles",
+      "Effect": "Deny",
+      "Action": [
+        "iam:CreateRole",
+        "iam:UpdateRole",
+        "iam:UpdateRoleDescription",
+        "iam:AttachRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:PutRolePermissionsBoundary",
+        "iam:DeleteRole",
+        "iam:DeleteRolePolicy",
+        "iam:DeleteRolePermissionsBoundary",
+        "iam:UpdateAssumeRolePolicy",
+        "iam:PassRole"
+      ],
+      "Resource": [
+        "arn:aws:iam::*:role/wgi-github-*-production",
+        "arn:aws:iam::*:role/wgi-breakglass-production"
+      ]
+    },
+    {
+      "Sid": "L413ProductionRoles",
+      "Effect": "Deny",
+      "Action": [
+        "iam:CreateRole",
+        "iam:UpdateRole",
+        "iam:UpdateRoleDescription",
+        "iam:AttachRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:PutRolePermissionsBoundary",
+        "iam:DeleteRole",
+        "iam:DeleteRolePolicy",
+        "iam:DeleteRolePermissionsBoundary",
+        "iam:UpdateAssumeRolePolicy"
+      ],
+      "Resource": ["arn:aws:iam::*:role/wgi-production-*"],
+      "Condition": {
+        "ArnNotLike": { "aws:PrincipalArn": ["arn:aws:iam::*:role/wgi-github-deploy-production"] }
+      }
+    },
+    {
+      "Sid": "L413PassRole",
+      "Effect": "Deny",
+      "Action": ["iam:PassRole"],
+      "Resource": ["arn:aws:iam::*:role/wgi-production-*"],
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::*:role/wgi-github-deploy-production",
+            "arn:aws:iam::*:role/wgi-production-retention-scheduler"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "L413L421Scheduler",
+      "Effect": "Deny",
+      "Action": ["iam:PassRole", "ecs:RunTask", "ecs:UpdateService", "ecs:RegisterTaskDefinition"],
+      "NotResource": [
+        "arn:aws:iam::*:role/wgi-production-retention-exec",
+        "arn:aws:iam::*:role/wgi-production-retention-task",
+        "arn:aws:ecs:*:*:task-definition/wgi-production-retention:*"
+      ],
+      "Condition": {
+        "ArnLike": { "aws:PrincipalArn": "arn:aws:iam::*:role/wgi-production-retention-scheduler" }
+      }
+    },
+    {
+      "Sid": "L414OidcStateBucket",
+      "Effect": "Deny",
+      "Action": [
+        "iam:CreateOpenIDConnectProvider",
+        "iam:DeleteOpenIDConnectProvider",
+        "iam:AddClientIDToOpenIDConnectProvider",
+        "iam:RemoveClientIDFromOpenIDConnectProvider",
+        "iam:UpdateOpenIDConnectProviderThumbprint",
+        "iam:TagOpenIDConnectProvider",
+        "iam:UntagOpenIDConnectProvider",
+        "s3:PutBucketPolicy",
+        "s3:DeleteBucketPolicy"
+      ],
+      "Resource": ["arn:aws:iam::*:oidc-provider/*", "arn:aws:s3:::westchase-gi-tfstate-use2"]
+    },
+    {
+      "Sid": "L415ProductionKeys",
+      "Effect": "Deny",
+      "Action": ["kms:Decrypt", "kms:GenerateDataKey*"],
+      "Resource": ["*"],
+      "Condition": {
+        "StringEquals": { "aws:ResourceTag/env": "production" },
+        "ArnNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::*:role/wgi-production-web-exec",
+            "arn:aws:iam::*:role/wgi-production-web-task",
+            "arn:aws:iam::*:role/wgi-production-migrate-exec",
+            "arn:aws:iam::*:role/wgi-production-migrate-task",
+            "arn:aws:iam::*:role/wgi-production-bootstrap-exec",
+            "arn:aws:iam::*:role/wgi-production-bootstrap-task",
+            "arn:aws:iam::*:role/wgi-production-cutover-exec",
+            "arn:aws:iam::*:role/wgi-production-cutover-task",
+            "arn:aws:iam::*:role/wgi-production-retention-exec",
+            "arn:aws:iam::*:role/wgi-production-retention-task",
+            "arn:aws:iam::*:role/wgi-production-reporting-exec",
+            "arn:aws:iam::*:role/wgi-production-reporting-task",
+            "arn:aws:iam::*:role/wgi-production-email-sender",
+            "arn:aws:iam::*:role/wgi-github-deploy-production",
+            "arn:aws:iam::*:role/wgi-breakglass-production"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "L416SecretRead",
+      "Effect": "Deny",
+      "Action": ["secretsmanager:GetSecretValue"],
+      "Resource": ["arn:aws:secretsmanager:*:*:secret:wgi/production/*"],
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::*:role/wgi-production-web-exec",
+            "arn:aws:iam::*:role/wgi-production-cutover-exec",
+            "arn:aws:iam::*:role/wgi-production-email-sender"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "L417SecretWrite",
+      "Effect": "Deny",
+      "Action": ["secretsmanager:PutSecretValue", "secretsmanager:UpdateSecret"],
+      "Resource": ["arn:aws:secretsmanager:*:*:secret:wgi/production/*"],
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::*:role/wgi-github-deploy-production",
+            "arn:aws:iam::*:role/wgi-breakglass-production"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "L418RdsMasterSecret",
+      "Effect": "Deny",
+      "Action": ["secretsmanager:GetSecretValue"],
+      "Resource": ["arn:aws:secretsmanager:*:*:secret:rds!db-*"],
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::*:role/wgi-staging-bootstrap-exec",
+            "arn:aws:iam::*:role/wgi-production-bootstrap-exec",
+            "arn:aws:iam::*:role/wgi-staging-dbadmin-exec",
+            "arn:aws:iam::*:role/wgi-breakglass-production"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "L423CognitoAdmin",
+      "Effect": "Deny",
+      "Action": ["cognito-idp:Admin*"],
+      "Resource": ["arn:aws:cognito-idp:*:*:userpool/*"],
+      "Condition": {
+        "StringEquals": { "aws:ResourceTag/env": "production" },
+        "ArnNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::*:role/wgi-production-web-task",
+            "arn:aws:iam::*:role/wgi-production-cutover-task",
+            "arn:aws:iam::*:role/wgi-breakglass-production"
+          ]
+        }
+      }
+    }
+  ]
+}
