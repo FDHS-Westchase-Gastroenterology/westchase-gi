@@ -7,8 +7,8 @@ import { openDatabase } from "@/lib/db/client";
 import type { Database } from "@/lib/db/client";
 
 /* What a statement may do through the app's own connection path, against a migrated database,
-   read-only: the refused UPDATE and DELETE match no row and roll back. Without POSTGRES_URL it
-   is skipped. PostgREST ran every request as `service_role`; `Database.transaction` must put
+   read-only: the refused UPDATE and DELETE match no row and roll back, and the refused audit
+   expiry raises before it deletes anything. Without POSTGRES_URL it is skipped. PostgREST ran every request as `service_role`; `Database.transaction` must put
    each transaction in the same place. */
 const postgresUrl = process.env.POSTGRES_URL?.trim() ?? "";
 
@@ -34,8 +34,11 @@ const grantsSchema = z.tuple([
     receiptsInsert: z.boolean(),
     receiptsUpdate: z.boolean(),
     receiptsDelete: z.boolean(),
+    auditLogSelect: z.boolean(),
+    auditLogInsert: z.boolean(),
     auditLogUpdate: z.boolean(),
     auditLogDelete: z.boolean(),
+    auditLogTruncate: z.boolean(),
   }),
 ]);
 
@@ -89,8 +92,11 @@ void describe("the app's database session", { skip: postgresUrl === "" }, () => 
                  has_table_privilege('public.staff_request_receipts', 'INSERT') as "receiptsInsert",
                  has_table_privilege('public.staff_request_receipts', 'UPDATE') as "receiptsUpdate",
                  has_table_privilege('public.staff_request_receipts', 'DELETE') as "receiptsDelete",
+                 has_table_privilege('public.audit_log', 'SELECT') as "auditLogSelect",
+                 has_table_privilege('public.audit_log', 'INSERT') as "auditLogInsert",
                  has_table_privilege('public.audit_log', 'UPDATE') as "auditLogUpdate",
-                 has_table_privilege('public.audit_log', 'DELETE') as "auditLogDelete"`),
+                 has_table_privilege('public.audit_log', 'DELETE') as "auditLogDelete",
+                 has_table_privilege('public.audit_log', 'TRUNCATE') as "auditLogTruncate"`),
       ),
     );
     t.diagnostic(JSON.stringify(grants));
@@ -103,6 +109,12 @@ void describe("the app's database session", { skip: postgresUrl === "" }, () => 
     assert.equal(grants.receiptsInsert, true);
     assert.equal(grants.receiptsUpdate, false);
     assert.equal(grants.receiptsDelete, false);
+    // Migration 20261013221033: the audit log is append-only too.
+    assert.equal(grants.auditLogSelect, true);
+    assert.equal(grants.auditLogInsert, true);
+    assert.equal(grants.auditLogUpdate, false);
+    assert.equal(grants.auditLogDelete, false);
+    assert.equal(grants.auditLogTruncate, false);
   });
 
   void it("is refused an UPDATE or a DELETE of a receipt with 42501", async (t) => {
@@ -117,6 +129,34 @@ void describe("the app's database session", { skip: postgresUrl === "" }, () => 
       { name: "DatabaseFailure", code: "42501" },
     );
     t.diagnostic("update and delete of staff_request_receipts: 42501, rolled back");
+  });
+
+  void it("is refused an UPDATE or a DELETE of an audit row with 42501", async (t) => {
+    /* TRUNCATE has no WHERE to make it match nothing, so the grant check above covers it. */
+    await assert.rejects(
+      db.transaction((sql) =>
+        sql.unsafe("update public.audit_log set action = action where false"),
+      ),
+      { name: "DatabaseFailure", code: "42501" },
+    );
+    await assert.rejects(
+      db.transaction((sql) => sql.unsafe("delete from public.audit_log where false")),
+      { name: "DatabaseFailure", code: "42501" },
+    );
+    t.diagnostic("update and delete of audit_log: 42501, rolled back");
+  });
+
+  void it("expires audits only through the definer, which refuses a clock that is not now", async (t) => {
+    /* The check runs before the delete, so nothing is removed. */
+    await assert.rejects(
+      db.transaction((sql) =>
+        sql.unsafe(`
+          select private.portal_delete_expired_audits(
+            'privilege.test@mock.com', now() + interval '1 day', gen_random_uuid())`),
+      ),
+      { name: "DatabaseFailure", code: "22023" },
+    );
+    t.diagnostic("portal_delete_expired_audits with tomorrow's clock: 22023, rolled back");
   });
 
   void it("needs no request.jwt claims: nothing in public reads them", async (t) => {

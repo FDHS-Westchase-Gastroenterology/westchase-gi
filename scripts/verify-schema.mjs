@@ -860,6 +860,131 @@ async function signIn({ url, anonKey, email, password }) {
   };
 }
 
+/**
+ * Audit rows expire through one definer function owned by `audit_retention`, which can read the
+ * columns the expiry rule needs, add a row and delete one. Nothing the app signs in as may act
+ * as it, and it may not change, truncate or own anything else.
+ */
+async function verifyAuditExpiry(accessToken, ref) {
+  const roleRows = await queryDatabase({
+    accessToken,
+    ref,
+    query: `
+      select r.rolcanlogin, r.rolsuper, r.rolbypassrls, r.rolcreaterole, r.rolcreatedb,
+        r.rolreplication,
+        (select pg_catalog.count(*)::int from pg_catalog.pg_auth_members as m
+          where m.member = r.oid) as member_of,
+        pg_catalog.pg_has_role('anon', r.oid, 'MEMBER')
+          or pg_catalog.pg_has_role('authenticated', r.oid, 'MEMBER')
+          or pg_catalog.pg_has_role('service_role', r.oid, 'MEMBER')
+          or pg_catalog.pg_has_role('authenticator', r.oid, 'MEMBER') as app_member,
+        (select pg_catalog.string_agg(grant_row.name, ',' order by grant_row.name collate "C")
+          from (select n.nspname || '.' || c.relname || ' ' || a.privilege_type as name
+            from pg_catalog.pg_class as c
+            join pg_catalog.pg_namespace as n on n.oid = c.relnamespace
+            cross join lateral pg_catalog.aclexplode(c.relacl) as a
+            where a.grantee = r.oid) as grant_row) as table_grants,
+        (select pg_catalog.string_agg(grant_row.name, ',' order by grant_row.name collate "C")
+          from (select n.nspname || '.' || c.relname || '.' || at.attname || ' '
+              || a.privilege_type as name
+            from pg_catalog.pg_attribute as at
+            join pg_catalog.pg_class as c on c.oid = at.attrelid
+            join pg_catalog.pg_namespace as n on n.oid = c.relnamespace
+            cross join lateral pg_catalog.aclexplode(at.attacl) as a
+            where a.grantee = r.oid) as grant_row) as column_grants,
+        (select pg_catalog.string_agg(grant_row.name, ',' order by grant_row.name collate "C")
+          from (select n.nspname || ' ' || a.privilege_type as name
+            from pg_catalog.pg_namespace as n
+            cross join lateral pg_catalog.aclexplode(n.nspacl) as a
+            where a.grantee = r.oid) as grant_row) as schema_grants,
+        (select pg_catalog.count(*)::int from pg_catalog.pg_class as c
+          where c.relowner = r.oid) as relations_owned
+      from pg_catalog.pg_roles as r
+      where r.rolname = 'audit_retention';
+    `,
+  });
+  assert(roleRows.length === 1, "The audit_retention role is missing");
+  const [role] = roleRows;
+  assert(
+    role.rolcanlogin === false &&
+      role.rolsuper === false &&
+      role.rolbypassrls === true &&
+      role.rolcreaterole === false &&
+      role.rolcreatedb === false &&
+      role.rolreplication === false &&
+      role.member_of === 0 &&
+      role.app_member === false &&
+      role.relations_owned === 0,
+    "audit_retention must be a NOLOGIN, row-security-bypassing role no app role can act as",
+  );
+  assert(
+    role.table_grants === "public.audit_log DELETE,public.audit_log INSERT" &&
+      role.column_grants ===
+        "public.audit_log.at SELECT,public.audit_log.entity SELECT," +
+          "public.audit_log.entity_id SELECT,public.requests.id SELECT," +
+          "public.requests.retention_hold_at SELECT" &&
+      role.schema_grants === "public USAGE",
+    `audit_retention holds other privileges: ${role.table_grants}; ${role.column_grants}; ${role.schema_grants}`,
+  );
+
+  const functionRows = await queryDatabase({
+    accessToken,
+    ref,
+    query: `
+      select
+        p.prosecdef,
+        p.proowner::pg_catalog.regrole::text as owner,
+        pg_catalog.pg_get_function_identity_arguments(p.oid) as identity_arguments,
+        pg_catalog.pg_get_function_result(p.oid) as result_type,
+        pg_catalog.pg_get_functiondef(p.oid) as definition,
+        coalesce(pg_catalog.array_to_string(p.proconfig, ','), '') as config,
+        p.proacl is null or exists (
+          select 1 from pg_catalog.aclexplode(p.proacl) as a
+          where a.grantee = 0 and a.privilege_type = 'EXECUTE'
+        ) as public_execute,
+        pg_catalog.has_function_privilege('anon', p.oid, 'EXECUTE') as anon_execute,
+        pg_catalog.has_function_privilege('authenticated', p.oid, 'EXECUTE') as authenticated_execute,
+        pg_catalog.has_function_privilege('service_role', p.oid, 'EXECUTE') as service_execute
+      from pg_catalog.pg_proc as p
+      join pg_catalog.pg_namespace as n on n.oid = p.pronamespace
+      where n.nspname = 'private' and p.proname = 'portal_delete_expired_audits';
+    `,
+  });
+  assert(functionRows.length === 1, "private.portal_delete_expired_audits is missing");
+  const [expiry] = functionRows;
+  assert(
+    expiry.prosecdef === true &&
+      expiry.owner === "audit_retention" &&
+      expiry.identity_arguments ===
+        "p_actor_email text, p_now timestamp with time zone, p_correlation_id uuid" &&
+      expiry.result_type === "integer" &&
+      expiry.config.split(",").includes('search_path=""'),
+    "private.portal_delete_expired_audits must be an audit_retention definer with an empty search_path",
+  );
+  assert(
+    !expiry.public_execute &&
+      !expiry.anon_execute &&
+      !expiry.authenticated_execute &&
+      expiry.service_execute,
+    "private.portal_delete_expired_audits must be executable by service_role alone",
+  );
+  const definition = expiry.definition.toLowerCase();
+  const count = (pattern) => definition.match(pattern)?.length ?? 0;
+  assert(
+    definition.includes("statement_timestamp") &&
+      definition.includes("row_security_active('public.audit_log')") &&
+      definition.includes("row_security_active('public.requests')") &&
+      definition.includes("audit.at <= p_now - interval '6 years'") &&
+      definition.includes("retention_hold_at is not null") &&
+      definition.includes("'audit.retention_delete'") &&
+      count(/insert into public\.audit_log/g) === 1 &&
+      count(/\bsource\s*,/g) === 1 &&
+      count(/\bcorrelation_id\s*,/g) === 1 &&
+      count(/'system'/g) >= 1,
+    "private.portal_delete_expired_audits must check its clock and row security, keep held requests' history, and record the expiry as system",
+  );
+}
+
 function sameValues(actual, expected) {
   return (
     actual.length === expected.length && actual.every((value, index) => value === expected[index])
@@ -1725,7 +1850,8 @@ async function main() {
         pg_catalog.has_table_privilege('service_role', c.oid, 'SELECT') as service_select,
         pg_catalog.has_table_privilege('service_role', c.oid, 'INSERT') as service_insert,
         pg_catalog.has_table_privilege('service_role', c.oid, 'UPDATE') as service_update,
-        pg_catalog.has_table_privilege('service_role', c.oid, 'DELETE') as service_delete
+        pg_catalog.has_table_privilege('service_role', c.oid, 'DELETE') as service_delete,
+        pg_catalog.has_table_privilege('service_role', c.oid, 'TRUNCATE') as service_truncate
       from pg_catalog.pg_class as c
       join pg_catalog.pg_namespace as n on n.oid = c.relnamespace
       where n.nspname = 'public'
@@ -1751,6 +1877,7 @@ async function main() {
     );
     if (
       [
+        "audit_log",
         "staff_request_receipts",
         "patient_command_receipts",
         "patient_billing_entries",
@@ -1763,7 +1890,11 @@ async function main() {
       ].includes(row.table_name)
     ) {
       assert(
-        row.service_select && row.service_insert && !row.service_update && !row.service_delete,
+        row.service_select &&
+          row.service_insert &&
+          !row.service_update &&
+          !row.service_delete &&
+          !row.service_truncate,
         `${row.table_name} must expose only append-only service access`,
       );
     } else if (row.table_name === "patient_request_links") {
@@ -2181,6 +2312,12 @@ async function main() {
           definition.includes("status = 'booked'"),
         "portal_run_data_lifecycle must serialize runs, lock candidates, exclude holds, and audit deletion",
       );
+      assert(
+        definition.includes("for update of request") &&
+          definition.includes("private.portal_delete_expired_audits(") &&
+          !definition.includes("delete from public.audit_log"),
+        "portal_run_data_lifecycle must lock held requests and leave audit expiry to its definer",
+      );
     }
     if (
       rpc.proname === "portal_preview_data_lifecycle" ||
@@ -2194,6 +2331,8 @@ async function main() {
       );
     }
   }
+
+  await verifyAuditExpiry(accessToken, config.ref);
 
   const retiredRpcRows = await queryDatabase({
     accessToken,

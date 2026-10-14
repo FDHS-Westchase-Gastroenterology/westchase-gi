@@ -210,7 +210,7 @@ every call an agent makes under the operator's identity, and GuardDuty flags ano
 | --- | --- | --- | --- |
 | `audit_log` | Every staff-initiated state change and external operation: identifiers, staff identity, state changes and counts, never patient text; kept six years unless a legal hold applies | Production database | In place |
 | Access log | Every view of a patient, request or appointment, naming the staff member | Production database | Step 3 |
-| Append-only grants | App roles cannot update or delete audit or access rows | Production database | Step 3 |
+| Append-only grants | App roles cannot update or delete audit or access rows | Production database | `audit_log`: in place on `service_role`, binding once the app signs in as its own role (step 3). Access log: step 3 |
 | CloudTrail | Every AWS API call, including Cognito user pool sign-in actions ([Cognito CloudTrail logging](https://docs.aws.amazon.com/cognito/latest/developerguide/logging-using-cloudtrail.html)); log file validation; encrypted S3 under a customer-managed key | `wgi` account | Step 2 (Cognito events from step 3) |
 | GuardDuty | Findings on anomalous account, network and credential activity | `wgi` account | Step 2 |
 | Application logs | Request identifiers and error codes, never patient detail | CloudWatch Logs, customer-managed key | Step 4 |
