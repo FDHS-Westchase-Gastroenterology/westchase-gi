@@ -227,7 +227,7 @@ database and Auth directly.
 | Sign-in concurrency | `playwright.config.ts` runs `workers: 1` because hosted Auth rate-limits concurrent sign-ins | Revisit under Cognito |
 | Seeding and verification | `scripts/seed-portal.mjs` (`/auth/v1/admin/users`, `/rest/v1/...`), `scripts/verify-schema.mjs` (2389 lines; Management API, `/rest/v1/`, `/auth/v1/token`), `scripts/verify-migration-lineage.mjs`, `scripts/branch-database.mjs` | Rewritten |
 | Demo data | `npm run demo:data` (`scripts/demo-data/database.mjs`: Auth admin REST, `supabase db query` over the pooler); `dev:patients` (`dev-patients-app.mjs`, `dev-patients-store.mjs`) | Rewritten |
-| Secret scan | `scripts/verify-no-secrets.mjs` (Supabase key names, `sbp_`, `sb_secret_`, `re_`) | Extended to AWS secret shapes |
+| Secret scan | `scripts/verify-no-secrets.mjs` (Supabase key names, `sbp_`, `sb_secret_`, `re_`, AWS access-key IDs) | Kept |
 
 ## 10. Other third parties
 
