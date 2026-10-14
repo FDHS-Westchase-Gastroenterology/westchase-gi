@@ -2,7 +2,7 @@
 
 ## Progress
 
-**Status:** Step 1's real work is done and merged into PR #224 (#402, merge `10bfd7a1`, 2026-10-13): the dependency map, the migration-order proof, the file-date fix and the settled defaults in `inventory.md`. Step 1 stays unticked only because billing and Vercel analytics removal is deferred; that removal blocks nothing. Step 2 (the AWS foundation) is next. No migration code yet: no Terraform, no Drizzle, and the app still runs on Supabase and Vercel. Most of Jason's AWS setup is done (see below).
+**Status:** Step 1's real work is done and merged into PR #224 (#402, merge `10bfd7a1`, 2026-10-13): the dependency map, the migration-order proof, the file-date fix and the settled defaults in `inventory.md`. Step 1 stays unticked only because billing and Vercel analytics removal is deferred; that removal blocks nothing. Step 2 (the AWS foundation) is next. No migration code yet: no Terraform, no Drizzle, and the app still runs on Supabase and Vercel. Most of Jason's AWS setup is done (see below). The HIPAA documents are in `docs/compliance/` (#405): risk analysis, policies, security official, vendor list, AWS eligibility check and a BAA template that awaits legal review.
 
 **Known CI failures, not caused by INIT-1:** `supabase-integration` fails the same 2 specs on PR #224 from at least `d7f9f4d2` (2026-10-07) and `b45cec60` (2026-10-09), before #402: `e2e/boundaries/notification-test.spec.ts` (Settings › Notifications test send) and `e2e/boundaries/schedule-month-availability.spec.ts` (month availability). The migration lineage and schema checks in that job pass. #404 fixes both. The test send refused `{}` after `d6e36987`, an app fix. The month spec predates `1acc94cd`'s clock-mark openings, a test fix. With them fixed, the job goes on to the staff-portal specs; #404 records that result. Rely on the suite as the regression contract only once the job is green on #224's head.
 
@@ -29,15 +29,15 @@ Waiting on Jason:
 - [x] Secure the root sign-in: password plus a passkey, no access keys (2026-10-06).
 - [x] Accept the AWS BAA in AWS Artifact (active from 2026-10-07).
 - [x] Allow us-east-1 in the Organization's Region policy (2026-10-06).
-- [ ] Create the production and non-production accounts and fill in the `wgi-nonprod` / `wgi-prod` profiles in `~/.aws/config`. Being confirmed. Step 2 waits on this.
+- [x] One project account, `wgi` (us-east-2, profile `wgi`), holds every environment (Jason, 2026-10-13). Production keeps its own Cognito pool, database server and secrets, and patient data only touches production's resources.
 - [ ] Agree the cut-over hours with Juliet. The planned window (Sunday 2026-10-11) passed without the move happening, so it needs a new date.
 - [ ] Say go or no-go the night before the new window: go only if steps 1 to 4 have landed, Production is on all of PR #224's migrations, and the full end-to-end suite passes on staging.
 - [ ] Export the DNS zone from Porkbun, then swap the four nameservers once the Route 53 zone is ready.
 - [ ] Tell Juliet that staff will add an authenticator app or passkey at first sign-in, and may need to set a new password.
-- [ ] Put the Resend API key in Secrets Manager in both accounts, and the Supabase database connection string in production's.
-- [ ] Confirm admin on the GitHub repo and create the `production` environment with yourself as required reviewer.
+- [ ] Put the Resend API key in Secrets Manager in `wgi`, one secret per environment, and the Supabase database connection string in production's secret.
+- [x] GitHub environment `aws-production` created 2026-10-13: required reviewer FDHS-Westchase-Gastroenterology, self-review prevented, admins can't bypass, deploys only from `portal/appointment-workflow-experience` (the staging trunk for this initiative).
 - [ ] Click the AWS notification confirmation email when it arrives, so alarms reach you.
-- [ ] Sign the BAA with FDHS (not needed for the cut-over; the eCW connection in INIT-2 needs it).
+- [ ] Sign the BAA with FDHS before the cut-over: real patient data moves to AWS only once it is signed (R-23 in `docs/compliance/risk-analysis.md`). The eCW connection in INIT-2 needs it too.
 - [ ] Check the data with the clinic after the cut-over and sign off.
 - [ ] Approve production deploys.
 
@@ -46,7 +46,7 @@ Waiting on Jason:
 Move the Westchase GI patient website and staff portal off Vercel and Supabase and onto AWS, and make it HIPAA-ready while you're there.
 
 When you're done:
-- everything runs in AWS accounts covered by AWS's Business Associate Addendum (BAA)
+- everything runs in an AWS account covered by AWS's Business Associate Addendum (BAA)
 - every piece of infrastructure is Terraform in the repo
 - the CI/CD pipeline is rebuilt from scratch
 - the security basics HIPAA expects are in place
@@ -77,7 +77,7 @@ Everything after it (the eCW connection, the booking rules engine) builds on the
 
 These are settled with Jason. Build on them rather than reopening them.
 
-- **AWS layout.** An AWS Organization with separate production and non-production accounts in us-east-1. Only HIPAA-eligible services touch patient data. (*TAG: Jason, today 1 - create the production and non-production member accounts and fill in the `wgi-nonprod` / `wgi-prod` profiles in `~/.aws/config`. Every other step waits on this.*)
+- **AWS layout.** One project account, `wgi`, in us-east-2 holds every environment; us-east-1 only for global-service dependencies. Production keeps its own Cognito pool, database server and secrets. Only HIPAA-eligible services touch patient data.
 - **Infrastructure.** Terraform for everything, and DNS moves to Route 53. (*TAG: Jason, today 3 - export the zone from Porkbun first. Once the agent has created the Route 53 zone with the same records, swap the four nameservers in Porkbun (Domain Management → westchasegi.com → Authoritative Nameservers). Propagation can take 48h, so if this misses tonight, keep DNS at Porkbun for Sunday and move it next week.*)
 - **Hosting.** The Next.js app runs as an always-on container on ECS Fargate behind a load balancer, with a web application firewall in front.
 - **Database.** RDS for PostgreSQL in a single zone: encrypted, private, deletion-protected, with point-in-time recovery. Multi-AZ can be switched on later.
@@ -91,14 +91,14 @@ These are settled with Jason. Build on them rather than reopening them.
   - Deactivation takes effect on the next request.
   - Previews and staging keep a preset developer sign-in for seeded staff accounts, held only in the non-production Cognito pool.
     - Why it's allowed: the Security Rule applies only to ePHI ([164.302](https://www.ecfr.gov/current/title-45/section-164.302)), and unique user IDs and authentication are required only for systems "that maintain electronic protected health information" ([164.312](https://www.ecfr.gov/current/title-45/section-164.312)). Fictional data isn't PHI ([160.103](https://www.ecfr.gov/current/title-45/section-160.103)). AWS's BAA only restricts where PHI goes ([AWS HIPAA FAQ](https://aws.amazon.com/compliance/hipaa-compliance/)). The MFA mandate is still a [proposed rule](https://www.govinfo.gov/content/pkg/FR-2025-01-06/html/2024-30983.htm).
-    - This holds only while non-production has no real data, so production data never goes there. The login fails closed: it works only in the non-production account with an explicit flag, unlike today's `VERCEL_ENV` check. Note the scoping in the risk assessment.
+    - This holds only while non-production has no real data, so production data never goes there. The login fails closed: off Vercel it needs `PORTAL_DEV_SIGN_IN=enabled`, and it never works when `APP_ENV` is `production` (`src/lib/portal/dev-sign-in.ts`). Note the scoping in the risk assessment.
 - **Email.** Resend stays. No email may contain patient information, because Resend has no BAA.
   - Why it can stay: AWS's BAA covers only AWS's own services and doesn't dictate the email vendor ([AWS HIPAA FAQ](https://aws.amazon.com/compliance/hipaa-compliance/)). HIPAA requires a BAA only with vendors that create, receive, maintain or transmit PHI for us ([45 CFR 164.502(e)](https://www.ecfr.gov/current/title-45/section-164.502#p-164.502(e))). Resend "cannot sign a Business Associate Agreement" ([Resend security FAQ](https://resend.com/security/gdpr.md)), so it may only ever carry email that holds no PHI.
   - What it sends today (checked in code 2026-10-09), none of which carries PHI:
     - the new-request alert: fixed text plus a link to `/admin`, with no patient name, contact, reason or request link (`src/lib/portal/intake-notification.ts`)
     - its `[Test]` variant
     - the notification-recipient confirmation and the staff invite (`src/lib/portal/management-email.ts`)
-  - Cognito sends the sign-in emails (password reset, MFA codes, temporary passwords) itself unless a [custom email sender Lambda trigger](https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-lambda-custom-email-sender.html) routes them to a third party. Use that trigger to send them through Resend. (*TAG: Jason, today 5 - put the Resend API key in Secrets Manager in both accounts, and the Supabase database connection string in production's, so the agent can wire up email and the data copy without ever seeing the values.*)
+  - Cognito sends the sign-in emails (password reset, MFA codes, temporary passwords) itself unless a [custom email sender Lambda trigger](https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-lambda-custom-email-sender.html) routes them to a third party. Use that trigger to send them through Resend. (*TAG: Jason, today 5 - put the Resend API key in Secrets Manager in `wgi`, one secret per environment, and the Supabase database connection string in production's secret, so the agent can wire up email and the data copy without ever seeing the values.*)
   - Guardrails: never add a patient field or a request-specific link to an email template. List Resend in `docs/compliance/` as a vendor with no BAA that receives no PHI. If an email ever needs to name a patient or go to a patient, it moves to SES (HIPAA-eligible) or a vendor that signs a BAA.
 - **Environments.**
   - A preview environment per pull request: at most 2 open at once, destroyed when the PR merges or closes, sharing staging's load balancer and database server with one throwaway database each.
@@ -107,7 +107,7 @@ These are settled with Jason. Build on them rather than reopening them.
 - **Deploys.**
   - GitHub Actions authenticates to AWS with OIDC, so there are no long-lived keys.
   - Every PR runs lint, type check, and end-to-end tests, a migration dry run, a Terraform plan and a vulnerability scan.
-  - Merging to `main` deploys to staging automatically. Production waits for Jason's one-click approval in a protected GitHub environment. (*TAG: Jason, today 6 - confirm you have admin on the repo (the clinic's GitHub account owns it), then create the `production` environment with yourself as required reviewer.*)
+  - Merging to the staging trunk deploys to staging automatically. The trunk is `portal/appointment-workflow-experience` (PR #224's branch) until #224 lands on `main`, then `main`. Production waits for Jason's one-click approval in a protected GitHub environment. (*TAG: Jason, today 6 - confirm you have admin on the repo (the clinic's GitHub account owns it), then create the `aws-production` environment with a required reviewer. Done 2026-10-13; see Progress.*)
   - Migrations run as a pipeline step that stops on failure.
   - `main` is branch-protected, and Renovate or Dependabot opens update PRs.
 - **Monitoring.** CloudWatch alarms (error rate, 5xx, latency, database health) go to Jason. Any third-party monitoring tool either has a BAA or receives no patient data. (*TAG: Jason, before Sunday - click the AWS notification confirmation email when it arrives, or alarms never reach you.*)
@@ -153,6 +153,7 @@ Prove each item with evidence in the PRs: test output, a Terraform plan, a scree
 - [ ] Every view of a patient, request or appointment writes an append-only access row naming the staff member.
 - [ ] App roles can't update or delete audit or access rows.
 - [ ] Every response carries security headers: a Content-Security-Policy, `frame-ancestors 'none'`, HSTS and a strict referrer policy.
+  - `next.config.ts` sends HSTS, `frame-ancestors 'none'`, a strict referrer policy, `nosniff`, `X-Frame-Options` and a `Permissions-Policy` on every response except its own legacy-URL redirects, which carry none of them on `next start`. Those redirects stay in `next.config.ts` by decision: the load balancer inserts HSTS and `nosniff` on every response, and the other headers have no effect on a redirect to a same-origin page. The full Content-Security-Policy is still to do.
 - [ ] Logs, errors, URLs and emails contain no patient details, shown by a written review plus a log sample.
 - [ ] A no-op change flows from PR to preview to staging to an approved production deploy.
 - [ ] A deliberately failing test blocks that flow.
@@ -160,19 +161,19 @@ Prove each item with evidence in the PRs: test output, a Terraform plan, a scree
 - [ ] The full existing end-to-end suite passes on staging, and production smoke tests pass.
 - [ ] Cut-over row counts and checksums match for every table, and the clinic confirms the data looks right.
 - [ ] A final encrypted export is stored in AWS, and only then are the Supabase and Vercel projects deleted.
-- [ ] `docs/compliance/` holds:
-  - [ ] the security risk assessment
-  - [ ] policies for access control, change management, incident response and breach notification, backup and restore, and workstation use
-  - [ ] Jason named as security official
-  - [ ] a vendor list with BAA status
-  - [ ] a BAA template for FDHS
+- [x] `docs/compliance/` holds: (#405)
+  - [x] the security risk assessment (#405)
+  - [x] policies for access control, change management, incident response and breach notification, backup and restore, and workstation use (#405)
+  - [x] Jason named as security official (#405)
+  - [x] a vendor list with BAA status (#405)
+  - [x] a BAA template for FDHS (#405)
 - [ ] The README and ARCHITECTURE.md describe the new stack.
 
 ## Only Jason can do
 
 - Create the AWS Organization, secure the root accounts, and accept the BAA in AWS Artifact on behalf of the company.
 - Grant registrar access for the Route 53 move. (*TAG: Jason - no domain transfer needed; it's the nameserver swap in today 3.*)
-- Sign the BAA with FDHS. (*TAG: Jason - not needed for Sunday; it gates the eCW connection in INIT-2.*)
+- Sign the BAA with FDHS. (*TAG: Jason - needed before the cut-over (R-23 in `docs/compliance/risk-analysis.md`); it also gates the eCW connection in INIT-2.*)
 - Set the cut-over window with the clinic and confirm the data afterwards. (*TAG: JASON - Sunday 10/11/26*) (*TAG: Jason, go/no-go Saturday night - as of today no migration code exists (no Terraform, still on Supabase). Sunday works only if steps 1–4 have landed and the full end-to-end suite passes on staging by Saturday night. If not, move the window rather than rush real patient data.*)
 - Approve production deploys.
 
