@@ -97,7 +97,8 @@ export async function deleteAuditRows(rows: AuditRows): Promise<number> {
   if (rows.action !== undefined) conditions.push(sql`action = ${rows.action}`);
   if (rows.atFrom !== undefined) conditions.push(sql`at >= ${rows.atFrom}::timestamptz`);
   if (rows.detailContains !== undefined) {
-    conditions.push(sql`detail @> ${JSON.stringify(rows.detailContains)}::jsonb`);
+    // The driver serializes jsonb itself; a pre-stringified object arrives as a string scalar.
+    conditions.push(sql`detail @> ${sql.json(rows.detailContains)}`);
   }
   if (conditions.length === 0) throw new Error("deleteAuditRows needs at least one filter");
   const where = conditions.reduce((joined, condition) => sql`${joined} and ${condition}`);
