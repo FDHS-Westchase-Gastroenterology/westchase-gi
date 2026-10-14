@@ -30,7 +30,10 @@ jobs:
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
-      # The build arguments keep the Dockerfile's no-credentials placeholders.
+      # The Supabase build arguments keep the Dockerfile's no-credentials
+      # placeholders. The deployment ID is the commit SHA. Without provenance
+      # and SBOM attestations the result is a single image manifest, not an
+      # index, so the digest a later push records is the image itself.
       - name: Build the image
         id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -43,22 +46,28 @@ jobs:
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
+          build-args: NEXT_DEPLOYMENT_ID=${{ github.sha }}
+          provenance: false
+          sbom: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Runs the image the way ECS will: as its own user, configured only by
-      # environment. The placeholders point Supabase at an address with no
-      # server, so pages that need the database are not exercised here.
+      # Runs the image the way ECS will: as its own user, on a read-only root
+      # filesystem, configured only by environment. The placeholders point
+      # Supabase at an address with no server, so pages that need the database
+      # are not exercised here. Then it stops the container the way ECS does.
       - name: Run the image and check its routes
         run: |
           set -euo pipefail
-          docker run --detach --name app --publish 3000:3000 \
+          docker run --detach --name app --publish 3000:3000 --read-only \
             --env NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 \
             --env NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=ci-public-placeholder \
             --env SUPABASE_SERVICE_ROLE_KEY=ci-server-placeholder \
             --env PORTAL_BASE_URL=http://localhost:3000 \
             "$IMAGE"
-          trap 'docker logs app; docker rm --force app > /dev/null' EXIT
+          # The container's output goes to this job's log, which is public. Pass
+          # this job placeholder values only, never a real secret.
+          trap 'docker logs app; docker rm --force --volumes app > /dev/null' EXIT
 
           base=http://127.0.0.1:3000
           for _ in $(seq 1 30); do
@@ -92,8 +101,28 @@ jobs:
           # A resized image proves sharp loads inside the image.
           expect '/_next/image?url=%2Fimages%2Fbrand%2Fheader-logo-fdhs.webp&w=384&q=75' 200 image/webp 'image/webp,*/*'
 
+          # The build's deployment ID marks the page and its asset URLs. The
+          # container gets no NEXT_DEPLOYMENT_ID, so the value comes from the build.
+          grep --quiet "data-dpl-id=\"$GITHUB_SHA\"" <<< "$home" || { echo "::error::/en has no data-dpl-id for this commit"; exit 1; }
+          grep --quiet "dpl=$GITHUB_SHA" <<< "$home" || { echo "::error::/en asset URLs carry no dpl=$GITHUB_SHA"; exit 1; }
+
           [[ "$(docker exec app id -u)" != "0" ]] || { echo "::error::the server runs as root"; exit 1; }
           ! docker exec app sh -c 'command -v npm' || { echo "::error::npm is present in the image"; exit 1; }
+
+          # Only the two volumes are writable. The image optimizer's cache
+          # holds the resized image from above; the server writes it after
+          # responding, so the check allows a few seconds.
+          [[ "$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}}' app)" == true ]] || { echo "::error::the root filesystem is writable"; exit 1; }
+          docker exec app sh -c 'touch /tmp/probe /app/.next/cache/probe && rm /tmp/probe /app/.next/cache/probe'
+          for _ in $(seq 1 10); do
+            docker exec app test -d /app/.next/cache/images && break
+            sleep 1
+          done
+          docker exec app test -d /app/.next/cache/images || { echo "::error::the image optimizer wrote no cache"; exit 1; }
+          if denied=$(docker exec app sh -c 'touch /home/node/probe' 2>&1); then
+            echo "::error::the root filesystem accepted a write"; exit 1
+          fi
+          grep --quiet 'Read-only file system' <<< "$denied" || { echo "::error::unexpected write failure: $denied"; exit 1; }
 
           for _ in $(seq 1 30); do
             [[ "$(docker inspect --format '{{.State.Health.Status}}' app)" == healthy ]] && break
@@ -101,9 +130,23 @@ jobs:
           done
           [[ "$(docker inspect --format '{{.State.Health.Status}}' app)" == healthy ]] || { echo "::error::HEALTHCHECK did not report healthy"; exit 1; }
 
+          # ECS stops a task with SIGTERM and sends SIGKILL after the 30 s stop
+          # timeout. The server exits on SIGTERM with status 143; 137 means it
+          # was killed. This times an idle server, not one with requests in
+          # flight.
+          start=$SECONDS
+          docker stop --time 30 app > /dev/null
+          elapsed=$((SECONDS - start))
+          status=$(docker inspect --format '{{.State.ExitCode}}' app)
+          echo "docker stop: exit status $status after ${elapsed}s"
+          [[ "$status" == 143 && "$elapsed" -lt 30 ]] || { echo "::error::the server did not exit on SIGTERM within 30 s"; exit 1; }
+          if docker logs app 2>&1 | grep -E 'EROFS|EACCES|EPERM'; then
+            echo "::error::the server failed to write a file"; exit 1
+          fi
+
       # Fails on any CRITICAL or HIGH vulnerability that has a fixed version.
       # The action is pinned to the commit of its immutable v0.36.0 release.
-      - name: Scan the image
+      - name: Scan the image for vulnerabilities
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -112,3 +155,51 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: "1"
+
+      # Fails on any secret in the image, at every severity. Trivy's built-in
+      # rules cover private keys, JWTs, and AWS and GitHub credentials;
+      # .github/trivy-secret.yaml adds the Supabase and Resend key formats.
+      - name: Scan the image for secrets
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_SECRET_CONFIG: .github/trivy-secret.yaml
+        with:
+          image-ref: ${{ env.IMAGE }}
+          scanners: secret
+          exit-code: "1"
+
+      # Proves the secret scan fails on a planted key and that every custom
+      # rule loads: one key in each custom format, plus a PEM private key for
+      # the built-in rules. The keys are assembled at run time, so none is
+      # committed. Trivy reads the rules from TRIVY_SECRET_CONFIG, as in the
+      # image scan. The scan steps above put trivy on the PATH.
+      - name: Check the secret scan against planted keys
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        env:
+          TRIVY_SECRET_CONFIG: .github/trivy-secret.yaml
+        run: |
+          set -euo pipefail
+          canary="$RUNNER_TEMP/secret-canary"
+          report="$RUNNER_TEMP/secret-canary.json"
+          mkdir -p "$canary"
+          fill() { printf "%${2}s" "" | tr ' ' "$1"; }
+          begin=$(printf -- '-----BEGIN %s-----' 'PRIVATE KEY')
+          end=$(printf -- '-----END %s-----' 'PRIVATE KEY')
+          {
+            printf 'SUPABASE_SECRET_KEY=sb_%s_%s_%s\n' secret "$(fill A 22)" "$(fill B 8)"
+            printf 'SUPABASE_ACCESS_TOKEN=sbp_%s\n' "$(fill c 40)"
+            printf 'RESEND_API_KEY=re_%s_%s\n' "$(fill D 8)" "$(fill E 24)"
+            printf 'PRIVATE_KEY_BASE64=%s\n' "$(printf '%s\n%s\n%s\n' "$begin" "$(fill F 64)" "$end" | base64 --wrap=0)"
+            printf '%s\n%s\n%s\n' "$begin" "$(fill G 64)" "$end"
+          } > "$canary/server.js"
+
+          if trivy fs --scanners secret --exit-code 1 --format json \
+            --output "$report" "$canary"; then
+            echo "::error::the secret scan passed a file of planted keys"; exit 1
+          fi
+          found=$(jq --raw-output '[.Results[]?.Secrets[]?.RuleID] | unique | join(" ")' "$report")
+          echo "Rules that reported: $found"
+          for rule in supabase-secret-key supabase-access-token resend-api-key base64-private-key private-key; do
+            [[ " $found " == *" $rule "* ]] || { echo "::error::the secret scan missed $rule"; exit 1; }
+          done
