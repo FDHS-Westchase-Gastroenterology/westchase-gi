@@ -49,10 +49,12 @@ Every change to:
 2. **Checks on every pull request.** Today the required checks run the production build and type
    check, the local-only path guard, React Doctor, the public and staff-portal browser specs, and
    the database integration suite (migration lineage, schema and row-level security
-   verification, trust-boundary tests). The author also runs lint and format locally, as
-   `AGENTS.md` "Contribution loop" requires. From step 4 every pull request also runs lint, a
-   migration dry run, a Terraform plan and a vulnerability scan of the dependencies and the
-   container image. A failing required check blocks the merge.
+   verification, trust-boundary tests). They also build the container image, run it on a
+   read-only root filesystem and scan it for vulnerabilities and secrets; that check is required
+   on the integration branch, and `main` requires it from step 4. The author also runs lint and
+   format locally, as `AGENTS.md` "Contribution loop" requires. From step 4 every pull request
+   also runs lint, a migration dry run, a Terraform plan and a vulnerability scan of the
+   dependencies. A failing required check blocks the merge.
 3. **Review.** The security official, or a reviewer the security official names, reviews the
    change. A change that affects how ePHI is stored, sent, logged, accessed or deleted, adds an AWS
    service or a vendor, or changes sign-in, keys, network exposure or audit, updates this
