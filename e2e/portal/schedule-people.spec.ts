@@ -174,8 +174,12 @@ test("search finds a patient by name or phone and opens their record from the ke
     const outlined = page.locator(".wgi-dayview-block[data-record-open]");
     await expect(outlined.locator(`[data-appointment="${booked.id}"]`)).toBeVisible();
 
+    /* After a reload the record reads again through a Server Action once the
+       page hydrates, which can outlast the 5 s default on CI. */
     await page.reload();
-    await expect(sheet.getByRole("tab", { name: "Visits", selected: true })).toBeVisible();
+    await expect(sheet.getByRole("tab", { name: "Visits", selected: true })).toBeVisible({
+      timeout: 20_000,
+    });
     await expect(outlined.locator(`[data-appointment="${booked.id}"]`)).toBeVisible();
 
     /* Escape closes the record, takes it out of the address, and hands
