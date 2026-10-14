@@ -162,8 +162,8 @@ merge of this record), **Step N** (an INIT-1 step delivers the technical control
 | 164.312(a)(2)(ii) | Emergency access procedure | R | [access-control.md §Emergency access](policies/access-control.md#emergency-access-procedure) | Adopted |
 | 164.312(a)(2)(iii) | Automatic logoff | A | [access-control.md §Sessions](policies/access-control.md#sessions-and-automatic-logoff): implemented (8 h idle, 24 h absolute, screen lock) | Step 3 |
 | 164.312(a)(2)(iv) | Encryption and decryption | A | [risk-analysis.md](risk-analysis.md); KMS customer-managed keys on RDS, backups, logs and secrets: implemented | Steps 2 and 3 |
-| 164.312(b) | Audit controls | | [access-control.md §Audit](policies/access-control.md#audit-controls): `audit_log`, access log, CloudTrail | In place (`audit_log`); Step 2 (CloudTrail); Step 3 (access log, append-only grants) |
-| 164.312(c)(1) | Integrity | | [risk-analysis.md](risk-analysis.md); database constraints, version checks, revision history, append-only audit | In place (constraints); Step 3 (grants) |
+| 164.312(b) | Audit controls | | [access-control.md §Audit](policies/access-control.md#audit-controls): `audit_log`, access log, CloudTrail | In place (`audit_log` and its append-only grants on `service_role`); Step 2 (CloudTrail); Step 3 (access log and its grants; the app's own login role) |
+| 164.312(c)(1) | Integrity | | [risk-analysis.md](risk-analysis.md); database constraints, version checks, revision history, append-only audit | In place (constraints; `audit_log` grants on `service_role`); Step 3 (access-log grants; the app's own login role) |
 | 164.312(c)(2) | Mechanism to authenticate ePHI | A | Implemented: revision tables, idempotency receipts, HMAC-signed workflow commands, storage checksums and encryption | In place; Step 3 (dedicated HMAC secret) |
 | 164.312(d) | Person or entity authentication | | [access-control.md §Authentication](policies/access-control.md#authentication): Cognito with MFA | Step 3 |
 | 164.312(e)(1) | Transmission security | | TLS at the load balancer, and to RDS with server-certificate verification (`verify-full`) | Step 3 (RDS TLS), Step 4 (ALB, HSTS) |
