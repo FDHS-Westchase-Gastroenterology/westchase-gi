@@ -111,6 +111,28 @@ export const ONLY_STAR_ACTIONS = {
     "https://docs.aws.amazon.com/service-authorization/latest/reference/list_ecs.html",
   "ecs:DeregisterTaskDefinition":
     "https://docs.aws.amazon.com/service-authorization/latest/reference/list_ecs.html",
+  "elasticloadbalancing:SetWebAcl":
+    "https://docs.aws.amazon.com/service-authorization/latest/reference/list_elbv2.html",
+  "logs:CreateLogDelivery":
+    "https://docs.aws.amazon.com/service-authorization/latest/reference/list_logs.html",
+  "logs:DeleteLogDelivery":
+    "https://docs.aws.amazon.com/service-authorization/latest/reference/list_logs.html",
+};
+
+/**
+ * Creates whose only resource is "*" because the resource does not exist until
+ * the call returns, each with the Service Authorization Reference page whose
+ * row lists aws:RequestTag/${TagKey} for it. A statement holding one passes
+ * only with StringEquals aws:RequestTag/env equal to its environment, so the
+ * new resource is born carrying that environment's tag.
+ */
+export const REQUEST_TAG_STAR_ACTIONS = {
+  "acm:RequestCertificate":
+    "https://docs.aws.amazon.com/service-authorization/latest/reference/list_acm.html",
+  "cognito-idp:CreateUserPool":
+    "https://docs.aws.amazon.com/service-authorization/latest/reference/list_cognito-idp.html",
+  "kms:CreateKey":
+    "https://docs.aws.amazon.com/service-authorization/latest/reference/list_kms.html",
 };
 
 const words = (text) => text.trim().split(/\s+/);
@@ -122,6 +144,23 @@ const words = (text) => text.trim().split(/\s+/);
  * list_cognito-idp.html, list_kms.html, list_acm.html and list_ec2.html under
  * https://docs.aws.amazon.com/service-authorization/latest/reference/ on
  * 2026-10-13.
+ *
+ * `creates` are creates whose row for the type lists aws:RequestTag but not
+ * aws:ResourceTag, because the resource has no tags until the call makes it;
+ * `createAction` is the service's key naming the create that applies tags;
+ * `tagActions` add or remove tags, and each row lists aws:TagKeys. A carve-out
+ * statement passes in one of four forms:
+ *
+ *   F1  StringEquals aws:ResourceTag/env, plus aws:RequestTag/env when any
+ *       action is a create or a tag action. Every action's row lists each key.
+ *   F2  only `creates`, with StringEquals aws:RequestTag/env.
+ *   F3  only `tagActions`, with StringEquals aws:RequestTag/env and a
+ *       StringEquals `createAction` naming only `creates`: tags written by the
+ *       create call itself.
+ *   F4  only `tagActions`, with StringEquals aws:ResourceTag/env and
+ *       ForAllValues:StringNotEqualsIgnoreCase aws:TagKeys holding "env":
+ *       other tags change on the environment's own resources, and the env
+ *       tag never does.
  */
 export const CARVE_OUT = {
   "cognito-idp:userpool": {
@@ -153,6 +192,9 @@ export const CARVE_OUT = {
       UpdateUserPoolReplica
     `),
     requestTag: words("CreateUserPool TagResource UpdateUserPool"),
+    creates: [],
+    createAction: null,
+    tagActions: words("TagResource UntagResource"),
   },
   "kms:key": {
     resourceTag: words(`
@@ -167,6 +209,9 @@ export const CARVE_OUT = {
       UpdateKeyDescription UpdatePrimaryRegion Verify VerifyMac
     `),
     requestTag: words("CreateKey TagResource"),
+    creates: [],
+    createAction: null,
+    tagActions: words("TagResource UntagResource"),
   },
   "acm:certificate": {
     resourceTag: words(`
@@ -179,6 +224,9 @@ export const CARVE_OUT = {
       AddTagsToCertificate CreateAcmeEndpoint ImportCertificate RemoveTagsFromCertificate
       RequestCertificate
     `),
+    creates: [],
+    createAction: null,
+    tagActions: words("AddTagsToCertificate RemoveTagsFromCertificate"),
   },
   "ec2:security-group": {
     resourceTag: words(`
@@ -194,6 +242,9 @@ export const CARVE_OUT = {
       UpdateSecurityGroupRuleDescriptionsIngress ValidateSecurityGroupQuotasForInterface
     `),
     requestTag: words("CreateSecurityGroup CreateTags DeleteTags"),
+    creates: words("CreateSecurityGroup"),
+    createAction: "ec2:CreateAction",
+    tagActions: words("CreateTags DeleteTags"),
   },
 };
 
@@ -357,29 +408,81 @@ function tagCondition(statement, key, environment) {
   return false;
 }
 
+/** The values one condition operator gives a key, or null when it gives none. */
+function conditionValues(statement, operator, key) {
+  for (const [name, values] of Object.entries(statement.Condition?.[operator] ?? {})) {
+    if (name.toLowerCase() === key.toLowerCase()) return asList(values).map(String);
+  }
+  return null;
+}
+
 /** Reasons the tag carve-out refuses a statement, or an empty list. */
 function carveOutProblems(type, statement, actions, environment) {
   const table = CARVE_OUT[type];
-  const resourceTag = lower(table.resourceTag.map((action) => `${type.split(":")[0]}:${action}`));
-  const requestTag = lower(table.requestTag.map((action) => `${type.split(":")[0]}:${action}`));
-  const problems = [];
+  const service = type.split(":")[0];
+  const named = (list) => lower(list.map((action) => `${service}:${action}`));
+  const resourceTag = named(table.resourceTag);
+  const requestTag = named(table.requestTag);
+  const lacking = (set) => actions.filter((action) => !set.has(action.toLowerCase()));
+  const within = (list) => lacking(named(list)).length === 0;
   const hasResourceTag = tagCondition(statement, "aws:resourcetag/env", environment);
   const hasRequestTag = tagCondition(statement, "aws:requesttag/env", environment);
-  if (!hasResourceTag) {
-    problems.push(`needs StringEquals aws:ResourceTag/env = ${environment}`);
+  const needs = (key) => `needs StringEquals aws:${key}/env = ${environment}`;
+  const notListed = (key, set) => {
+    const missing = lacking(set);
+    return missing.length > 0 ? [`no aws:${key} in the reference for ${missing.join(", ")}`] : [];
+  };
+
+  // F2: a create, before the resource has tags.
+  if (table.creates.length > 0 && within(table.creates)) {
+    return [
+      ...(hasRequestTag ? [] : [needs("RequestTag")]),
+      ...notListed("RequestTag", requestTag),
+    ];
   }
-  if (actions.some((action) => requestTag.has(action.toLowerCase())) && !hasRequestTag) {
-    problems.push(`needs StringEquals aws:RequestTag/env = ${environment}`);
+
+  if (within(table.tagActions) && !(hasResourceTag && hasRequestTag)) {
+    const createActions = table.createAction
+      ? conditionValues(statement, "StringEquals", table.createAction)
+      : null;
+    // F3: the tags a create call writes.
+    if (createActions) {
+      const creates = lower(table.creates);
+      const strays = createActions.filter((action) => !creates.has(action.toLowerCase()));
+      return [
+        ...(hasRequestTag ? [] : [needs("RequestTag")]),
+        ...(createActions.length === 0 || strays.length > 0
+          ? [`${table.createAction} may name only ${table.creates.join(", ")}`]
+          : []),
+        ...notListed("RequestTag", requestTag),
+      ];
+    }
+    // F4: other tags on the environment's own resources; never the env tag.
+    const guarded = conditionValues(
+      statement,
+      "ForAllValues:StringNotEqualsIgnoreCase",
+      "aws:TagKeys",
+    );
+    return [
+      ...(hasResourceTag ? [] : [needs("ResourceTag")]),
+      ...(guarded?.some((key) => key.toLowerCase() === "env")
+        ? []
+        : [
+            "needs aws:RequestTag/env, or ForAllValues:StringNotEqualsIgnoreCase aws:TagKeys holding env",
+          ]),
+      ...notListed("ResourceTag", resourceTag),
+    ];
   }
-  const lacking = (set) => actions.filter((action) => !set.has(action.toLowerCase()));
-  const noResourceTag = lacking(resourceTag);
-  if (noResourceTag.length > 0) {
-    problems.push(`no aws:ResourceTag in the reference for ${noResourceTag.join(", ")}`);
+
+  // F1. A tag action here carries both keys.
+  const problems = [];
+  if (!hasResourceTag) problems.push(needs("ResourceTag"));
+  const wantsRequestTag = lower([...requestTag, ...named(table.tagActions)]);
+  if (actions.some((action) => wantsRequestTag.has(action.toLowerCase())) && !hasRequestTag) {
+    problems.push(needs("RequestTag"));
   }
-  const noRequestTag = hasRequestTag ? lacking(requestTag) : [];
-  if (noRequestTag.length > 0) {
-    problems.push(`no aws:RequestTag in the reference for ${noRequestTag.join(", ")}`);
-  }
+  problems.push(...notListed("ResourceTag", resourceTag));
+  if (hasRequestTag) problems.push(...notListed("RequestTag", requestTag));
   return problems;
 }
 
@@ -445,12 +548,24 @@ function checkStatement(context, statement, label) {
     if (!isResource && !(where.startsWith("Condition") && value.startsWith("arn:"))) continue;
 
     if (value === "*") {
+      const creates = actions.filter((action) => action in REQUEST_TAG_STAR_ACTIONS);
       if (principals.length > 0) {
         exception(label, "Resource * in a resource policy is the resource itself");
-      } else if (actions.length > 0 && actions.every((action) => action in ONLY_STAR_ACTIONS)) {
-        exception(label, `actions that accept only * (${actions.join(", ")})`);
-      } else {
+      } else if (
+        actions.length === 0 ||
+        !actions.every((action) => action in ONLY_STAR_ACTIONS || creates.includes(action))
+      ) {
         finding(label, 2, `Resource * with actions that accept a resource (${where})`);
+      } else if (creates.length === 0) {
+        exception(label, `actions that accept only * (${actions.join(", ")})`);
+      } else if (tagCondition(statement, "aws:requesttag/env", environment)) {
+        exception(label, `creates tagged env = ${environment} (${creates.join(", ")})`);
+      } else {
+        finding(
+          label,
+          2,
+          `Resource * with ${creates.join(", ")} needs StringEquals aws:RequestTag/env = ${environment}`,
+        );
       }
       continue;
     }

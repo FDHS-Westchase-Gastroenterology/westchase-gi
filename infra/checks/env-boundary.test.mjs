@@ -235,6 +235,84 @@ test("a well-formed carve-out passes and is listed as an exception", () => {
   assert.equal(result.exceptions.length, 2);
 });
 
+/** Findings for one statement in a staging policy in the shared root. */
+const staging = (statement) =>
+  checkPlan(plan({ resources: [policyResource("aws_iam_policy.staging_apply", statement)] }), {
+    root: "shared",
+  });
+
+const securityGroups = arn("ec2", "security-group/*");
+
+test("a security group create passes with aws:RequestTag alone, and fails without it", () => {
+  const create = (Condition) => allow("ec2:CreateSecurityGroup", securityGroups, { Condition });
+  const passing = staging(create({ StringEquals: { "aws:RequestTag/env": "staging" } }));
+  assert.deepEqual(passing.findings, []);
+  assert.equal(passing.exceptions.length, 1);
+  assert.deepEqual(
+    rules(staging(create({ StringEquals: { "aws:RequestTag/env": "production" } }))).sort(),
+    [1, 2],
+  );
+  assert.deepEqual(rules(staging(create(undefined))), [2]);
+});
+
+test("tags a create writes pass only when ec2:CreateAction names that create", () => {
+  const tags = (createAction) => {
+    const equals = { "aws:RequestTag/env": "staging" };
+    if (createAction) equals["ec2:CreateAction"] = createAction;
+    return allow("ec2:CreateTags", securityGroups, { Condition: { StringEquals: equals } });
+  };
+  assert.deepEqual(staging(tags("CreateSecurityGroup")).findings, []);
+  assert.deepEqual(rules(staging(tags("RunInstances"))), [2]);
+  assert.deepEqual(rules(staging(tags(["CreateSecurityGroup", "RunInstances"]))), [2]);
+  assert.ok(rules(staging(tags(undefined))).includes(2));
+});
+
+test("a tag change passes only on its own resources and never touches the env key", () => {
+  const retag = (environment, guard) => {
+    const Condition = { StringEquals: { "aws:ResourceTag/env": environment } };
+    if (guard) Condition[guard] = { "aws:TagKeys": ["env"] };
+    return allow(
+      ["cognito-idp:TagResource", "cognito-idp:UntagResource"],
+      arn("cognito-idp", "userpool/*"),
+      { Condition },
+    );
+  };
+  const guard = "ForAllValues:StringNotEqualsIgnoreCase";
+  assert.deepEqual(staging(retag("staging", guard)).findings, []);
+  assert.deepEqual(rules(staging(retag("staging", undefined))), [2]);
+  assert.deepEqual(rules(staging(retag("staging", "ForAllValues:StringNotEquals"))), [2]);
+  assert.deepEqual(rules(staging(retag("production", guard))).sort(), [1, 2]);
+});
+
+test("a tag action beside other actions carries both tag keys", () => {
+  const result = staging(
+    allow(
+      ["cognito-idp:UntagResource", "cognito-idp:DescribeUserPool"],
+      arn("cognito-idp", "userpool/*"),
+      {
+        Condition: { StringEquals: { "aws:ResourceTag/env": "staging" } },
+      },
+    ),
+  );
+  assert.ok(result.findings.some(({ rule, reason }) => rule === 2 && /RequestTag/.test(reason)));
+});
+
+test("Resource * creates pass only when born with the environment's tag", () => {
+  const create = (actions, tags) =>
+    allow(actions, "*", tags ? { Condition: { StringEquals: tags } } : {});
+  const own = { "aws:RequestTag/env": "staging" };
+  const passing = staging(create(["kms:CreateKey", "cognito-idp:CreateUserPool"], own));
+  assert.deepEqual(passing.findings, []);
+  assert.match(passing.exceptions[0].reason, /creates tagged env = staging/);
+  assert.deepEqual(rules(staging(create("acm:RequestCertificate", undefined))), [2]);
+  assert.deepEqual(
+    rules(staging(create("acm:RequestCertificate", { "aws:RequestTag/env": "production" }))).sort(),
+    [1, 2],
+  );
+  assert.deepEqual(rules(staging(create(["kms:CreateKey", "kms:Decrypt"], own))), [2]);
+  assert.deepEqual(rules(staging(create(["elasticloadbalancing:SetWebAcl"], undefined))), []);
+});
+
 test("Resource * fails unless every action accepts only *", () => {
   const holder = (statement) =>
     checkPlan(plan({ resources: [policyResource("aws_iam_policy.staging_app", statement)] }), {
