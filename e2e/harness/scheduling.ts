@@ -1,6 +1,6 @@
 import { createHmac, randomUUID } from "node:crypto";
 
-import { expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
@@ -23,8 +23,10 @@ import {
 } from "../../src/lib/portal/scheduling/settings-contracts";
 import type { SettingsCommand } from "../../src/lib/portal/scheduling/settings-contracts";
 import { resolveAppointmentStart } from "../../src/lib/portal/scheduling/time";
+import { removedRows } from "./cleanup";
+import type { RemovedRows } from "./cleanup";
 import { removePatients, savePatient } from "./patients";
-import { createStaffFixture } from "./session";
+import { createStaffFixture, removeStaffAccount } from "./session";
 
 type SchedulingWrite = Extract<SchedulingInput, { action: "configure" | "command" }>;
 
@@ -221,6 +223,107 @@ export function schedulingFixtureDate(days = 14) {
   return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
 }
 
+/**
+ * Removes everything a scheduling fixture's admin created, children before
+ * parents: appointments, then providers (their hours go with them), visit
+ * types and offices, then patients, the admin's audit rows, and the admin.
+ * The fixture's own dispose and global setup's stale-fixture sweep both call
+ * it. Every step deletes by owner, so a rerun after an interruption finishes
+ * what is left.
+ */
+export async function removeSchedulingFixture(
+  db: SupabaseClient,
+  userId: string,
+  email: string,
+  patientIds: readonly string[],
+): Promise<readonly RemovedRows[]> {
+  const removed = [
+    removedRows(
+      "appointments",
+      await db.from("appointments").delete({ count: "exact" }).eq("created_by", userId),
+    ),
+  ];
+  for (const table of ["scheduling_providers", "appointment_types", "scheduling_locations"]) {
+    removed.push(
+      removedRows(table, await db.from(table).delete({ count: "exact" }).eq("created_by", userId)),
+    );
+  }
+  removed.push(...(await removePatients(db, patientIds)));
+  removed.push(
+    removedRows(
+      "audit_log:actor",
+      await db.from("audit_log").delete({ count: "exact" }).eq("actor_email", email),
+    ),
+  );
+  removed.push(...(await removeStaffAccount(db, userId)));
+  return removed;
+}
+
+/* Cleanup this worker's tests registered and have not finished running, in
+   the order it was registered. A cleanup leaves only by running to the end. */
+const pendingCleanUp = new Set<() => Promise<void>>();
+
+/**
+ * Registers cleanup that has to happen even when the test times out, and
+ * returns it for the test's own `finally`. Once it has run to the end, the
+ * afterEach skips it.
+ */
+export function registerCleanUp(cleanUp: () => Promise<void>): () => Promise<void> {
+  async function run() {
+    await cleanUp();
+    pendingCleanUp.delete(run);
+  }
+  pendingCleanUp.add(run);
+  return run;
+}
+
+/**
+ * Runs, after each test in the calling spec file, every cleanup the test
+ * registered and did not finish: its scheduling fixtures, a practice setting
+ * it held, rows it made outside a fixture. A test that times out is abandoned
+ * mid-body, so its `finally` never runs; Playwright still runs afterEach hooks
+ * then, on their own timeout. The latest registration runs first, so a setting
+ * goes back while the fixture admin who changed it still exists. Call it once
+ * at the top level of every spec file that makes scheduling fixtures. Every
+ * cleanup runs even when an earlier one fails, and a failure fails the test
+ * rather than leaving rows behind unnoticed.
+ */
+export function disposeSchedulingFixturesAfterEach(): void {
+  test.afterEach(async () => {
+    const failures: unknown[] = [];
+    for (const run of [...pendingCleanUp].reverse()) {
+      try {
+        await run();
+      } catch (error) {
+        failures.push(error);
+      }
+    }
+    if (failures.length === 0) return;
+    /* The report prints the message, not the errors inside it. */
+    const reasons = failures.map((failure) =>
+      failure instanceof Error ? failure.message : String(failure),
+    );
+    throw new AggregateError(failures, `Cleanup after the test failed:\n${reasons.join("\n")}`);
+  });
+}
+
+/**
+ * Records the practice's booking interval as the test found it and registers
+ * putting it back, so a test that times out cannot hand a changed interval to
+ * the tests after it: the interval is one practice-wide setting that every
+ * openings read uses. Hold it after making the fixture whose admin `actorId`
+ * is, and before changing the interval. The returned function puts it back at
+ * once, for the test's `finally`.
+ */
+export async function holdBookingInterval(db: SupabaseClient, actorId: string) {
+  const settings = await readSettings(db, actorId);
+  if (!settings.ok) throw new Error("Settings read failed");
+  const found = settings.practice.bookingIntervalMinutes;
+  return registerCleanUp(async () => {
+    await restoreBookingInterval(db, actorId, found);
+  });
+}
+
 export async function createSchedulingFixture(db: SupabaseClient, prefix: string) {
   const staff = await createStaffFixture(db, {
     prefix,
@@ -231,18 +334,9 @@ export async function createSchedulingFixture(db: SupabaseClient, prefix: string
   const providerIds: string[] = [];
   const locationIds: string[] = [];
   const typeIds: string[] = [];
-  async function dispose() {
-    const appointments = await db.from("appointments").delete().eq("created_by", staff.userId);
-    expect(appointments.error).toBeNull();
-    for (const table of ["scheduling_providers", "appointment_types", "scheduling_locations"]) {
-      const removed = await db.from(table).delete().eq("created_by", staff.userId);
-      expect(removed.error).toBeNull();
-    }
-    await removePatients(db, patientIds);
-    const audits = await db.from("audit_log").delete().eq("actor_email", staff.email);
-    expect(audits.error).toBeNull();
-    await staff.dispose();
-  }
+  const dispose = registerCleanUp(async () => {
+    await removeSchedulingFixture(db, staff.userId, staff.email, patientIds);
+  });
   async function save(input: Readonly<SchedulingWrite>) {
     return saveScheduling(db, staff.userId, input);
   }

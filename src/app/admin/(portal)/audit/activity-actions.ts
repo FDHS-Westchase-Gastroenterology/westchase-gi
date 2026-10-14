@@ -7,7 +7,7 @@ import type {
   ActivityPage,
 } from "@/lib/portal/activity-contracts";
 import { requireRole } from "@/lib/portal/auth";
-import { serviceClient } from "@/lib/portal/server";
+import { database } from "@/lib/portal/server";
 
 /* The Activity log's read (issue #357), for the page's filters and its
    infinite scroll. A POST, so the search stays out of addresses and logs;
@@ -20,7 +20,7 @@ export async function readActivityPage(
 ): Promise<ActivityPage> {
   const session = await requireRole("staff", { unauthenticated: "throw" });
   try {
-    return await readActivity(serviceClient(), session.id, filters, cursor);
+    return await readActivity(database(), session.id, filters, cursor);
   } catch {
     return { ok: false, code: "unavailable" };
   }

@@ -7,7 +7,7 @@ name: Supabase Branch Integration
 # contract there, one run per database at a time.
 on:
   pull_request:
-    types: [opened, reopened, synchronize]
+    types: [opened, reopened, synchronize, ready_for_review]
   # The dependency controller dispatches after token-authored branch refreshes,
   # which GitHub deliberately does not emit as a pull_request event.
   workflow_dispatch:
@@ -77,6 +77,9 @@ jobs:
     needs: database
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    # A draft never queues for the shared database: its pushes would cancel the
+    # waiting run of a pull request that is ready. Marking it ready runs it.
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     # Branches that share a database never run the destructive specs at once.
     # GitHub keeps one waiting run per group; a third arrival cancels the
     # waiting one, which then needs a re-run.
@@ -282,6 +285,15 @@ jobs:
 
       - name: Verify Preview Branch schema, RLS, RPCs, and seed
         run: node scripts/verify-schema.mjs --target branch
+
+      # The data layer reads the branch over POSTGRES_URL (the transaction
+      # pooler), read-only: the unit tests that need a database, then the
+      # same calls through PostgREST and Drizzle compared result for result.
+      - name: Run unit tests against the Preview Branch
+        run: npm run test:unit
+
+      - name: Compare the Drizzle data layer with PostgREST
+        run: npm run db:parity
 
       # Trust boundaries first (Auth refresh, SSR sessions, closed Data API and
       # RLS, intake throttling, field caps, lifecycle, RPC persistence), then

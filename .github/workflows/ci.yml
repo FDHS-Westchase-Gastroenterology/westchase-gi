@@ -44,6 +44,12 @@ jobs:
       # Oxlint and anti-slop stay in the local config (`npm run lint`).
       # CI does not run them until a dedicated findings PR lands.
 
+      # Unit tests need no credentials. The ones that need a database skip
+      # here and run against the Preview Branch in the Supabase-integration
+      # workflow.
+      - name: Run unit tests
+        run: npm run test:unit
+
       - name: Build
         env:
           NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321

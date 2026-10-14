@@ -8,7 +8,13 @@ import { dayScheduleOutcomeSchema } from "../../src/lib/portal/scheduling/grid-c
 import { monthSummaryOutcomeSchema } from "../../src/lib/portal/scheduling/read-contracts";
 import { resolveAppointmentStart } from "../../src/lib/portal/scheduling/time";
 import { serviceDb } from "../harness/env";
-import { createSchedulingFixture, schedulingFixtureDate } from "../harness/scheduling";
+import {
+  createSchedulingFixture,
+  disposeSchedulingFixturesAfterEach,
+  schedulingFixtureDate,
+} from "../harness/scheduling";
+
+disposeSchedulingFixturesAfterEach();
 
 /** The RPC's raw day, typed only as far as the contract checks below reach into it. */
 const rawDaySchema = z.looseObject({
