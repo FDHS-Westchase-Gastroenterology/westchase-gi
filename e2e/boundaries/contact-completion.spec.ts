@@ -45,6 +45,8 @@ test.describe("Contact completion boundaries", () => {
           await insertRequest(db, {
             id: requestId,
             name: "TEST contact completion patient",
+            /* The address lets global setup sweep a request this test leaves behind when it times out. */
+            email: "contact-completion@example.test",
             status: state,
             follow_up_at: state === "contacted" ? callback : null,
           });
@@ -151,7 +153,11 @@ test.describe("Contact completion boundaries", () => {
       for (const identical of [true, false]) {
         const requestId = randomUUID();
         requestIds.push(requestId);
-        await insertRequest(db, { id: requestId, name: "TEST concurrent contact completion" });
+        await insertRequest(db, {
+          id: requestId,
+          name: "TEST concurrent contact completion",
+          email: "contact-completion@example.test",
+        });
         const args = {
           p_actor_email: "contact-race@example.test",
           p_request_id: requestId,
@@ -203,7 +209,11 @@ test.describe("Contact completion boundaries", () => {
   test("invalid intent and a failing history write leave no partial contact or closure", async () => {
     const db = serviceDb();
     const requestId = randomUUID();
-    await insertRequest(db, { id: requestId, name: "TEST invalid contact completion" });
+    await insertRequest(db, {
+      id: requestId,
+      name: "TEST invalid contact completion",
+      email: "contact-completion@example.test",
+    });
     const occurredAt = new Date().toISOString();
     const args = {
       p_actor_email: "contact-invalid@example.test",
