@@ -27,12 +27,21 @@ const secretPatterns = [
     regex: /(?<![A-Za-z0-9_])sbp_[A-Za-z0-9]{10,}(?![A-Za-z0-9_])/,
   },
   {
+    // The key is sb_secret_, 22 base64url characters, an underscore and an
+    // 8-character checksum, the shape .github/trivy-secret.yaml also matches.
     label: "Supabase secret-key prefix",
-    regex: /(?<![A-Za-z0-9_])sb_secret_[A-Za-z0-9]{5,}(?![A-Za-z0-9_])/,
+    regex: /(?<![A-Za-z0-9_])sb_secret_[A-Za-z0-9_-]{20,}/,
   },
   {
+    // Current keys are re_, 8 characters, an underscore and 24 characters;
+    // the second alternative keeps the older unbroken form.
     label: "Resend API-key prefix",
-    regex: /(?<![A-Za-z0-9_])re_[A-Za-z0-9]{16,}(?![A-Za-z0-9_])/,
+    regex:
+      /(?<![A-Za-z0-9_])re_(?:[A-Za-z0-9]{8}_[A-Za-z0-9]{24}|[A-Za-z0-9]{16,})(?![A-Za-z0-9_])/,
+  },
+  {
+    label: "AWS access-key ID",
+    regex: /(?<![A-Za-z0-9])(?:A3T[A-Z0-9]|AKIA|ASIA|ABIA|ACCA)[A-Z2-7]{16}(?![A-Za-z0-9])/,
   },
   {
     label: "GitHub token prefix",
