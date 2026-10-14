@@ -10,6 +10,14 @@ import { defineConfig, devices } from "@playwright/test";
    which first clears any zombie holding the port so tests never hit stale
    code. Credential-bearing runs retain no browser artifacts. */
 
+/* Dev sign-in fails closed (src/lib/portal/dev-sign-in.ts). The suite runs
+   with it on unless the caller already chose, and sets it here so the runner
+   (which computes the expected login label), its workers and the webServer
+   it starts all see the same value. A reused `npm run dev:mission` server
+   defaults to the same value. Run with PORTAL_DEV_SIGN_IN=off to check the
+   closed state. */
+process.env.PORTAL_DEV_SIGN_IN ??= "enabled";
+
 const publicOnly = process.env.PLAYWRIGHT_PUBLIC === "1";
 const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?.trim();
 

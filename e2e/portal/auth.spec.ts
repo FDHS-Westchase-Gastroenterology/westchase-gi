@@ -3,14 +3,16 @@ import { createHash, randomUUID } from "node:crypto";
 import { test, expect } from "@playwright/test";
 import { z } from "zod";
 
+import { devSignInEnabled } from "../../src/lib/portal/dev-sign-in";
 import { signInIdentifierField } from "../../src/lib/portal/staff-language";
 import { expectDenied, requireDecoded, requireText } from "../harness/assert";
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { publishableDb, seedAdmin, serviceDb } from "../harness/env";
 
 const { email: SEED_ADMIN_EMAIL, password: SEED_ADMIN_PASSWORD } = seedAdmin();
 const PREVIEW_USERNAME = process.env.PORTAL_PREVIEW_USERNAME ?? "";
 const PREVIEW_PASSWORD = process.env.PORTAL_PREVIEW_PASSWORD ?? "";
-const SIGN_IN_IDENTIFIER = signInIdentifierField(process.env.VERCEL_ENV !== "production");
+const SIGN_IN_IDENTIFIER = signInIdentifierField(devSignInEnabled());
 const GENERIC_LOGIN_ERROR = "Unable to sign in. Check your credentials and try again.";
 const RESET_REQUEST_MESSAGE =
   "If an active staff account exists for that email, you’ll receive a password reset link.";
@@ -414,7 +416,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       await expect(page.getByRole("alert").filter({ hasText: "invalid or expired" })).toBeVisible();
     } finally {
       if (profileId !== null && profileId !== "") {
-        await db.from("audit_log").delete().eq("entity_id", profileId);
+        await deleteAuditRows({ entityIds: [profileId] });
       }
       await db.from("staff_profiles").delete().eq("user_id", userId);
       await db.auth.admin.deleteUser(userId);
@@ -556,7 +558,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       expect(afterSuccessAudit.data).toHaveLength(1);
     } finally {
       if (profileId !== null && profileId !== "") {
-        await db.from("audit_log").delete().eq("entity_id", profileId);
+        await deleteAuditRows({ entityIds: [profileId] });
       }
       await db.from("staff_profiles").delete().eq("user_id", userId);
       await db.auth.admin.deleteUser(userId);
@@ -724,7 +726,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       }
     } finally {
       if (profileId !== null && profileId !== "") {
-        await db.from("audit_log").delete().eq("entity_id", profileId);
+        await deleteAuditRows({ entityIds: [profileId] });
       }
       await db.from("staff_profiles").delete().eq("user_id", userId);
       await db.auth.admin.deleteUser(userId);
@@ -816,7 +818,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
         await loginProbe.auth.signOut();
       } finally {
         if (profileId !== null && profileId !== "") {
-          await db.from("audit_log").delete().eq("entity_id", profileId);
+          await deleteAuditRows({ entityIds: [profileId] });
         }
         await db.from("staff_profiles").delete().eq("user_id", userId);
         await db.auth.admin.deleteUser(userId);

@@ -4,6 +4,7 @@ import { test, expect } from "@playwright/test";
 import { z } from "zod";
 
 import { requireDecoded } from "../harness/assert";
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { serviceDb } from "../harness/env";
 import { idRowSchema, insertRequest, lifecycleRunSchema } from "./support";
 
@@ -150,7 +151,7 @@ test.describe("Data lifecycle boundaries", () => {
         .from("notification_recipients")
         .delete()
         .in("id", [recipientId, survivingRecipientId]);
-      await db.from("audit_log").delete().in("entity_id", requestIds);
+      await deleteAuditRows({ entityIds: requestIds });
     }
   });
 
@@ -249,7 +250,7 @@ test.describe("Data lifecycle boundaries", () => {
       }
     } finally {
       await db.from("requests").delete().in("id", requestIds);
-      await db.from("audit_log").delete().in("entity_id", requestIds);
+      await deleteAuditRows({ entityIds: requestIds });
     }
   });
 });

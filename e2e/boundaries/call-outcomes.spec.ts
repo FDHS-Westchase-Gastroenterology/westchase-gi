@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { asJsonNumber, asJsonObject, jsonSchema } from "../../src/lib/json";
 import { requireDecoded } from "../harness/assert";
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { serviceDb } from "../harness/env";
 import {
   expectNoPatientLeak,
@@ -379,7 +380,7 @@ test.describe("Legacy call-outcome RPCs and their undo", () => {
     } finally {
       if (requestIds.length > 0) {
         await db.from("requests").delete().in("id", requestIds);
-        await db.from("audit_log").delete().in("entity_id", requestIds);
+        await deleteAuditRows({ entityIds: requestIds });
       }
     }
   });
@@ -550,7 +551,7 @@ test.describe("Legacy call-outcome RPCs and their undo", () => {
     } finally {
       if (requestIds.length > 0) {
         await db.from("requests").delete().in("id", requestIds);
-        await db.from("audit_log").delete().in("entity_id", requestIds);
+        await deleteAuditRows({ entityIds: requestIds });
       }
     }
   });
@@ -688,7 +689,7 @@ test.describe("Legacy call-outcome RPCs and their undo", () => {
       ).toEqual({ status: "recorded" });
     } finally {
       await db.from("requests").delete().in("id", requestIds);
-      await db.from("audit_log").delete().in("entity_id", requestIds);
+      await deleteAuditRows({ entityIds: requestIds });
     }
   });
 
@@ -763,7 +764,7 @@ test.describe("Legacy call-outcome RPCs and their undo", () => {
         );
       } finally {
         await db.from("requests").delete().eq("id", requestId);
-        await db.from("audit_log").delete().eq("entity_id", requestId);
+        await deleteAuditRows({ entityIds: [requestId] });
       }
     }
   });

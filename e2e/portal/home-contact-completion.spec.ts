@@ -5,6 +5,7 @@ import type { Page } from "@playwright/test";
 import { z } from "zod";
 
 import { requireDecoded } from "../harness/assert";
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { runId, serviceDb } from "../harness/env";
 import { signIn } from "../harness/session";
 
@@ -119,7 +120,7 @@ for (const status of ["new", "contacted"] as const) {
         expect((await current()).data).toEqual(completed.data);
       } finally {
         await db.from("requests").delete().eq("id", id);
-        await db.from("audit_log").delete().eq("entity_id", id);
+        await deleteAuditRows({ entityIds: [id] });
       }
     });
   }

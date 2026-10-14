@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { z } from "zod";
 
 import { intakeResponseSchema } from "../../src/lib/portal/contracts";
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { clientIps, runId, seedAdmin, serviceDb } from "../harness/env";
 import { signIn } from "../harness/session";
 
@@ -170,7 +171,7 @@ test.describe("portal requests operation", () => {
       if (ids.size > 0) {
         const stagedIds = [...ids];
         await db.from("requests").delete().in("id", stagedIds);
-        await db.from("audit_log").delete().in("entity_id", stagedIds);
+        await deleteAuditRows({ entityIds: stagedIds });
       }
     }
   });
@@ -233,7 +234,7 @@ test.describe("portal requests operation", () => {
       expect(meta.author_email?.toLowerCase()).toBe(SEED_EMAIL.toLowerCase());
     } finally {
       await db.from("requests").delete().eq("id", id);
-      await db.from("audit_log").delete().eq("entity_id", id);
+      await deleteAuditRows({ entityIds: [id] });
     }
   });
 });

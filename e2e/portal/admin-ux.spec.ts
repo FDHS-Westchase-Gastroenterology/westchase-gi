@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { intakeResponseSchema } from "../../src/lib/portal/contracts";
 import { clearNotificationTestBucket } from "../boundaries/support";
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { clientIps, runId, seedAdmin, serviceDb } from "../harness/env";
 import { attemptSignIn, signIn } from "../harness/session";
 
@@ -243,12 +244,11 @@ test.describe("portal management UI", () => {
       const removed = await db.from("notification_recipients").select("id").eq("id", fixtureId);
       expect(removed.data).toHaveLength(0);
     } finally {
-      const auditCleanup = await db.from("audit_log").delete().eq("entity_id", fixtureId);
       const recipientCleanup = await db
         .from("notification_recipients")
         .delete()
         .eq("id", fixtureId);
-      expect(auditCleanup.error).toBeNull();
+      await deleteAuditRows({ entityIds: [fixtureId] });
       expect(recipientCleanup.error).toBeNull();
     }
   });
@@ -507,7 +507,7 @@ test.describe("portal management UI", () => {
       if (previouslyOn.length > 0) {
         await db.from("notification_recipients").update({ active: true }).in("id", previouslyOn);
       }
-      await db.from("audit_log").delete().eq("action", "recipients.test_send").gte("at", startedAt);
+      await deleteAuditRows({ action: "recipients.test_send", atFrom: startedAt });
       clearNotificationTestBucket(adminUserId);
     }
   });

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { jsonSchema } from "../../src/lib/json";
 import { CONTACT_COMPLETION_RESULTS } from "../../src/lib/portal/workflow/contact-completion";
 import { requireDecoded } from "../harness/assert";
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { serviceDb } from "../harness/env";
 import { commandOutcomeSchema, expectNoPatientLeak, insertRequest } from "./support";
 
@@ -141,7 +142,7 @@ test.describe("Contact completion boundaries", () => {
       }
     } finally {
       await db.from("requests").delete().in("id", requestIds);
-      await db.from("audit_log").delete().in("entity_id", requestIds);
+      await deleteAuditRows({ entityIds: requestIds });
     }
   });
 
@@ -201,7 +202,7 @@ test.describe("Contact completion boundaries", () => {
       }
     } finally {
       await db.from("requests").delete().in("id", requestIds);
-      await db.from("audit_log").delete().in("entity_id", requestIds);
+      await deleteAuditRows({ entityIds: requestIds });
     }
   });
 
@@ -266,7 +267,7 @@ test.describe("Contact completion boundaries", () => {
       ).toHaveLength(0);
     } finally {
       await db.from("requests").delete().eq("id", requestId);
-      await db.from("audit_log").delete().eq("entity_id", requestId);
+      await deleteAuditRows({ entityIds: [requestId] });
     }
   });
 });

@@ -4,6 +4,7 @@ import { test, expect } from "@playwright/test";
 import { z } from "zod";
 
 import { requireDecoded } from "../harness/assert";
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { serviceDb } from "../harness/env";
 import {
   SEED_EMAIL,
@@ -174,7 +175,7 @@ test.describe("Notification recipient RPCs and the compatibility bridge", () => 
       ).toHaveLength(0);
     } finally {
       if (recipientId !== null && recipientId !== "") {
-        await db.from("audit_log").delete().eq("entity_id", recipientId);
+        await deleteAuditRows({ entityIds: [recipientId] });
         await db.from("notification_recipients").delete().eq("id", recipientId);
       }
       await db.from("notification_recipients").delete().in("email", [email, failedAddEmail]);
@@ -433,7 +434,7 @@ test.describe("Notification recipient RPCs and the compatibility bridge", () => 
             .toBe("P0002");
         } finally {
           if (recipientId !== null && recipientId !== "") {
-            await db.from("audit_log").delete().eq("entity_id", recipientId);
+            await deleteAuditRows({ entityIds: [recipientId] });
             await db.from("notification_recipients").delete().eq("id", recipientId);
           }
           await db
@@ -549,7 +550,7 @@ test.describe("Notification recipient RPCs and the compatibility bridge", () => 
       });
       expect(finalAudits.data?.[1].correlation_id).not.toBe(finalAudits.data?.[0].correlation_id);
     } finally {
-      await db.from("audit_log").delete().eq("entity_id", recipientId);
+      await deleteAuditRows({ entityIds: [recipientId] });
       await db.from("notification_recipients").delete().eq("id", recipientId);
     }
   });

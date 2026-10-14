@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { z } from "zod";
 
 import { jsonSchema } from "../../src/lib/json";
+import { closeAuditFixtures, deleteAuditRows } from "./audit-fixtures";
 import { serviceDb } from "./env";
 import { removeSchedulingFixture } from "./scheduling";
 import { staffFixtureEmail } from "./session";
@@ -147,21 +148,11 @@ async function sweepStaleFixtures(db: ReturnType<typeof serviceDb>): Promise<voi
   // Activity page's window.
   const staleRows = z.array(z.object({ id: z.string() })).safeParse(stale);
   const staleIds = staleRows.success ? staleRows.data.map((row) => row.id) : [];
-  for (let index = 0; index < staleIds.length; index += 100) {
-    const { error: auditError } = await db
-      .from("audit_log")
-      .delete()
-      .in("entity_id", staleIds.slice(index, index + 100));
-    if (auditError) {
-      throw new Error(`Stale audit sweep failed: ${auditError.code}`);
-    }
-  }
-  const { error: actorAuditError } = await db
-    .from("audit_log")
-    .delete()
-    .like("actor_email", "%@example.test");
-  if (actorAuditError) {
-    throw new Error(`Stale actor audit sweep failed: ${actorAuditError.code}`);
+  try {
+    await deleteAuditRows({ entityIds: staleIds });
+    await deleteAuditRows({ actorEmailLike: "%@example.test" });
+  } finally {
+    await closeAuditFixtures();
   }
   const { data: staleRecipients, error: recipientError } = await db
     .from("notification_recipients")
