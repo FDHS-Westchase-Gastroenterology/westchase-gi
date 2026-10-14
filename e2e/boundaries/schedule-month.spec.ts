@@ -6,7 +6,13 @@ import { monthSummaryOutcomeSchema } from "../../src/lib/portal/scheduling/read-
 import type { MonthSummaryDay } from "../../src/lib/portal/scheduling/read-contracts";
 import { resolveAppointmentStart } from "../../src/lib/portal/scheduling/time";
 import { serviceDb } from "../harness/env";
-import { createSchedulingFixture, schedulingFixtureDate } from "../harness/scheduling";
+import {
+  createSchedulingFixture,
+  disposeSchedulingFixturesAfterEach,
+  schedulingFixtureDate,
+} from "../harness/scheduling";
+
+disposeSchedulingFixturesAfterEach();
 
 function at(date: string, time: string) {
   const instant = resolveAppointmentStart({ date, time });
