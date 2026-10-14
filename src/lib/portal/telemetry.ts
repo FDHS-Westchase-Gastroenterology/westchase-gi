@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import type { Json } from "@/lib/json";
+import { clientAddress } from "@/lib/portal/client-address";
 import { serviceClient, serviceRoleKey } from "@/lib/portal/server";
 import {
   TELEMETRY_CLIENT_HASH_DOMAIN,
@@ -25,18 +26,16 @@ function logOperationalFailure(
 }
 
 function clientHash(headers: Headers): string {
-  const forwardedFor = headers.get("x-vercel-forwarded-for") ?? headers.get("x-forwarded-for");
-  const hop = forwardedFor?.split(",", 1)[0]?.trim();
-  const firstHop = hop !== undefined && hop !== "" ? hop : "missing";
+  const address = clientAddress(headers) ?? "missing";
 
-  // Counts are directional, not forensic. Vercel overwrites
-  // X-Vercel-Forwarded-For at its edge; local callers fall back to
-  // X-Forwarded-For; callers without either header share the "missing"
-  // Bucket. HMAC prevents offline address guessing. Distinct domain from
-  // Intake so throttle buckets never mix.
+  // Counts are directional, not forensic. The address is the entry our own
+  // Proxy added (see clientAddress), not one the client sent; callers
+  // Without an address share the "missing" bucket. HMAC prevents offline
+  // Address guessing. Distinct domain from Intake so throttle buckets never
+  // Mix.
   return createHmac("sha256", serviceRoleKey())
     .update(TELEMETRY_CLIENT_HASH_DOMAIN)
-    .update(firstHop.toLowerCase())
+    .update(address.toLowerCase())
     .digest("hex");
 }
 

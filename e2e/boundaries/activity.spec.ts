@@ -19,6 +19,7 @@ import type {
 } from "../../src/lib/portal/activity-contracts";
 import type { SchedulingInput } from "../../src/lib/portal/scheduling/contracts";
 import { expectDenied } from "../harness/assert";
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { publishableDb, runId, serviceDb } from "../harness/env";
 import {
   createSchedulingFixture,
@@ -469,7 +470,7 @@ test("front desk sees appointments, requests, the schedule and only their own si
     expect(off.error).toBeNull();
     expect(await readActivity(db, desk.userId)).toEqual({ ok: false, code: "unauthorized" });
   } finally {
-    await db.from("audit_log").delete().eq("actor_email", desk.email);
+    await deleteAuditRows({ actorEmail: desk.email });
     await desk.dispose();
     await fixture.dispose();
   }
@@ -521,7 +522,7 @@ test("a successful sign-in writes the log's sign-in row and a refused one writes
       "TEST Signing In signed in",
     );
   } finally {
-    await db.from("audit_log").delete().eq("actor_email", staff.email);
+    await deleteAuditRows({ actorEmail: staff.email });
     await staff.dispose();
   }
 });
@@ -560,7 +561,7 @@ test("browser roles cannot read the log or the audit log behind it", async () =>
     }
   } finally {
     await browser.auth.signOut();
-    await db.from("audit_log").delete().eq("actor_email", staff.email);
+    await deleteAuditRows({ actorEmail: staff.email });
     await staff.dispose();
   }
 });

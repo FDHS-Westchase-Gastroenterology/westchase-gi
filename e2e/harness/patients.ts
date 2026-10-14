@@ -8,6 +8,7 @@ import {
   patientCommandOutcomeSchema,
 } from "../../src/lib/portal/patients/contracts";
 import type { PatientCommandInput } from "../../src/lib/portal/patients/contracts";
+import { deleteAuditRows } from "./audit-fixtures";
 import { removedRows } from "./cleanup";
 import type { RemovedRows } from "./cleanup";
 
@@ -44,13 +45,9 @@ export async function removePatients(
     "patients",
     await db.from("patients").delete({ count: "exact" }).in("id", patientIds),
   );
-  const audits = removedRows(
-    "audit_log:patients",
-    await db
-      .from("audit_log")
-      .delete({ count: "exact" })
-      .eq("entity", "patients")
-      .in("entity_id", patientIds),
-  );
+  const audits: RemovedRows = {
+    table: "audit_log:patients",
+    count: await deleteAuditRows({ entity: "patients", entityIds: patientIds }),
+  };
   return [links, patients, audits];
 }
