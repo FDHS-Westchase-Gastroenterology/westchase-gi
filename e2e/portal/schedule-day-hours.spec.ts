@@ -3,12 +3,15 @@ import { expect, test } from "@playwright/test";
 import { runId, serviceDb } from "../harness/env";
 import {
   createSchedulingFixture,
+  disposeSchedulingFixturesAfterEach,
   readDayHours,
   saveSettings,
   schedulingFixtureDate,
   setProviderWeek,
 } from "../harness/scheduling";
 import { signIn } from "../harness/session";
+
+disposeSchedulingFixturesAfterEach();
 
 /* Issue #353: the Day view's Hours sheet. Dragging a provider's end past a booking names the
    visit and offers the way out; a provider who was off switches on; one save covers both, and

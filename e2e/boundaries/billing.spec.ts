@@ -6,7 +6,9 @@ import { expectDenied } from "../harness/assert";
 import { readBilling, removeBilling, saveBilling } from "../harness/billing";
 import { publishableDb, serviceDb } from "../harness/env";
 import { savePatient } from "../harness/patients";
-import { createSchedulingFixture } from "../harness/scheduling";
+import { createSchedulingFixture, disposeSchedulingFixturesAfterEach } from "../harness/scheduling";
+
+disposeSchedulingFixturesAfterEach();
 
 test("patient billing is optional, saves retries once, and bounds competing refunds with permanent corrections", async () => {
   const db = serviceDb();

@@ -7,8 +7,14 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import { runId, serviceDb } from "../harness/env";
-import { createSchedulingFixture, schedulingFixtureDate } from "../harness/scheduling";
+import {
+  createSchedulingFixture,
+  disposeSchedulingFixturesAfterEach,
+  schedulingFixtureDate,
+} from "../harness/scheduling";
 import { createStaffFixture, signIn } from "../harness/session";
+
+disposeSchedulingFixturesAfterEach();
 
 /* Issue #357: the Activity log at /admin/audit. The shared Preview database
    holds other people's work, so every list assertion is scoped to this run's

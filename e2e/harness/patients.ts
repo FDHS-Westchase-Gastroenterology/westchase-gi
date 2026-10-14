@@ -8,6 +8,8 @@ import {
   patientCommandOutcomeSchema,
 } from "../../src/lib/portal/patients/contracts";
 import type { PatientCommandInput } from "../../src/lib/portal/patients/contracts";
+import { removedRows } from "./cleanup";
+import type { RemovedRows } from "./cleanup";
 
 export async function savePatient(
   db: SupabaseClient,
@@ -28,16 +30,27 @@ export async function savePatient(
   return patientCommandOutcomeSchema.parse(result.data);
 }
 
-export async function removePatients(db: SupabaseClient, patientIds: readonly string[]) {
-  if (patientIds.length === 0) return;
-  const links = await db.from("patient_request_links").delete().in("patient_id", patientIds);
-  expect(links.error).toBeNull();
-  const patients = await db.from("patients").delete().in("id", patientIds);
-  expect(patients.error).toBeNull();
-  const audits = await db
-    .from("audit_log")
-    .delete()
-    .eq("entity", "patients")
-    .in("entity_id", patientIds);
-  expect(audits.error).toBeNull();
+/** Removes patients and the rows that point at them, reporting how many rows each table lost. */
+export async function removePatients(
+  db: SupabaseClient,
+  patientIds: readonly string[],
+): Promise<readonly RemovedRows[]> {
+  if (patientIds.length === 0) return [];
+  const links = removedRows(
+    "patient_request_links",
+    await db.from("patient_request_links").delete({ count: "exact" }).in("patient_id", patientIds),
+  );
+  const patients = removedRows(
+    "patients",
+    await db.from("patients").delete({ count: "exact" }).in("id", patientIds),
+  );
+  const audits = removedRows(
+    "audit_log:patients",
+    await db
+      .from("audit_log")
+      .delete({ count: "exact" })
+      .eq("entity", "patients")
+      .in("entity_id", patientIds),
+  );
+  return [links, patients, audits];
 }

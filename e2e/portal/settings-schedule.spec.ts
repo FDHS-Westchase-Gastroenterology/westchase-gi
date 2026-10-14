@@ -5,12 +5,16 @@ import { z } from "zod";
 import { runId, serviceDb } from "../harness/env";
 import {
   createSchedulingFixture,
+  disposeSchedulingFixturesAfterEach,
+  holdBookingInterval,
   readSettings,
   restoreBookingInterval,
   schedulingFixtureDate,
   setProviderWeek,
 } from "../harness/scheduling";
 import { createStaffFixture, signIn } from "../harness/session";
+
+disposeSchedulingFixturesAfterEach();
 
 /* Issue #352: the Settings window's Schedule group as staff use it. Weekly
    hours change from a start date and say which bookings they leave out; time
@@ -283,6 +287,7 @@ test("an admin types the booking interval, saves it, and Undo puts it back", asy
   const db = serviceDb();
   const fixture = await createSchedulingFixture(db, `settings-interval-${runId}`);
   const actor = fixture.staff.userId;
+  const restoreInterval = await holdBookingInterval(db, actor);
   async function interval() {
     const read = await readSettings(db, actor);
     if (!read.ok) throw new Error("Settings read failed");
@@ -308,7 +313,7 @@ test("an admin types the booking interval, saves it, and Undo puts it back", asy
     await expect.poll(interval).toBe(60);
     await expect(clock.getByRole("radio", { name: "On the hour" })).toBeChecked();
   } finally {
-    await restoreBookingInterval(db, actor);
+    await restoreInterval();
     await fixture.dispose();
   }
 });

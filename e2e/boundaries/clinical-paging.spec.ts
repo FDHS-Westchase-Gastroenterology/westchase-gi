@@ -5,8 +5,10 @@ import { expect, test } from "@playwright/test";
 import { listClinical, readClinical, removeClinical, saveClinical } from "../harness/clinical";
 import { serviceDb } from "../harness/env";
 import { savePatient } from "../harness/patients";
-import { createSchedulingFixture } from "../harness/scheduling";
+import { createSchedulingFixture, disposeSchedulingFixturesAfterEach } from "../harness/scheduling";
 import { insertRequest } from "./support";
+
+disposeSchedulingFixturesAfterEach();
 
 test("clinical summaries and long histories page completely and survive removal of linked intake", async () => {
   const db = serviceDb();

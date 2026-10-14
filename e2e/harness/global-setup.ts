@@ -5,6 +5,8 @@ import { z } from "zod";
 
 import { jsonSchema } from "../../src/lib/json";
 import { serviceDb } from "./env";
+import { removeSchedulingFixture } from "./scheduling";
+import { staffFixtureEmail } from "./session";
 
 const SNAPSHOT_PATH = resolve(process.cwd(), ".logs/recipients-snapshot.json");
 
@@ -48,7 +50,76 @@ export default async function globalSetup(): Promise<void> {
     throw new Error(`Recipient disable failed: ${disableError.code}`);
   }
 
+  /* The staff sweep goes first: the request sweep drops every fixture
+     actor's audit rows, and the staff sweep's counts should include them. */
+  await sweepStaleStaffFixtures(db);
   await sweepStaleFixtures(db);
+}
+
+/* A fixture staff account this old belongs to a run that has finished.
+   supabase-integration takes the shared Preview Branch one job at a time, so
+   global setup only meets accounts from earlier jobs. Keep this at least three
+   times the longest a fixture lives: its test's timeout (180 seconds at most
+   for a spec that makes one) plus the afterEach that removes it. A describe
+   that keeps an account across tests runs serially and stops at its first
+   failure, so it adds one timeout at most. A local run against the same
+   branch that outlasts this loses its accounts to the next job's sweep. */
+const STALE_STAFF_FIXTURE_MINUTES = 15;
+const AUTH_USERS_PER_PAGE = 1000;
+const AUTH_USERS_MAX_PAGES = 20;
+
+/**
+ * Staff fixture hygiene: a test that times out is abandoned mid-body, so its
+ * `finally` never disposes the scheduling fixture it made. That admin's
+ * offices, providers, visit types, patients and appointments stay on the
+ * shared Preview Branch and change what later Settings and Schedule specs
+ * see. This sweep finds those accounts by the address createStaffFixture
+ * mints and removes them through the fixture's own cleanup. Age is read from
+ * the Auth user's created_at, so an account a running spec just made is never
+ * touched. An account whose cleanup fails is reported and left whole for the
+ * next run, which deletes by owner and so finishes an interrupted cleanup.
+ */
+async function sweepStaleStaffFixtures(db: ReturnType<typeof serviceDb>): Promise<void> {
+  const seedEmail = process.env.PORTAL_SEED_ADMIN_EMAIL?.trim().toLowerCase() ?? "";
+  const cutoff = Date.now() - STALE_STAFF_FIXTURE_MINUTES * 60_000;
+  const stale: { id: string; email: string }[] = [];
+  // Collect every page before deleting anything, so removals cannot shift a later page.
+  for (let page = 1; page <= AUTH_USERS_MAX_PAGES; page += 1) {
+    const { data, error } = await db.auth.admin.listUsers({ page, perPage: AUTH_USERS_PER_PAGE });
+    if (error !== null) {
+      throw new Error(`Stale staff fixture lookup failed: ${error.code ?? String(error.status)}`);
+    }
+    for (const user of data.users) {
+      const email = user.email?.toLowerCase() ?? "";
+      const createdAt = Date.parse(user.created_at);
+      if (!staffFixtureEmail.test(email) || email === seedEmail) continue;
+      if (Number.isNaN(createdAt) || createdAt > cutoff) continue;
+      stale.push({ id: user.id, email });
+    }
+    if (data.users.length < AUTH_USERS_PER_PAGE) break;
+  }
+  console.log(
+    `[e2e] stale staff fixtures older than ${String(STALE_STAFF_FIXTURE_MINUTES)} minutes: ${String(stale.length)}`,
+  );
+  for (const actor of stale) {
+    const label = actor.email.replace(/-([0-9a-f]{4})[0-9a-f]{4}@/u, "-$1…@");
+    try {
+      const patients = await db.from("patients").select("id").eq("created_by", actor.id);
+      if (patients.error !== null) {
+        throw new Error(`patients lookup failed: ${patients.error.code}`);
+      }
+      const patientIds = z
+        .array(z.object({ id: z.string() }))
+        .parse(patients.data)
+        .map((row) => row.id);
+      const removed = await removeSchedulingFixture(db, actor.id, actor.email, patientIds);
+      const counts = removed.map((row) => `${row.table} ${String(row.count)}`).join(", ");
+      console.log(`[e2e] swept stale fixture ${label}: ${counts}`);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      console.warn(`[e2e] left stale fixture ${label} for the next run: ${reason}`);
+    }
+  }
 }
 
 /**
