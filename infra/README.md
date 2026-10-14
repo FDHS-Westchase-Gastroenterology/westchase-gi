@@ -96,8 +96,14 @@ DynamoDB table.
 - **Service-linked roles** for ECS, Elastic Load Balancing and RDS, so no environment's apply needs
   `iam:CreateServiceLinkedRole`.
 - **ECR.** Repository `westchase-gi`: immutable tags, scan on push, encrypted with `wgi-artifacts`.
-  Lifecycle: untagged images expire after 14 days, `production-*` tags keep the newest 30, and the
-  repository keeps the newest 200 images overall.
+  Lifecycle, in rule order: untagged images expire after 14 days; `production-*` tags
+  (`production-<40 hex>-<run_id>`) keep the newest 30; `sha-*` tags keep the newest 200; `pr-*`
+  tags expire 4 days after the push; any other image (`e2e-*`) expires once the repository holds 200
+  newer images of any tag, untagged included. An image that matches an earlier rule cannot expire
+  under a later one, so a preview image that staging also tagged `sha-` or production tagged
+  `production-` stays; later rules still count it. No GitHub or task role holds
+  `ecr:BatchDeleteImage`, which the boundary check fails in any policy, so images leave through
+  the lifecycle policy.
 - **Alerts.** SNS topic `wgi-alerts`, encrypted with `wgi-alerts`, with one email subscription
   whose address is `var.alarm_email` (no default; never committed). A monthly cost budget
   (`var.monthly_budget_usd`, default $200) alerts at 80% of actual and 100% of forecast spend.
