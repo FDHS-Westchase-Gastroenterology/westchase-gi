@@ -90,11 +90,13 @@ data "aws_iam_policy_document" "terraform_read" {
       "kms:ListResourceTags",
       "logs:DescribeLogGroups",
       "logs:DescribeMetricFilters",
+      "logs:DescribeResourcePolicies",
       "logs:ListTagsForResource",
       "logs:ListTagsLogGroup",
       "organizations:DescribeOrganization",
       "rds:DescribeDBInstances",
       "rds:ListTagsForResource",
+      "route53:GetChange",
       "route53:GetHostedZone",
       "route53:ListResourceRecordSets",
       "route53:ListTagsForResource",
@@ -368,9 +370,23 @@ data "aws_iam_policy_document" "deploy" {
   }
 
   statement {
-    sid       = "EcsServices"
-    actions   = ["ecs:DescribeServices", "ecs:UpdateService"]
+    sid       = "EcsDescribeServices"
+    actions   = ["ecs:DescribeServices"]
     resources = ["${local.ecs_arn_prefix}:service/wgi-${each.key}/*"]
+  }
+
+  # A rollout may only point the service at its own environment's task
+  # definitions; otherwise a staging deploy could run production's roles.
+  statement {
+    sid       = "EcsUpdateService"
+    actions   = ["ecs:UpdateService"]
+    resources = ["${local.ecs_arn_prefix}:service/wgi-${each.key}/*"]
+
+    condition {
+      test     = "ArnLikeIfExists"
+      variable = "ecs:task-definition"
+      values   = ["${local.ecs_arn_prefix}:task-definition/wgi-${each.key}-*:*"]
+    }
   }
 
   statement {
@@ -479,9 +495,10 @@ module "github_deploy_staging" {
   oidc_provider_arn = aws_iam_openid_connect_provider.github.arn
   subjects          = ["${local.github_subject_prefix}:ref:refs/heads/${var.staging_branch}"]
   policy_json       = data.aws_iam_policy_document.deploy["staging"].json
-  managed_policy_arns = {
-    terraform_read = aws_iam_policy.terraform_read.arn
-  }
+  managed_policy_arns = merge(
+    { terraform_read = aws_iam_policy.terraform_read.arn },
+    local.apply_policy_arns["staging"],
+  )
   tags = { env = "staging" }
 }
 
@@ -499,9 +516,10 @@ module "github_deploy_production" {
   oidc_provider_arn = aws_iam_openid_connect_provider.github.arn
   subjects          = ["${local.github_subject_prefix}:environment:${var.production_environment}"]
   policy_json       = data.aws_iam_policy_document.deploy["production"].json
-  managed_policy_arns = {
-    terraform_read = aws_iam_policy.terraform_read.arn
-  }
+  managed_policy_arns = merge(
+    { terraform_read = aws_iam_policy.terraform_read.arn },
+    local.apply_policy_arns["production"],
+  )
   tags = { env = "production" }
 }
 

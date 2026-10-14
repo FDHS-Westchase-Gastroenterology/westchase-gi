@@ -16,7 +16,9 @@
  *      master secret) that nothing in the plan's state or planned values holds.
  *
  * It also refuses ecr:BatchDeleteImage in any Allow (§11): image deletion
- * belongs to the repository's lifecycle policy.
+ * belongs to the repository's lifecycle policy. An attachment that gives an
+ * environment's role a managed policy named for the other environment fails
+ * rule 1, because the policy's own statements pass for the environment they name.
  *
  * Usage: node infra/checks/env-boundary.mjs --root <root> plan.json
  *
@@ -628,6 +630,20 @@ export function checkPlan(plan, { root }) {
           rule: "unknown",
           reason: `${name} is not known at plan time, so it cannot be checked`,
         });
+      }
+    }
+
+    if (environment) {
+      for (const name of ["policy_arn", "policy_arns", "managed_policy_arns"]) {
+        if (!isConfigured(name)) continue;
+        for (const value of asList(resource.values?.[name])) {
+          if (!OTHER_ENVIRONMENT_WORD[environment].test(String(value))) continue;
+          result.findings.push({
+            address: resource.address,
+            rule: 1,
+            reason: `attaches a policy named for another environment (${name})`,
+          });
+        }
       }
     }
 

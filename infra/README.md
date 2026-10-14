@@ -230,8 +230,8 @@ Renaming or removing an output breaks every environment root that reads it.
 | --- | --- | --- | --- |
 | `wgi-github-plan` | `repo:FDHS-Westchase-Gastroenterology/westchase-gi:pull_request` | reads `bootstrap/`, `shared/`, `staging/`, `preview/`; never `production/`; writes nothing | `wgi-terraform-read`: metadata reads only, no object, log, secret or finding contents |
 | `wgi-github-plan-production` | `...:environment:aws-production-plan` (`var.production_plan_environment`) | reads `shared/` and `production/`; writes only saved plans under `production-plans/` | `wgi-terraform-read`, with explicit denies on every content read (below) |
-| `wgi-github-deploy-staging` | `...:ref:refs/heads/portal/appointment-workflow-experience` (`var.staging_branch`) | reads `shared/`, reads and writes `staging/` and `preview/` | push to ECR; register task definitions; run, describe and stop tasks and update services in `wgi-staging*` clusters; pass `wgi-staging-*` roles to ECS tasks; read `/wgi/staging/*` task logs; create, change and delete `wgi-staging-*` roles that carry `wgi-staging-boundary`, with inline policies only |
-| `wgi-github-deploy-production` | `...:environment:aws-production` (`var.production_environment`) | reads `shared/`, reads and writes `production/`, reads `production-plans/` | the same for `wgi-production*` and `wgi-production-boundary`, except that it can pull and tag existing images but not upload layers, and reads no logs |
+| `wgi-github-deploy-staging` | `...:ref:refs/heads/portal/appointment-workflow-experience` (`var.staging_branch`) | reads `shared/`, reads and writes `staging/` and `preview/` | push to ECR; register task definitions; run, describe and stop tasks and update services in `wgi-staging*` clusters; pass `wgi-staging-*` roles to ECS tasks; read `/wgi/staging/*` task logs; create, change and delete `wgi-staging-*` roles that carry `wgi-staging-boundary`, with inline policies only; and, through the six `wgi-terraform-apply-staging-*` policies (balancer, edge, compute, monitoring, data, identity), create, change and delete the staging root's resources by the names and `env` tag in the [naming contract](#naming-contract), with no key cryptography, key policy change, secret value or image deletion |
+| `wgi-github-deploy-production` | `...:environment:aws-production` (`var.production_environment`) | reads `shared/`, reads and writes `production/`, reads `production-plans/` | the same for `wgi-production*`, `wgi-production-boundary` and the six `wgi-terraform-apply-production-*` policies, except that it can pull and tag existing images but not upload layers, and reads no logs |
 | `wgi-github-e2e-staging` | `...:pull_request`, refused to Dependabot (`actor_id` 49699333) | none | the e2e harness's ten Cognito calls on the `wgi-staging-staff` pool (by exact ARN), the staging client secret, reads of the `wgi-staging-e2e-mail` capture table; carries `wgi-staging-boundary` |
 | `wgi-breakglass-production` | the management account, with MFA | exempt from the `production/` read deny | none of its own; see [Break glass](#break-glass) |
 
@@ -324,8 +324,10 @@ alerts topic (`breakglass-production-assumed`), and so does any policy attached 
 
 ### Naming contract
 
-The deploy role policies and the environment boundaries match these names. An environment root
-that names things differently gets access denied.
+The deploy role policies, the apply policies (`shared/apply_policies.tf`) and the environment
+boundaries match these names. An environment root that names things differently, or creates a
+resource without its `env` tag, gets access denied. No apply may add, change or remove the `env`
+tag on an existing resource.
 
 | Resource | Name |
 | --- | --- |
@@ -343,6 +345,15 @@ that names things differently gets access denied.
 | Application log groups | `/wgi/<env>/*` (the `wgi-<env>-data` key may encrypt only these, RDS exports and the WAF log group) |
 | WAF log group | `aws-waf-logs-wgi-<env>` (WAF logs only to a group whose name starts with `aws-waf-logs-`) |
 | RDS instances and clusters | `wgi-<env>-*`; the environment's database instance is `wgi-<env>-db` |
+| RDS parameter and subnet groups | `wgi-<env>-*`; instances use the default `postgres-17` option group |
+| Load balancer and listeners | `wgi-<env>`, created tagged `env=<env>` |
+| Target groups | `wgi-<env>-*` |
+| WAF web ACL | `wgi-<env>` (regional); the shared root owns the `wgi-<env>-waf-logs` log resource policy that lets WAF deliver to `aws-waf-logs-wgi-<env>` |
+| ACM certificates, security groups | no name in the ARN: created tagged `env=<env>` and changed only while they carry it; security group rules are separate untagged resources |
+| Route 53 records | staging: `staging.<domain>` and `*.staging.<domain>` (A, AAAA, CNAME, MX, TXT); production: the apex and `www` (A, AAAA, CNAME) and their ACM validation records; every other name belongs to `shared/` |
+| EventBridge rules, CloudWatch alarms | `wgi-<env>-*` |
+| EventBridge Scheduler schedules | `wgi-<env>-*` in the `default` group, run by the `wgi-<env>-retention-scheduler` role |
+| KMS aliases | `alias/wgi-<env>-*`; keys created tagged `env=<env>` |
 
 `<env>` is `staging` or `production`. Previews either live inside the staging names
 (`wgi-staging-pr-<n>`) or get their own role in the pull request that adds them; the plan role
