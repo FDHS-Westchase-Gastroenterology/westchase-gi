@@ -20,8 +20,14 @@ import type {
 import type { SchedulingInput } from "../../src/lib/portal/scheduling/contracts";
 import { expectDenied } from "../harness/assert";
 import { publishableDb, runId, serviceDb } from "../harness/env";
-import { createSchedulingFixture, schedulingFixtureDate } from "../harness/scheduling";
+import {
+  createSchedulingFixture,
+  disposeSchedulingFixturesAfterEach,
+  schedulingFixtureDate,
+} from "../harness/scheduling";
 import { attemptSignIn, createStaffFixture, signIn } from "../harness/session";
+
+disposeSchedulingFixturesAfterEach();
 
 /* Issue #357: the Activity log's read, at the database. Three histories (the audit log, the
    scheduling changes and the patient revisions) merge into one newest-first stream that pages

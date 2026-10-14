@@ -7,7 +7,14 @@ import { monthAvailabilityOutcomeSchema } from "../../src/lib/portal/scheduling/
 import type { MonthAvailability } from "../../src/lib/portal/scheduling/read-contracts";
 import { resolveAppointmentStart } from "../../src/lib/portal/scheduling/time";
 import { serviceDb } from "../harness/env";
-import { createSchedulingFixture, restoreBookingInterval } from "../harness/scheduling";
+import {
+  createSchedulingFixture,
+  disposeSchedulingFixturesAfterEach,
+  holdBookingInterval,
+  restoreBookingInterval,
+} from "../harness/scheduling";
+
+disposeSchedulingFixturesAfterEach();
 
 function at(date: string, time: string) {
   const instant = resolveAppointmentStart({ date, time });
@@ -30,6 +37,7 @@ test("month availability lists open starts per provider and office, with a reaso
   const db = serviceDb();
   const fixture = await createSchedulingFixture(db, "card-month");
   const actor = fixture.staff.userId;
+  const restoreInterval = await holdBookingInterval(db, actor);
   try {
     // The booking interval is one practice-wide setting; start from the hourly default.
     await restoreBookingInterval(db, actor);
@@ -237,7 +245,7 @@ test("month availability lists open starts per provider and office, with a reaso
     }
   } finally {
     try {
-      await restoreBookingInterval(db, actor);
+      await restoreInterval();
     } finally {
       await fixture.dispose();
     }

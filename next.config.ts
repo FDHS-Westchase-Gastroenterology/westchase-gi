@@ -124,6 +124,11 @@ const nextConfig: NextConfig = {
     process.env.NEXT_DIST_DIR !== undefined && process.env.NEXT_DIST_DIR !== ""
       ? process.env.NEXT_DIST_DIR
       : ".next",
+  // The container image runs `node server.js` from `.next/standalone`, which
+  // Holds the traced server files and the node_modules they need. The
+  // Dockerfile copies `public/` and `.next/static/` in beside it. Vercel
+  // Deploys from its own build output, not this folder.
+  output: "standalone",
   // The flyer files are read from disk at request time: the page checks
   // Which exist, and the asset and zip routes stream them.
   outputFileTracingIncludes: {

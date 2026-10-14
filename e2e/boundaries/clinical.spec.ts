@@ -4,7 +4,9 @@ import { expect, test } from "@playwright/test";
 
 import { listClinical, readClinical, removeClinical, saveClinical } from "../harness/clinical";
 import { serviceDb } from "../harness/env";
-import { createSchedulingFixture } from "../harness/scheduling";
+import { createSchedulingFixture, disposeSchedulingFixturesAfterEach } from "../harness/scheduling";
+
+disposeSchedulingFixturesAfterEach();
 
 test("optional clinical notes preserve patient ownership, signed content, and permanent corrections", async () => {
   const db = serviceDb();
