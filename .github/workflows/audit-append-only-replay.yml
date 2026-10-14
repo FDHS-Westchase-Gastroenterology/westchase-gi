@@ -1,0 +1,305 @@
+# Throwaway proof for 20261013221033_audit_log_append_only. It lives only on
+# init-1/audit-append-only-replay and is deleted from that branch once it has run.
+#
+# Replays every migration on PostgreSQL 17 as a login role shaped like Supabase's `postgres`
+# (not a superuser; CREATEROLE, BYPASSRLS, INHERIT; createrole_self_grant unset), with the
+# bootstrap superuser named supabase_admin as on Supabase. Nothing here reaches a hosted
+# database.
+name: Audit append-only replay
+
+on:
+  push:
+    branches: ["init-1/audit-append-only-replay"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audit-append-only-replay
+  cancel-in-progress: true
+
+jobs:
+  replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      db:
+        image: postgres:17
+        env:
+          POSTGRES_USER: supabase_admin
+          POSTGRES_PASSWORD: replay
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U supabase_admin -d postgres"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGPASSWORD: replay
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+
+      - name: Mirror Supabase's postgres role and platform
+        run: |
+          A() { psql -X -q -v ON_ERROR_STOP=1 -U supabase_admin "$@"; }
+          A -d postgres <<'SQL'
+          create role postgres login password 'replay' nosuperuser inherit createrole bypassrls;
+          create database wgi_fresh owner postgres;
+          SQL
+          A -d wgi_fresh -f docs/migration/supabase-platform-shim.sql
+          A -d wgi_fresh <<'SQL'
+          grant anon, authenticated, service_role, authenticator to postgres
+            with admin true, inherit true, set true;
+          grant pg_read_all_data, pg_monitor, pg_signal_backend, pg_create_subscription to postgres;
+          grant usage, create on schema extensions, auth to postgres;
+          grant all on all tables in schema auth to postgres;
+          grant execute on all functions in schema auth to postgres;
+          alter default privileges for role postgres in schema public
+            grant all on tables to anon, authenticated, service_role;
+          alter default privileges for role postgres in schema public
+            grant all on functions to anon, authenticated, service_role;
+          alter default privileges for role postgres in schema public
+            grant all on sequences to anon, authenticated, service_role;
+          SQL
+          A -d wgi_fresh -c "select version()" -c "show createrole_self_grant" \
+            -c "select rolname, rolsuper, rolinherit, rolcreaterole, rolbypassrls, rolcanlogin
+                from pg_roles where rolname in ('postgres', 'supabase_admin') order by 1"
+
+      - name: Apply every migration and the seed as postgres
+        run: |
+          P() { psql -X -q -v ON_ERROR_STOP=1 -U postgres -d wgi_fresh "$@"; }
+          P -c "select current_user, (select rolsuper from pg_roles where rolname = current_user)"
+          for f in supabase/migrations/*.sql; do
+            echo "apply $f"
+            P --single-transaction -f "$f" || { echo "::error::$f failed as postgres"; exit 1; }
+          done
+          P --single-transaction -f supabase/seed.sql
+          P -c "select r.rolname as role, m.rolname as member, g.rolname as grantor,
+                  am.admin_option, am.inherit_option, am.set_option
+                from pg_auth_members am
+                join pg_roles r on r.oid = am.roleid
+                join pg_roles m on m.oid = am.member
+                join pg_roles g on g.oid = am.grantor
+                where r.rolname = 'audit_retention' order by g.rolname" \
+            -c "select p.oid::regprocedure, p.proowner::regrole, p.prosecdef, p.proacl
+                from pg_proc p where p.proname in ('portal_delete_expired_audits')" \
+            -c "select relacl from pg_class where oid = 'public.audit_log'::regclass" \
+            -c "select nspacl from pg_namespace where nspname = 'private'"
+
+      - name: Expiry, refusals and the row-security guard
+        run: |
+          P() { psql -X -q -v ON_ERROR_STOP=1 -U postgres -d wgi_fresh "$@"; }
+          P <<'SQL'
+          update public.requests
+          set retention_hold_at = now(), retention_hold_by = 'ops@mock.com',
+            retention_hold_reason = 'Replay hold'
+          where id = '10000000-0000-4000-8000-000000000001';
+          insert into public.audit_log (id, actor_email, action, entity, entity_id, source, at)
+          values
+            ('a0000000-0000-4000-8000-000000000001', 'replay@mock.com', 'request.create',
+              'requests', '10000000-0000-4000-8000-000000000001', 'staff', now() - interval '7 years'),
+            ('a0000000-0000-4000-8000-000000000002', 'replay@mock.com', 'request.create',
+              'requests', '10000000-0000-4000-8000-000000000002', 'staff', now() - interval '7 years'),
+            ('a0000000-0000-4000-8000-000000000003', 'replay@mock.com', 'staff.invite',
+              'staff_profiles', null, 'staff', now() - interval '7 years'),
+            ('a0000000-0000-4000-8000-000000000004', 'replay@mock.com', 'request.create',
+              'requests', '10000000-0000-4000-8000-000000000002', 'staff', now() - interval '5 years');
+
+          begin;
+          set local role service_role;
+          select pg_catalog.set_config('replay.first',
+            public.portal_run_data_lifecycle('replay@mock.com', now())::text, false);
+          commit;
+          begin;
+          set local role service_role;
+          select pg_catalog.set_config('replay.second',
+            public.portal_run_data_lifecycle('replay@mock.com', now())::text, false);
+          commit;
+          select current_setting('replay.first') as first_run, current_setting('replay.second') as second_run;
+          do $$
+          begin
+            assert (current_setting('replay.first')::jsonb ->> 'audits_removed')::int = 2,
+              'first run removes the two unheld expired audits';
+            assert (current_setting('replay.second')::jsonb ->> 'audits_removed')::int = 0,
+              'second run removes nothing';
+            assert (select count(*) from public.audit_log where id in (
+                'a0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000004')) = 2,
+              'the held request''s history and recent audits survive';
+            assert not exists (select 1 from public.audit_log where id in (
+                'a0000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-000000000003')),
+              'expired unheld audits are gone';
+            assert (select count(*) from public.audit_log
+                where action = 'audit.retention_delete' and source = 'system'
+                  and correlation_id is not null and (detail ->> 'deleted_count')::int = 2) = 1,
+              'the expiry is recorded once, as system';
+            assert (select count(*) from public.audit_log where action = 'audit.retention_delete') = 1,
+              'a run that removes nothing records nothing';
+          end $$;
+
+          begin;
+          set local role service_role;
+          do $$
+          begin
+            begin
+              update public.audit_log set action = action where false;
+              raise exception 'service_role updated audit_log';
+            exception when insufficient_privilege then null;
+            end;
+            begin
+              delete from public.audit_log where false;
+              raise exception 'service_role deleted from audit_log';
+            exception when insufficient_privilege then null;
+            end;
+            begin
+              truncate public.audit_log;
+              raise exception 'service_role truncated audit_log';
+            exception when insufficient_privilege then null;
+            end;
+            begin
+              perform private.portal_delete_expired_audits(
+                'replay@mock.com', now() + interval '1 day', pg_catalog.gen_random_uuid());
+              raise exception 'the definer accepted a clock that is not now';
+            exception when invalid_parameter_value then null;
+            end;
+            begin
+              perform private.portal_delete_expired_audits('replay@mock.com', now(), null);
+              raise exception 'the definer accepted no correlation id';
+            exception when invalid_parameter_value then null;
+            end;
+          end $$;
+          rollback;
+
+          begin;
+          set local role authenticated;
+          do $$
+          begin
+            begin
+              perform private.portal_delete_expired_audits(
+                'replay@mock.com', now(), pg_catalog.gen_random_uuid());
+              raise exception 'authenticated ran the definer';
+            exception when insufficient_privilege then null;
+            end;
+            begin
+              perform public.portal_run_data_lifecycle('replay@mock.com', now());
+              raise exception 'authenticated ran the lifecycle';
+            exception when insufficient_privilege then null;
+            end;
+          end $$;
+          rollback;
+
+          begin;
+          alter role audit_retention nobypassrls;
+          set local role service_role;
+          do $$
+          begin
+            perform private.portal_delete_expired_audits(
+              'replay@mock.com', now(), pg_catalog.gen_random_uuid());
+            raise exception 'the definer ran under row security';
+          exception when insufficient_privilege then
+            if sqlerrm <> 'Audit expiry must see every audit and request row' then
+              raise;
+            end if;
+          end $$;
+          rollback;
+
+          do $$
+          begin
+            assert (select rolbypassrls from pg_roles where rolname = 'audit_retention'),
+              'the guard test rolled back';
+            assert pg_get_functiondef('public.portal_run_data_lifecycle(text, timestamptz)'::regprocedure)
+                like '%for update of request%',
+              'the lifecycle locks held requests';
+            assert pg_get_functiondef('public.portal_run_data_lifecycle(text, timestamptz)'::regprocedure)
+                not like '%delete from public.audit_log%',
+              'the lifecycle leaves audit expiry to the definer';
+          end $$;
+          SQL
+
+      - name: verify-schema's audit expiry checks, run as written
+        env:
+          REPLAY_URL: postgres://postgres:replay@127.0.0.1:5432/wgi_fresh
+        run: |
+          cat > "$RUNNER_TEMP/verify-audit-expiry.mjs" <<'JS'
+          import { readFileSync } from "node:fs";
+          import postgres from "postgres";
+
+          const source = readFileSync("scripts/verify-schema.mjs", "utf8");
+          const slice = (from, to) => {
+            const start = source.indexOf(from);
+            const end = source.indexOf(to, start);
+            if (start < 0 || end < 0) throw new Error(`verify-schema.mjs has no ${from}`);
+            return source.slice(start, end);
+          };
+          const body =
+            slice("function assert(condition, message)", "async function parseResponse(") +
+            slice("async function verifyAuditExpiry(", "function sameValues(") +
+            "\nreturn verifyAuditExpiry(null, 'replay');";
+          const sql = postgres(process.env.REPLAY_URL, { max: 1 });
+          const queryDatabase = async ({ query }) => [...(await sql.unsafe(query))];
+          const AsyncFunction = (async () => {}).constructor;
+          try {
+            await new AsyncFunction("queryDatabase", body)(queryDatabase);
+            console.log("verifyAuditExpiry passed");
+          } finally {
+            await sql.end();
+          }
+          JS
+          cp "$RUNNER_TEMP/verify-audit-expiry.mjs" ./verify-audit-expiry.replay.mjs
+          node ./verify-audit-expiry.replay.mjs
+          rm ./verify-audit-expiry.replay.mjs
+
+      - name: privilege.test.ts through the app's own connection
+        env:
+          POSTGRES_URL: postgres://postgres:replay@127.0.0.1:5432/wgi_fresh
+        run: >-
+          node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./test/register.mjs
+          --test --test-reporter=spec test/unit/db/privilege.test.ts
+
+      - name: Rollback, then the migration again
+        run: |
+          P() { psql -X -q -v ON_ERROR_STOP=1 -U postgres -d wgi_fresh "$@"; }
+          P --single-transaction -f supabase/rollbacks/20261013221033_to_20261004225532.sql
+          P -c "select relacl from pg_class where oid = 'public.audit_log'::regclass"
+          P <<'SQL'
+          do $$
+          begin
+            assert not exists (select 1 from pg_roles where rolname = 'audit_retention'),
+              'the rollback drops audit_retention';
+            assert to_regprocedure('private.portal_delete_expired_audits(text, timestamptz, uuid)') is null,
+              'the rollback drops the definer';
+            assert (select relacl::text from pg_class where oid = 'public.audit_log'::regclass)
+                like '%service_role=arwd/postgres%',
+              'the rollback gives service_role select, insert, update and delete, and no more';
+            assert pg_get_functiondef('public.portal_run_data_lifecycle(text, timestamptz)'::regprocedure)
+                like '%delete from public.audit_log%',
+              'the rollback restores the old lifecycle';
+          end $$;
+          SQL
+          P --single-transaction -f supabase/migrations/20261013221033_audit_log_append_only.sql
+          P -c "select rolname, rolbypassrls, rolcanlogin from pg_roles where rolname = 'audit_retention'"
+
+  generate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: PostgreSQL 17 binaries
+        run: |
+          sudo locale-gen en_US.UTF-8
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y --no-install-recommends postgresql-17
+          echo /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
+      - run: npm run db:generate
+      - name: The generated schema and function registry are unchanged
+        run: git diff --exit-code -- src/lib/db
