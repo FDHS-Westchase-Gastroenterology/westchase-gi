@@ -77,11 +77,14 @@ test("people are found by any word of their name or the digits of their phone, i
       ids[key] = created.patientId;
     }
     const followUpAt = new Date(Date.now() + 2 * 86_400_000).toISOString();
-    await insertRequest(db, { id: requestIds[0], name: names.waiting, phone });
+    /* The address lets global setup sweep a request this test leaves behind when it times out. */
+    const email = "find-people@example.test";
+    await insertRequest(db, { id: requestIds[0], name: names.waiting, phone, email });
     await insertRequest(db, {
       id: requestIds[1],
       name: names.calling,
       phone: "8135550100",
+      email,
       status: "contacted",
       follow_up_at: followUpAt,
     });
@@ -89,6 +92,7 @@ test("people are found by any word of their name or the digits of their phone, i
       id: requestIds[2],
       name: names.closed,
       phone,
+      email,
       status: "closed",
       closure_reason: "wont_schedule",
       closed_at: new Date().toISOString(),
@@ -96,7 +100,7 @@ test("people are found by any word of their name or the digits of their phone, i
     // A request linked to a patient is that patient's, not a person of its own.
     const linkRequest = randomUUID();
     requestIds.push(linkRequest);
-    await insertRequest(db, { id: linkRequest, name: names.linked, status: "contacted" });
+    await insertRequest(db, { id: linkRequest, name: names.linked, email, status: "contacted" });
     const linked = await savePatient(db, actor, {
       kind: "link_request",
       patientId: ids.linked,

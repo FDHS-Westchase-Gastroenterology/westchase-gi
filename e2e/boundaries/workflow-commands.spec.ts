@@ -164,6 +164,8 @@ test.describe("The workflow command RPC", () => {
         await insertRequest(db, {
           id: requestId,
           name: `TEST malformed ${item.command} decision`,
+          /* The address lets global setup sweep a request this test leaves behind when it times out. */
+          email: "workflow-semantic-boundary@example.test",
           source_path: "/e2e/workflow-semantic-boundary",
         });
 
@@ -454,7 +456,8 @@ test.describe("The workflow command RPC", () => {
     };
     const insert = async (row: Readonly<RequestInsert>) => {
       requestIds.push(row.id);
-      await insertRequest(db, row);
+      /* The address lets global setup sweep a request this test leaves behind when it times out. */
+      await insertRequest(db, { email: "call-again@example.test", ...row });
     };
     const undo = async (requestId: string, expectedVersion: number, transitionId: string) =>
       execute(
