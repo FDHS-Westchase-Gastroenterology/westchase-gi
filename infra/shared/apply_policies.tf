@@ -10,14 +10,14 @@
 # §5.1 on each plan. The env tag is the second layer: a create must write
 # env=<env> (aws:RequestTag), a change must find it (aws:ResourceTag), and no
 # tag call may change it. Resources whose ARN carries no name (security groups,
-# certificates) are reached only through that tag, in the forms §5.1's
-# carve-out accepts. Actions that accept only "*" are the script's listed
-# exceptions.
+# certificates, user pools, KMS keys) are reached only through that tag, in
+# the forms §5.1's carve-out accepts. Actions that accept only "*" are the
+# script's listed exceptions.
 #
-# Each environment's grants are split across managed policies (balancer, edge,
-# monitoring) to stay under the 6,144-character limit on one policy. No policy
-# grants a KMS cryptographic action, a secret's value, a key policy change, key
-# deletion or image deletion.
+# Each environment's grants are split across six managed policies (balancer,
+# edge, compute, monitoring, data, identity) to stay under the 6,144-character
+# limit on one policy. No policy grants a KMS cryptographic action, a secret's value, a key policy
+# change, key deletion or image deletion.
 
 locals {
   service_arn = {
@@ -307,6 +307,124 @@ locals {
     })
   }
 
+  # ECS clusters and services, Lambda functions and schedules.
+  apply_compute = {
+    for env in local.environment_names : env => jsonencode({
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Sid       = "CreateCluster"
+          Effect    = "Allow"
+          Action    = "ecs:CreateCluster"
+          Resource  = local.apply_resources[env].cluster
+          Condition = local.when[env].create
+        },
+        # A service runs only its environment's task definitions, whose roles
+        # the deploy policy limits to the environment.
+        {
+          Sid      = "CreateService"
+          Effect   = "Allow"
+          Action   = "ecs:CreateService"
+          Resource = local.apply_resources[env].service
+          Condition = {
+            StringEquals = { "aws:RequestTag/env" = env }
+            ArnLike      = { "ecs:task-definition" = "${local.ecs_arn_prefix}:task-definition/wgi-${env}-*:*" }
+          }
+        },
+        {
+          Sid      = "TagEcsOnCreate"
+          Effect   = "Allow"
+          Action   = "ecs:TagResource"
+          Resource = [local.apply_resources[env].cluster, local.apply_resources[env].service]
+          Condition = { StringEquals = {
+            "aws:RequestTag/env" = env
+            "ecs:CreateAction"   = ["CreateCluster", "CreateService"]
+          } }
+        },
+        {
+          Sid       = "ManageCluster"
+          Effect    = "Allow"
+          Action    = ["ecs:DeleteCluster", "ecs:PutClusterCapacityProviders", "ecs:UpdateCluster", "ecs:UpdateClusterSettings"]
+          Resource  = local.apply_resources[env].cluster
+          Condition = local.when[env].manage
+        },
+        {
+          Sid       = "DeleteService"
+          Effect    = "Allow"
+          Action    = "ecs:DeleteService"
+          Resource  = local.apply_resources[env].service
+          Condition = local.when[env].manage
+        },
+        {
+          Sid    = "RetagEcs"
+          Effect = "Allow"
+          Action = ["ecs:TagResource", "ecs:UntagResource"]
+          Resource = [
+            local.apply_resources[env].cluster,
+            local.apply_resources[env].service,
+            "${local.ecs_arn_prefix}:task-definition/wgi-${env}-*:*",
+          ]
+          Condition = local.when[env].retag
+        },
+        {
+          Sid       = "CreateFunction"
+          Effect    = "Allow"
+          Action    = "lambda:CreateFunction"
+          Resource  = local.apply_resources[env].function
+          Condition = local.when[env].create
+        },
+        {
+          Sid    = "ManageFunction"
+          Effect = "Allow"
+          Action = [for a in [
+            "AddPermission", "DeleteFunction", "DeleteFunctionConcurrency", "PublishVersion",
+            "PutFunctionConcurrency", "RemovePermission", "UpdateFunctionCode",
+            "UpdateFunctionConfiguration",
+          ] : "lambda:${a}"]
+          Resource  = local.apply_resources[env].function
+          Condition = local.when[env].manage
+        },
+        {
+          Sid       = "TagFunctionOnCreate"
+          Effect    = "Allow"
+          Action    = "lambda:TagResource"
+          Resource  = local.apply_resources[env].function
+          Condition = local.when[env].tag_on_create
+        },
+        {
+          Sid       = "RetagFunction"
+          Effect    = "Allow"
+          Action    = ["lambda:TagResource", "lambda:UntagResource"]
+          Resource  = local.apply_resources[env].function
+          Condition = local.when[env].retag
+        },
+        {
+          Sid       = "PassEmailSenderRole"
+          Effect    = "Allow"
+          Action    = "iam:PassRole"
+          Resource  = "${local.apply_resources[env].role}-email-sender"
+          Condition = { StringEquals = { "iam:PassedToService" = "lambda.amazonaws.com" } }
+        },
+        # Only schedule groups take tags (list_scheduler.html), and these
+        # schedules sit in the untagged default group, so the name alone
+        # limits them.
+        {
+          Sid      = "ManageSchedules"
+          Effect   = "Allow"
+          Action   = ["scheduler:CreateSchedule", "scheduler:DeleteSchedule", "scheduler:UpdateSchedule"]
+          Resource = "${local.service_arn.scheduler}:schedule/default/wgi-${env}-*"
+        },
+        {
+          Sid       = "PassRetentionSchedulerRole"
+          Effect    = "Allow"
+          Action    = "iam:PassRole"
+          Resource  = "${local.apply_resources[env].role}-retention-scheduler"
+          Condition = { StringEquals = { "iam:PassedToService" = "scheduler.amazonaws.com" } }
+        },
+      ]
+    })
+  }
+
   # EventBridge rules, alarms and log groups.
   apply_monitoring = {
     for env in local.environment_names : env => jsonencode({
@@ -389,11 +507,258 @@ locals {
     })
   }
 
+  # The database and keys, and each environment's own store: staging's capture
+  # table, production's cut-over archive bucket.
+  apply_data = {
+    for env in local.environment_names : env => jsonencode({
+      Version = "2012-10-17"
+      Statement = concat([
+        {
+          Sid       = "CreateDatabase"
+          Effect    = "Allow"
+          Action    = ["rds:CreateDBInstance", "rds:CreateDBParameterGroup", "rds:CreateDBSubnetGroup"]
+          Resource  = local.apply_resources[env].database
+          Condition = local.when[env].create
+        },
+        # AWS creates the default option group untagged.
+        {
+          Sid      = "UseDefaultOptionGroup"
+          Effect   = "Allow"
+          Action   = ["rds:CreateDBInstance", "rds:ModifyDBInstance"]
+          Resource = "${local.service_arn.rds}:og:default:postgres-17"
+        },
+        {
+          Sid    = "ManageDatabase"
+          Effect = "Allow"
+          Action = [for a in [
+            "DeleteDBInstance", "DeleteDBParameterGroup", "DeleteDBSubnetGroup", "ModifyDBInstance",
+            "ModifyDBParameterGroup", "ModifyDBSubnetGroup", "RebootDBInstance", "ResetDBParameterGroup",
+          ] : "rds:${a}"]
+          Resource  = local.apply_resources[env].database
+          Condition = local.when[env].manage
+        },
+        {
+          Sid       = "TagDatabaseOnCreate"
+          Effect    = "Allow"
+          Action    = "rds:AddTagsToResource"
+          Resource  = local.apply_resources[env].database
+          Condition = local.when[env].tag_on_create
+        },
+        {
+          Sid       = "RetagDatabase"
+          Effect    = "Allow"
+          Action    = ["rds:AddTagsToResource", "rds:RemoveTagsFromResource"]
+          Resource  = local.apply_resources[env].database
+          Condition = local.when[env].retag
+        },
+        # A key has no ARN until the call returns (list_kms.html), so the
+        # request must write env=<env>.
+        {
+          Sid       = "CreateKey"
+          Effect    = "Allow"
+          Action    = "kms:CreateKey"
+          Resource  = "*"
+          Condition = local.when[env].create
+        },
+        {
+          Sid       = "TagKey"
+          Effect    = "Allow"
+          Action    = "kms:TagResource"
+          Resource  = local.apply_resources[env].key
+          Condition = local.when[env].both
+        },
+        {
+          Sid       = "ManageKey"
+          Effect    = "Allow"
+          Action    = ["kms:CreateAlias", "kms:DeleteAlias", "kms:EnableKeyRotation", "kms:UpdateAlias", "kms:UpdateKeyDescription"]
+          Resource  = local.apply_resources[env].key
+          Condition = local.when[env].manage
+        },
+        {
+          Sid      = "NameKey"
+          Effect   = "Allow"
+          Action   = ["kms:CreateAlias", "kms:DeleteAlias", "kms:UpdateAlias"]
+          Resource = "${local.service_arn.kms}:alias/wgi-${env}-*"
+        },
+        # RDS and DynamoDB create grants on the caller's behalf to encrypt
+        # what they store; the caller never gets a grant of its own.
+        {
+          Sid      = "GrantKeyToStorage"
+          Effect   = "Allow"
+          Action   = "kms:CreateGrant"
+          Resource = local.apply_resources[env].key
+          Condition = {
+            StringEquals = {
+              "aws:ResourceTag/env" = env
+              "kms:ViaService"      = local.apply_environment[env].grant_services
+            }
+            Bool = { "kms:GrantIsForAWSResource" = "true" }
+            "ForAllValues:StringEquals" = { "kms:GrantOperations" = [
+              "CreateGrant", "Decrypt", "DescribeKey", "Encrypt", "GenerateDataKey",
+              "GenerateDataKeyWithoutPlaintext", "ReEncryptFrom", "ReEncryptTo", "RetireGrant",
+            ] }
+          }
+        },
+        ], [
+        for statement in [
+          {
+            Sid       = "CreateTable"
+            Effect    = "Allow"
+            Action    = "dynamodb:CreateTable"
+            Resource  = "${local.service_arn.dynamodb}:table/wgi-staging-*"
+            Condition = local.when.staging.create
+          },
+          {
+            Sid       = "ManageTable"
+            Effect    = "Allow"
+            Action    = ["dynamodb:DeleteTable", "dynamodb:UpdateContinuousBackups", "dynamodb:UpdateTable", "dynamodb:UpdateTimeToLive"]
+            Resource  = "${local.service_arn.dynamodb}:table/wgi-staging-*"
+            Condition = local.when.staging.manage
+          },
+          {
+            Sid       = "TagTableOnCreate"
+            Effect    = "Allow"
+            Action    = "dynamodb:TagResource"
+            Resource  = "${local.service_arn.dynamodb}:table/wgi-staging-*"
+            Condition = local.when.staging.tag_on_create
+          },
+          {
+            Sid       = "RetagTable"
+            Effect    = "Allow"
+            Action    = ["dynamodb:TagResource", "dynamodb:UntagResource"]
+            Resource  = "${local.service_arn.dynamodb}:table/wgi-staging-*"
+            Condition = local.when.staging.retag
+          },
+        ] : statement if env == "staging"
+        ], [
+        # The archive bucket's name ends in its account-regional suffix. S3
+        # bucket actions take no aws:ResourceTag, so the name limits them;
+        # deleting the bucket is not granted.
+        for statement in [{
+          Sid    = "CutoverArchiveBucket"
+          Effect = "Allow"
+          Action = [for a in [
+            "CreateBucket", "PutBucketOwnershipControls", "PutBucketPolicy",
+            "PutBucketPublicAccessBlock", "PutBucketTagging", "PutBucketVersioning",
+            "PutEncryptionConfiguration", "PutLifecycleConfiguration",
+          ] : "s3:${a}"]
+          Resource = "arn:${local.partition}:s3:::wgi-production-cutover-archive*"
+        }] : statement if env == "production"
+      ])
+    })
+  }
+
+  # The user pool, secret containers and staging's parameters.
+  apply_identity = {
+    for env in local.environment_names : env => jsonencode({
+      Version = "2012-10-17"
+      Statement = concat([
+        # A user pool has no ARN until the call returns (list_cognito-idp.html),
+        # so the request must write env=<env>.
+        {
+          Sid       = "CreateUserPool"
+          Effect    = "Allow"
+          Action    = "cognito-idp:CreateUserPool"
+          Resource  = "*"
+          Condition = local.when[env].create
+        },
+        {
+          Sid    = "ManageUserPool"
+          Effect = "Allow"
+          Action = [for a in [
+            "AddCustomAttributes", "CreateGroup", "CreateUserPoolDomain", "DeleteGroup",
+            "DeleteUserPool", "DeleteUserPoolDomain", "SetLogDeliveryConfiguration",
+            "SetRiskConfiguration", "SetUserPoolMfaConfig", "UpdateGroup", "UpdateUserPoolDomain",
+          ] : "cognito-idp:${a}"]
+          Resource  = local.apply_resources[env].user_pool
+          Condition = local.when[env].manage
+        },
+        {
+          Sid       = "UpdateUserPool"
+          Effect    = "Allow"
+          Action    = ["cognito-idp:TagResource", "cognito-idp:UpdateUserPool"]
+          Resource  = local.apply_resources[env].user_pool
+          Condition = local.when[env].both
+        },
+        {
+          Sid       = "RetagUserPool"
+          Effect    = "Allow"
+          Action    = ["cognito-idp:TagResource", "cognito-idp:UntagResource"]
+          Resource  = local.apply_resources[env].user_pool
+          Condition = local.when[env].retag
+        },
+        # Empty containers only: values are moved in outside Terraform.
+        {
+          Sid       = "CreateSecret"
+          Effect    = "Allow"
+          Action    = "secretsmanager:CreateSecret"
+          Resource  = local.apply_resources[env].secret
+          Condition = local.when[env].create
+        },
+        {
+          Sid       = "DescribeSecret"
+          Effect    = "Allow"
+          Action    = ["secretsmanager:DescribeSecret", "secretsmanager:GetResourcePolicy"]
+          Resource  = local.apply_resources[env].secret
+          Condition = local.when[env].manage
+        },
+        {
+          Sid       = "TagSecretOnCreate"
+          Effect    = "Allow"
+          Action    = "secretsmanager:TagResource"
+          Resource  = local.apply_resources[env].secret
+          Condition = local.when[env].tag_on_create
+        },
+        {
+          Sid       = "RetagSecret"
+          Effect    = "Allow"
+          Action    = ["secretsmanager:TagResource", "secretsmanager:UntagResource"]
+          Resource  = local.apply_resources[env].secret
+          Condition = local.when[env].retag
+        },
+        ], [
+        for statement in [
+          {
+            Sid       = "PutParameter"
+            Effect    = "Allow"
+            Action    = "ssm:PutParameter"
+            Resource  = "${local.service_arn.ssm}:parameter/wgi/staging/*"
+            Condition = local.when.staging.upsert
+          },
+          {
+            Sid       = "ManageParameter"
+            Effect    = "Allow"
+            Action    = ["ssm:DeleteParameter", "ssm:DeleteParameters"]
+            Resource  = "${local.service_arn.ssm}:parameter/wgi/staging/*"
+            Condition = local.when.staging.manage
+          },
+          {
+            Sid       = "TagParameterOnCreate"
+            Effect    = "Allow"
+            Action    = "ssm:AddTagsToResource"
+            Resource  = "${local.service_arn.ssm}:parameter/wgi/staging/*"
+            Condition = local.when.staging.tag_on_create
+          },
+          {
+            Sid       = "RetagParameter"
+            Effect    = "Allow"
+            Action    = ["ssm:AddTagsToResource", "ssm:RemoveTagsFromResource"]
+            Resource  = "${local.service_arn.ssm}:parameter/wgi/staging/*"
+            Condition = local.when.staging.retag
+          },
+        ] : statement if env == "staging"
+      ])
+    })
+  }
+
   apply_policies = merge([
     for env in local.environment_names : {
       "${env}-balancer"   = local.apply_balancer[env]
       "${env}-edge"       = local.apply_edge[env]
+      "${env}-compute"    = local.apply_compute[env]
       "${env}-monitoring" = local.apply_monitoring[env]
+      "${env}-data"       = local.apply_data[env]
+      "${env}-identity"   = local.apply_identity[env]
     }
   ]...)
 }
@@ -425,7 +790,7 @@ resource "aws_iam_policy" "apply" {
 locals {
   apply_policy_arns = {
     for env in local.environment_names : env => {
-      for group in ["balancer", "edge", "monitoring"] :
+      for group in ["balancer", "edge", "compute", "monitoring", "data", "identity"] :
       "apply_${group}" => "arn:${local.partition}:iam::${local.account_id}:policy/${aws_iam_policy.apply["${env}-${group}"].name}"
     }
   }
