@@ -102,10 +102,11 @@ Access authorization and access establishment and modification
 
 - Each clinic staff member has their own portal account (in place), moving to their own
   Cognito user in the production pool (step 3). Shared or role accounts are not created.
-- Today's shared preview sign-in (`src/app/admin/actions.ts`) is gated by `VERCEL_ENV`, which
-  AWS never sets, so it fails open there until an explicit flag replaces it. Step 3 makes that
-  change: a preset developer sign-in that exists only in the non-production user pool, works only
-  behind an explicit flag and fails closed; production's pool never has it (risk R-03).
+- The shared preview sign-in (`src/app/admin/actions.ts`) fails closed
+  (`src/lib/portal/dev-sign-in.ts`): `APP_ENV=production` or `VERCEL_ENV=production` turns it off,
+  and off Vercel Preview and Development it needs `PORTAL_DEV_SIGN_IN=enabled`. Step 3 moves it to
+  a preset developer sign-in that exists only in the non-production user pool; production's pool
+  never has it (risk R-03).
 - Each workforce member signs in to AWS, GitHub and vendor consoles as themselves. An agent acts
   under the session of the person running it, so CloudTrail attributes its actions to that
   person.
