@@ -5,8 +5,10 @@ import { expect, test } from "@playwright/test";
 import { expectDenied } from "../harness/assert";
 import { readClinical, removeClinical, saveClinical } from "../harness/clinical";
 import { publishableDb, serviceDb } from "../harness/env";
-import { createSchedulingFixture } from "../harness/scheduling";
+import { createSchedulingFixture, disposeSchedulingFixturesAfterEach } from "../harness/scheduling";
 import { createStaffFixture } from "../harness/session";
+
+disposeSchedulingFixturesAfterEach();
 
 test("document references and signing honor authorship, live permissions, and closed browser access", async () => {
   const db = serviceDb();

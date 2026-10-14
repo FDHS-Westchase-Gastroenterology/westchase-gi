@@ -8,8 +8,10 @@ import type { SchedulingInput } from "../../src/lib/portal/scheduling/contracts"
 import { appointmentReadOutcomeSchema } from "../../src/lib/portal/scheduling/read-contracts";
 import { serviceDb } from "../harness/env";
 import { createHandoffFixture, readHandoffRequest } from "../harness/handoff";
-import { schedulingFixtureDate } from "../harness/scheduling";
+import { disposeSchedulingFixturesAfterEach, schedulingFixtureDate } from "../harness/scheduling";
 import { signIn } from "../harness/session";
+
+disposeSchedulingFixturesAfterEach();
 
 async function save(page: Page, input: Readonly<SchedulingInput>) {
   const response = await page.evaluate(async (body) => {

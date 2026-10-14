@@ -5,8 +5,10 @@ import { z } from "zod";
 
 import { runId, serviceDb } from "../harness/env";
 import { savePatient } from "../harness/patients";
-import { createSchedulingFixture } from "../harness/scheduling";
+import { createSchedulingFixture, disposeSchedulingFixturesAfterEach } from "../harness/scheduling";
 import { signIn } from "../harness/session";
+
+disposeSchedulingFixturesAfterEach();
 
 /* Issue #344: a start somebody else books between the month read and Book
    stays on the card. The day's popover comes back with the start struck
