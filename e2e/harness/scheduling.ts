@@ -23,6 +23,7 @@ import {
 } from "../../src/lib/portal/scheduling/settings-contracts";
 import type { SettingsCommand } from "../../src/lib/portal/scheduling/settings-contracts";
 import { resolveAppointmentStart } from "../../src/lib/portal/scheduling/time";
+import { deleteAuditRows } from "./audit-fixtures";
 import { removedRows } from "./cleanup";
 import type { RemovedRows } from "./cleanup";
 import { removePatients, savePatient } from "./patients";
@@ -249,12 +250,10 @@ export async function removeSchedulingFixture(
     );
   }
   removed.push(...(await removePatients(db, patientIds)));
-  removed.push(
-    removedRows(
-      "audit_log:actor",
-      await db.from("audit_log").delete({ count: "exact" }).eq("actor_email", email),
-    ),
-  );
+  removed.push({
+    table: "audit_log:actor",
+    count: await deleteAuditRows({ actorEmail: email }),
+  });
   removed.push(...(await removeStaffAccount(db, userId)));
   return removed;
 }

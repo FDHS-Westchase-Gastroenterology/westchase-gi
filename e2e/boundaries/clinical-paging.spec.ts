@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { expect, test } from "@playwright/test";
 
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { listClinical, readClinical, removeClinical, saveClinical } from "../harness/clinical";
 import { serviceDb } from "../harness/env";
 import { savePatient } from "../harness/patients";
@@ -113,7 +114,7 @@ test("clinical summaries and long histories page completely and survive removal 
     });
   } finally {
     expect((await db.from("requests").delete().eq("id", requestId)).error).toBeNull();
-    expect((await db.from("audit_log").delete().eq("entity_id", requestId)).error).toBeNull();
+    await deleteAuditRows({ entityIds: [requestId] });
     await removeClinical(db, fixture.patientIds);
     await fixture.dispose();
   }
