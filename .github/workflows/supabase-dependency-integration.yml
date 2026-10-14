@@ -280,6 +280,15 @@ jobs:
       - name: Verify Preview Branch schema, RLS, RPCs, and seed
         run: node scripts/verify-schema.mjs --target branch
 
+      # The data layer reads the branch over POSTGRES_URL (the transaction
+      # pooler), read-only: the unit tests that need a database, then the
+      # same calls through PostgREST and Drizzle compared result for result.
+      - name: Run unit tests against the Preview Branch
+        run: npm run test:unit
+
+      - name: Compare the Drizzle data layer with PostgREST
+        run: npm run db:parity
+
       # Trust boundaries first (Auth refresh, SSR sessions, closed Data API and
       # RLS, intake throttling, field caps, lifecycle, RPC persistence), then
       # The staff-portal journeys. Both folders need the Preview Branch.
