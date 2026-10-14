@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { requiredEnv, runId, serviceDb } from "../harness/env";
 import { signIn } from "../harness/session";
 
@@ -37,11 +38,7 @@ test.describe("isolated portal scale boundaries", () => {
   });
 
   test.afterAll(async () => {
-    const { error: auditCleanupError } = await db
-      .from("audit_log")
-      .delete()
-      .eq("actor_email", actorEmail);
-    expect(auditCleanupError).toBeNull();
+    await deleteAuditRows({ actorEmail });
   });
 
   test("paginates Activity beyond the first 100 rows", async ({ page }) => {
