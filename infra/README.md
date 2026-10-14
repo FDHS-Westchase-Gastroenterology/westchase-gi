@@ -44,9 +44,9 @@ DynamoDB table.
   replication, versioning, public access block, ACL or CORS configuration, any of the three roles
   that read production state (`wgi-github-deploy-production`, `wgi-github-plan-production`,
   `wgi-breakglass-production`) being created, deleted, or having its trust, policies or
-  permissions boundary changed, a new default version of `wgi-terraform-read` or of either
-  environment boundary (`wgi-staging-boundary`, `wgi-production-boundary`), and every attempt to
-  assume the break-glass role.
+  permissions boundary changed, a new default version of `wgi-terraform-read`, of either
+  environment boundary (`wgi-staging-boundary`, `wgi-production-boundary`) or of any
+  `wgi-terraform-apply-<env>-*` policy, and every attempt to assume the break-glass role.
 - **Account baseline.** S3 account-level public access block, EBS default encryption, GuardDuty
   and an IAM Access Analyzer in both Regions. GuardDuty runs S3, RDS login and Lambda network
   protection, and Runtime Monitoring with GuardDuty managing the agent on ECS Fargate; EKS and EBS

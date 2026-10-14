@@ -165,6 +165,14 @@ locals {
       description = "wgi-staging-boundary or wgi-production-boundary, the ceiling on every environment role, got a new or different default version"
       pattern     = "{ ($.eventSource = \"iam.amazonaws.com\") && (($.eventName = \"CreatePolicyVersion\") || ($.eventName = \"SetDefaultPolicyVersion\")) && (($.requestParameters.policyArn = \"${aws_iam_policy.environment_boundary["staging"].arn}\") || ($.requestParameters.policyArn = \"${aws_iam_policy.environment_boundary["production"].arn}\")) }"
     }
+    # The apply policies are customer managed and attached to the deploy
+    # roles, so a new default version widens a deploy role without touching
+    # it. Either environment's counts: a staging policy widened to production
+    # names reaches production.
+    apply-policy-changed = {
+      description = "One of the wgi-terraform-apply-<env>-* policies on the deploy roles got a new or different default version"
+      pattern     = "{ ($.eventSource = \"iam.amazonaws.com\") && (($.eventName = \"CreatePolicyVersion\") || ($.eventName = \"SetDefaultPolicyVersion\")) && ($.requestParameters.policyArn = \"arn:${local.partition}:iam::${local.account_id}:policy/wgi-terraform-apply-*\") }"
+    }
     # Each use of the role is emergency access and is recorded as such. The
     # role's account logs a cross-account AssumeRole, refused attempts
     # included.
