@@ -92,6 +92,8 @@ DynamoDB table.
   image layers from.
 - **GitHub OIDC and break glass.** The `token.actions.githubusercontent.com` provider, five GitHub
   roles, the production break-glass role and the two environment permissions boundaries; see [Who can change what](#who-can-change-what).
+- **Service-linked roles** for ECS, Elastic Load Balancing and RDS, so no environment's apply needs
+  `iam:CreateServiceLinkedRole`.
 - **ECR.** Repository `westchase-gi`: immutable tags, scan on push, encrypted with `wgi-artifacts`.
   Lifecycle: untagged images expire after 14 days, `production-*` tags keep the newest 30, and the
   repository keeps the newest 200 images overall.
