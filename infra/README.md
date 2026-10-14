@@ -13,7 +13,7 @@ multi-Region.
 | Path | What it manages | State key |
 | --- | --- | --- |
 | `bootstrap/` | The state bucket `westchase-gi-tfstate-use2` and its key `alias/wgi-tfstate` | `bootstrap/terraform.tfstate` |
-| `shared/` | Account baseline, audit trail, KMS keys, VPC, GitHub OIDC roles, ECR, alerts, DNS zone and records | `shared/terraform.tfstate` |
+| `shared/` | Account baseline, audit trail, KMS keys, VPC, GitHub OIDC roles, ECR, the run artifacts bucket, alerts, DNS zone and records | `shared/terraform.tfstate` |
 | `modules/kms-key/` | A customer managed key with rotation and a guard that admits IAM principals only through named services | |
 | `modules/s3-bucket/` | A private, versioned, CMK-encrypted, TLS-only bucket | |
 | `modules/github-oidc-role/` | An IAM role that trusts exact GitHub Actions token subjects | |
@@ -35,10 +35,10 @@ DynamoDB table.
 - **Audit trail.** One multi-Region CloudTrail trail with log file validation, written to the
   audit bucket (`wgi-audit-<account>-us-east-2-an`, account-regional namespace) and streamed to
   the `/wgi/audit/cloudtrail` log group (365 days). It records all management events, object reads
-  and writes on the state bucket, and object reads on the audit bucket. Only CloudTrail, AWS Config
-  and VPC flow log delivery may write to the bucket, each under its own prefix; nobody may delete a
-  record version. CloudTrail and Config records are kept six years (45 CFR 164.316(b)(2)); flow
-  logs one year.
+  and writes on the state bucket, object reads on the audit bucket and object writes on the
+  artifacts bucket. Only CloudTrail, AWS Config and VPC flow log delivery may write to the audit
+  bucket, each under its own prefix; nobody may delete a record version. CloudTrail and Config
+  records are kept six years (45 CFR 164.316(b)(2)); flow logs one year.
 - **Security alarms.** Metric filters on the trail page the alerts topic on root user activity, a
   trail change, a KMS key disabled or scheduled for deletion, an IAM user, access key or console
   password being created, any change to the state or audit bucket's policy, lifecycle,
@@ -104,6 +104,12 @@ DynamoDB table.
   `production-` stays; later rules still count it. No GitHub or task role holds
   `ecr:BatchDeleteImage`, which the boundary check fails in any policy, so images leave through
   the lifecycle policy.
+- **Run artifacts.** Bucket `wgi-artifacts`, encrypted with `wgi-artifacts`, for each cut-over's
+  `verify.json` under `cutover/<env>/<run_id>/` and the staging e2e reports under
+  `e2e/staging/<run_id>/`. Its policy only refuses: a write under an environment's prefix from a
+  role not named `wgi-<env>-*`, and any write outside the three prefixes. Objects expire after 14
+  days and an overwritten or expired version a day later. Object keys never carry patient data;
+  the plan roles list keys in every bucket.
 - **Alerts.** SNS topic `wgi-alerts`, encrypted with `wgi-alerts`, with one email subscription
   whose address is `var.alarm_email` (no default; never committed). A monthly cost budget
   (`var.monthly_budget_usd`, default $200) alerts at 80% of actual and 100% of forecast spend.
@@ -223,7 +229,7 @@ data "terraform_remote_state" "shared" {
 | `vpc_endpoint_ids` | Map of service (`s3`, `ecr.api`, `ecr.dkr`, `secretsmanager`, `kms`, `logs`) to VPC endpoint ID, for `aws:SourceVpce` conditions |
 | `kms_key_arns`, `kms_key_aliases` | Maps keyed `audit`, `alerts`, `artifacts`, `staging_data`, `staging_secrets`; production's keys are outputs of `environments/production/` |
 | `alerts_topic_arn` | Where environment alarms publish |
-| `audit_bucket`, `state_bucket` | Bucket names |
+| `artifacts_bucket`, `audit_bucket`, `state_bucket` | Bucket names |
 | `ecr_repository_url` | The image repository |
 | `github_role_arns` | Map with `plan`, `plan_production`, `deploy_staging`, `deploy_production`, `e2e_staging` |
 | `environment_boundary_arns` | Map of environment to the permissions boundary every role its root creates must carry |
@@ -357,7 +363,8 @@ tag on an existing resource.
 | Secrets | `wgi/<env>/*`; the RDS-managed master secret (`rds!db-<uuid>`) carries no environment, so the boundary names the `wgi-<env>-db` instance's secret by exact ARN |
 | SSM parameters | `/wgi/<env>/*` |
 | DynamoDB tables | `wgi-<env>-*` (the staging mail capture table is `wgi-staging-e2e-mail`) |
-| S3 buckets | `wgi-<env>-*`, including the run-artifacts bucket `wgi-<env>-artifacts` |
+| S3 buckets | `wgi-<env>-*` |
+| Run artifacts | objects in the shared `wgi-artifacts` bucket under `cutover/<env>/<run_id>/` (the `wgi-<env>-cutover-task` role's `verify.json`) and `e2e/staging/<run_id>/` (the `wgi-staging-e2e-task` role's reports); the bucket policy refuses a write under an environment's prefix from any role not named `wgi-<env>-*`, and a write anywhere else; keys carry the environment, run ID, a timestamp or a hash, never patient data |
 | KMS keys used by environment roles | aliased `alias/wgi-<env>-*` (the capture table's key is `alias/wgi-staging-e2e-mail`); the boundary names each by exact ARN |
 | Cognito user pool | `wgi-<env>-staff`, one pool per name, tagged `env=<env>` |
 | Application log groups | `/wgi/<env>/*` (the `wgi-<env>-data` key may encrypt only these, RDS exports and the WAF log group) |

@@ -55,6 +55,11 @@ output "audit_bucket" {
   value       = module.audit_bucket.id
 }
 
+output "artifacts_bucket" {
+  description = "Run artifacts bucket: cutover/<env>/ and e2e/staging/ prefixes, each written only by its environment's roles."
+  value       = module.artifacts_bucket.id
+}
+
 output "state_bucket" {
   description = "Terraform state bucket (created by infra/bootstrap)."
   value       = var.state_bucket_name

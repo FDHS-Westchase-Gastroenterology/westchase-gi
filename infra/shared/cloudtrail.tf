@@ -1,8 +1,9 @@
 # One multi-Region trail records every management event in the account, plus
-# object-level reads and writes on the Terraform state bucket and object-level
-# reads of the audit bucket. Log file validation lets an auditor prove that no
-# delivered file was altered. The trail also streams to CloudWatch Logs so the
-# metric filters below can raise alarms within minutes.
+# object-level reads and writes on the Terraform state bucket, object-level
+# reads of the audit bucket and object-level writes to the run artifacts
+# bucket. Log file validation lets an auditor prove that no delivered file was
+# altered. The trail also streams to CloudWatch Logs so the metric filters
+# below can raise alarms within minutes.
 
 resource "aws_cloudwatch_log_group" "cloudtrail" {
   name              = local.cloudtrail_log_group_name
@@ -110,6 +111,31 @@ resource "aws_cloudtrail" "account" {
     field_selector {
       field       = "resources.ARN"
       starts_with = ["${module.audit_bucket.arn}/"]
+    }
+  }
+
+  # Which role wrote each run artifact, a cut-over's verify.json included.
+  advanced_event_selector {
+    name = "Run artifact writes"
+
+    field_selector {
+      field  = "eventCategory"
+      equals = ["Data"]
+    }
+
+    field_selector {
+      field  = "resources.type"
+      equals = ["AWS::S3::Object"]
+    }
+
+    field_selector {
+      field  = "readOnly"
+      equals = ["false"]
+    }
+
+    field_selector {
+      field       = "resources.ARN"
+      starts_with = ["${module.artifacts_bucket.arn}/"]
     }
   }
 

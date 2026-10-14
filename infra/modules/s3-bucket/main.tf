@@ -2,9 +2,10 @@
 # lifecycle rules; this module owns the controls every bucket here shares.
 
 resource "aws_s3_bucket" "main" {
-  # Server access logs would need a third bucket. CloudTrail data events record
-  # object reads and writes on the state bucket and object reads on the audit
-  # bucket instead (infra/shared/cloudtrail.tf).
+  # Server access logs would need another bucket. CloudTrail data events record
+  # object reads and writes on the state bucket, object reads on the audit
+  # bucket and object writes on the artifacts bucket instead
+  # (infra/shared/cloudtrail.tf).
   # checkov:skip=CKV_AWS_18: CloudTrail data events record object access instead
   # checkov:skip=CKV_AWS_144: single-Region by design; versioning protects objects
   # checkov:skip=CKV2_AWS_62: no consumer for object event notifications
@@ -54,6 +55,15 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "main" {
   }
 }
 
+data "aws_partition" "current" {}
+
+# Built from the name rather than read from the bucket, so a new bucket's policy
+# is known at plan time and the boundary check (infra/checks/env-boundary.mjs)
+# can read it. A bucket ARN is the same in either namespace.
+locals {
+  bucket_arn = "arn:${data.aws_partition.current.partition}:s3:::${var.name}"
+}
+
 data "aws_iam_policy_document" "bucket" {
   source_policy_documents = var.policy_documents
 
@@ -61,7 +71,7 @@ data "aws_iam_policy_document" "bucket" {
     sid       = "DenyInsecureTransport"
     effect    = "Deny"
     actions   = ["s3:*"]
-    resources = [aws_s3_bucket.main.arn, "${aws_s3_bucket.main.arn}/*"]
+    resources = [local.bucket_arn, "${local.bucket_arn}/*"]
 
     principals {
       type        = "*"
@@ -81,7 +91,7 @@ data "aws_iam_policy_document" "bucket" {
     sid       = "DenyNonKmsEncryptionHeader"
     effect    = "Deny"
     actions   = ["s3:PutObject"]
-    resources = ["${aws_s3_bucket.main.arn}/*"]
+    resources = ["${local.bucket_arn}/*"]
 
     principals {
       type        = "*"
