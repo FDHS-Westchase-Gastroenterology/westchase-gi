@@ -390,6 +390,22 @@ test("a configured policy the plan cannot know fails", () => {
   assert.deepEqual(rules(result), ["unknown"]);
 });
 
+test("an attachment that gives a role the other environment's policy fails rule 1", () => {
+  const attachment = (role, policy) => ({
+    address: `module.github_deploy_${role}.aws_iam_role_policy_attachment.main["apply_edge"]`,
+    values: {
+      role: `wgi-github-deploy-${role}`,
+      policy_arn: `arn:aws:iam::111122223333:policy/wgi-terraform-apply-${policy}-edge`,
+    },
+  });
+  const check = (...resources) => checkPlan(plan({ resources }), { root: "shared" });
+  assert.deepEqual(rules(check(attachment("staging", "production"))), [1]);
+  assert.deepEqual(rules(check(attachment("production", "staging"))), [1]);
+  const own = check(attachment("staging", "staging"), attachment("production", "production"));
+  assert.deepEqual(own.findings, []);
+  assert.doesNotMatch(formatReport(check(attachment("staging", "production"))), /arn:|\d{12}/);
+});
+
 test("a policy attribute the configuration does not set is not read", () => {
   const stale = document(allow("s3:GetObject", "arn:aws:s3:::wgi-production-uploads/*"));
   const result = checkPlan(
