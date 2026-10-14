@@ -40,6 +40,13 @@ npm run dev:patients -- inspect  # read-only fixture plan for this checkout
 npm run dev:mission          # the E2E stack's server on :3100
 ```
 
+`npm run dev` and `npm run dev:mission` set `PORTAL_DEV_SIGN_IN=enabled` unless the shell
+already set it, so the shared preview username and password sign in as the seeded admin.
+Playwright sets the same default for its runner and the server it starts. Dev sign-in fails
+closed everywhere else: `src/lib/portal/dev-sign-in.ts` turns it on only for Vercel Preview and
+Development or that flag, and never when `APP_ENV` or `VERCEL_ENV` is `production`. Run
+`PORTAL_DEV_SIGN_IN=off npm run dev` to see the closed sign-in form.
+
 `npm run dev` and `npm run dev:mission` never seed. `DEV_SEED` is retained only as
 an inspection hint for older environments: neither `DEV_SEED=1` nor an unset value
 triggers seeding, and `DEV_SEED=0` does not disable an explicit regeneration command.

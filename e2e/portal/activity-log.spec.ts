@@ -6,9 +6,16 @@ import { crc32 } from "node:zlib";
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { runId, serviceDb } from "../harness/env";
-import { createSchedulingFixture, schedulingFixtureDate } from "../harness/scheduling";
+import {
+  createSchedulingFixture,
+  disposeSchedulingFixturesAfterEach,
+  schedulingFixtureDate,
+} from "../harness/scheduling";
 import { createStaffFixture, signIn } from "../harness/session";
+
+disposeSchedulingFixturesAfterEach();
 
 /* Issue #357: the Activity log at /admin/audit. The shared Preview database
    holds other people's work, so every list assertion is scoped to this run's
@@ -154,8 +161,7 @@ test("front desk reads the log without the Settings filter or the Technical reco
     await expect(page.getByTestId("audit-table")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Technical record" })).toHaveCount(0);
   } finally {
-    const audits = await db.from("audit_log").delete().eq("actor_email", desk.email);
-    expect(audits.error).toBeNull();
+    await deleteAuditRows({ actorEmail: desk.email });
     await desk.dispose();
   }
 });
@@ -184,8 +190,7 @@ test("a log that cannot be read says so and reads again on Try again", async ({ 
     await expect(error).toHaveCount(0);
     await expect(page.getByTestId("activity-feed")).not.toHaveAttribute("aria-busy", "true");
   } finally {
-    const audits = await db.from("audit_log").delete().eq("actor_email", desk.email);
-    expect(audits.error).toBeNull();
+    await deleteAuditRows({ actorEmail: desk.email });
     await desk.dispose();
   }
 });
@@ -277,8 +282,7 @@ test("a flyer downloads as its PDF and as one .zip of all three files", async ({
     await pdf.delete();
     await zip.delete();
   } finally {
-    const audits = await db.from("audit_log").delete().eq("actor_email", desk.email);
-    expect(audits.error).toBeNull();
+    await deleteAuditRows({ actorEmail: desk.email });
     await desk.dispose();
   }
 });

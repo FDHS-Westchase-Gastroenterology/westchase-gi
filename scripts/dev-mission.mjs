@@ -45,6 +45,8 @@ function main() {
   const next = join(repoRoot, "node_modules", ".bin", "next");
   const server = spawn(next, ["dev", "-p", String(HARNESS_PORT)], {
     cwd: repoRoot,
+    // Dev sign-in defaults to enabled here, as it does for `npm run dev`.
+    env: { ...process.env, PORTAL_DEV_SIGN_IN: process.env.PORTAL_DEV_SIGN_IN || "enabled" },
     stdio: "inherit",
   });
   for (const signal of FORWARDED_SIGNALS) process.on(signal, () => server.kill(signal));

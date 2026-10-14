@@ -1,7 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { z } from "zod";
 
 import { formatReceived } from "@/app/admin/(portal)/requests/format";
 import { initialsOf, practiceDate } from "@/app/admin/(portal)/schedule/week-calendar";
@@ -13,8 +12,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { asJsonObject, asJsonString, jsonSchema } from "@/lib/json";
-import type { Json } from "@/lib/json";
 import { readActivity } from "@/lib/portal/activity";
 import { activityHref, parseActivitySearchParams } from "@/lib/portal/activity-contracts";
 import type { ActivityPage, ActivityUrlFilters } from "@/lib/portal/activity-contracts";
@@ -23,15 +20,19 @@ import { PORTAL_RELEASE_BRIEFING } from "@/lib/portal/release-briefing-content";
 import { getPortalReleaseEngagement } from "@/lib/portal/release-engagement";
 import { parsePage } from "@/lib/portal/request-query";
 import { executeSchedulingOperation } from "@/lib/portal/scheduling/service";
-import { serviceClient } from "@/lib/portal/server";
+import { database, serviceClient } from "@/lib/portal/server";
 import { displayNameOrEmail, fetchStaffNameMap } from "@/lib/portal/staff-identity";
 
 import { ActivityLog } from "./activity-log";
 import type { ActivityProvider } from "./activity-log";
 import { technicalRecordHref } from "./activity-model";
-import type { AuditEntry } from "./audit-sentences";
 import { ReleaseEngagementSection } from "./release-engagement";
 import { TechnicalRecordPager, TechnicalRecordSummary } from "./technical-record-pager";
+import {
+  externalAuditSummary,
+  parseAuditEntries,
+  readExternalOutcomes,
+} from "./technical-record-rows";
 
 /* The Activity log (issue #357). Everyone on staff reads the log; the server
    decides which changes each role sees, and front desk never gets the
@@ -41,47 +42,12 @@ import { TechnicalRecordPager, TechnicalRecordSummary } from "./technical-record
 const PAGE_SIZE = 100;
 const AUDIT_COLUMNS = "id, actor_email, action, entity, entity_id, detail, at";
 
-const auditEntrySchema = z.object({
-  id: z.string(),
-  actor_email: z.string(),
-  action: z.string(),
-  entity: z.string(),
-  entity_id: z.string().nullable(),
-  detail: jsonSchema,
-  at: z.string(),
-}) satisfies z.ZodType<AuditEntry>;
-
-interface ExternalAuditSummary {
-  target: string;
-  outcome: string;
-}
-
-function externalAuditSummary(detail: Json): ExternalAuditSummary | null {
-  const value = asJsonObject(detail);
-  if (value === null) return null;
-  const target = asJsonString(value.target_login);
-  if (target === null) return null;
-  const outcomeValue = asJsonString(value.outcome);
-  const outcome =
-    outcomeValue === "succeeded" || outcomeValue === "failed" ? outcomeValue : "unconfirmed";
-  return { target, outcome };
-}
-
-function parseAuditEntries(rows: Json): AuditEntry[] {
-  const parsed = z.array(auditEntrySchema).safeParse(rows);
-  if (!parsed.success) {
-    throw new Error("Audit read failed: invalid");
-  }
-  return parsed.data;
-}
-
 async function readFirstPage(
-  db: SupabaseClient,
   actorId: string,
   filters: Readonly<ActivityUrlFilters>,
 ): Promise<ActivityPage> {
   try {
-    return await readActivity(db, actorId, filters, null);
+    return await readActivity(database(), actorId, filters, null);
   } catch {
     return { ok: false, code: "unavailable" };
   }
@@ -135,7 +101,7 @@ export default async function AdminAuditPage({
   const now = new Date();
   const db = serviceClient();
   const [firstPage, providers] = await Promise.all([
-    readFirstPage(db, session.id, filters),
+    readFirstPage(session.id, filters),
     readProviders(db, session.id),
   ]);
 
@@ -177,6 +143,7 @@ async function TechnicalRecord({
     throw new Error(`Audit read failed: ${error.code}`);
   }
   const entries = parseAuditEntries(rows);
+  const outcomes = await readExternalOutcomes(db, entries);
   const total = count ?? entries.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   if (page > totalPages) {
@@ -218,7 +185,7 @@ async function TechnicalRecord({
               </TableHeader>
               <TableBody>
                 {entries.map((entry) => {
-                  const external = externalAuditSummary(entry.detail);
+                  const external = externalAuditSummary(entry, outcomes);
                   return (
                     <TableRow key={entry.id}>
                       <TableCell className="whitespace-nowrap text-[var(--color-muted-ink)]">

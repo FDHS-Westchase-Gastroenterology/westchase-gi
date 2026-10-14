@@ -1,0 +1,62 @@
+# Build context for the Dockerfile. None of this reaches an image layer:
+# version control, secrets and local environment, Terraform state and
+# package-manager credentials, dependencies and build output (the image
+# installs and builds its own), machine-local directories, and review material
+# the build and the server never read. The build stage copies the rest of the
+# context, and CI exports that stage to its layer cache (mode=max), so a file
+# missing from this list is stored there even though the final image never
+# copies it.
+
+# Version control and CI
+.git
+.github
+.githooks
+
+# Secrets and local environment
+**/.env
+**/.env.*
+**/*.pem
+.vercel
+.mcp.json
+
+# Terraform state, plans and variables, and npm credentials
+infra
+**/*.tfstate*
+**/.terraform
+**/*.tfvars
+**/*.tfvars.json
+**/*.tfplan
+**/.npmrc
+
+# Dependencies and build output
+**/node_modules
+.next
+.next-*
+*.tsbuildinfo
+coverage
+test-results
+playwright-report
+
+# Machine-local paths (local-only-paths.json) and agent tooling
+.agents
+.claude
+.codex
+.cursor
+.design-sync
+.ds-sync
+.impeccable
+.logs
+.product-design-audit
+backend-memos
+docs
+ds-bundle
+plans
+screenshots
+MEMORY.md
+
+# Review material, database migrations and the image definition itself
+archive
+supabase
+ui-reference
+Dockerfile
+.dockerignore

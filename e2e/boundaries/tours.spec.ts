@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { test, expect } from "@playwright/test";
 
 import { expectDenied } from "../harness/assert";
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { publishableDb, runId, serviceDb } from "../harness/env";
 import { createStaffFixture } from "../harness/session";
 import type { StaffFixture } from "../harness/session";
@@ -108,13 +109,13 @@ test.describe("Staff tour records", () => {
       ]);
 
       // The records go with the account.
-      await db.from("audit_log").delete().eq("actor_email", admin.email);
+      await deleteAuditRows({ actorEmail: admin.email });
       await admin.dispose();
       fixtures.splice(fixtures.indexOf(admin), 1);
       expect(await records(admin.userId)).toEqual([]);
     } finally {
       for (const fixture of fixtures) {
-        await db.from("audit_log").delete().eq("actor_email", fixture.email);
+        await deleteAuditRows({ actorEmail: fixture.email });
         await fixture.dispose();
       }
     }
@@ -152,7 +153,7 @@ test.describe("Staff tour records", () => {
       const legacy = await db.from("staff_profiles").select("portal_tour_dismissed_at").limit(1);
       expect(legacy.error?.code).toBe("42703");
     } finally {
-      await db.from("audit_log").delete().eq("actor_email", desk.email);
+      await deleteAuditRows({ actorEmail: desk.email });
       await desk.dispose();
     }
   });

@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { intakeResponseSchema } from "../../src/lib/portal/contracts";
 import { greetingName } from "../../src/lib/portal/staff-language";
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { clientIps, runId, seedAdmin, serviceDb } from "../harness/env";
 import { signIn } from "../harness/session";
 
@@ -209,7 +210,7 @@ test.describe("portal home", () => {
       await expect(line.locator("[data-col='status']")).toHaveText("Call again");
     } finally {
       await db.from("requests").delete().eq("id", id);
-      await db.from("audit_log").delete().eq("entity_id", id);
+      await deleteAuditRows({ entityIds: [id] });
     }
   });
 
