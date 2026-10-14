@@ -1,0 +1,114 @@
+name: Container image
+
+# Builds the production image from the Dockerfile on every pull request, runs
+# it, and scans it. Nothing is pushed and the job receives no secrets. Pushing
+# to ECR on merge, tagged with the commit SHA, adds an OIDC role assumption, an
+# ECR login and `push: true` to the build step once that repository and role
+# exist.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: container-image-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  container-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      IMAGE: westchase-gi:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # The build arguments keep the Dockerfile's no-credentials placeholders.
+      - name: Build the image
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: ${{ env.IMAGE }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Runs the image the way ECS will: as its own user, configured only by
+      # environment. The placeholders point Supabase at an address with no
+      # server, so pages that need the database are not exercised here.
+      - name: Run the image and check its routes
+        run: |
+          set -euo pipefail
+          docker run --detach --name app --publish 3000:3000 \
+            --env NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 \
+            --env NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=ci-public-placeholder \
+            --env SUPABASE_SERVICE_ROLE_KEY=ci-server-placeholder \
+            --env PORTAL_BASE_URL=http://localhost:3000 \
+            "$IMAGE"
+          trap 'docker logs app; docker rm --force app > /dev/null' EXIT
+
+          base=http://127.0.0.1:3000
+          for _ in $(seq 1 30); do
+            curl --silent --fail --output /dev/null "$base/api/health" && break
+            sleep 1
+          done
+
+          # expect PATH STATUS [CONTENT-TYPE PREFIX] [ACCEPT]
+          expect() {
+            local result
+            result=$(curl --silent --output /dev/null --header "Accept: ${4:-*/*}" \
+              --write-out '%{http_code} %{content_type}' "$base$1")
+            echo "$1 -> $result"
+            [[ "${result%% *}" == "$2" ]] || { echo "::error::$1 returned ${result%% *}, expected $2"; exit 1; }
+            [[ -z "${3:-}" || "${result#* }" == "$3"* ]] || { echo "::error::$1 returned ${result#* }, expected $3"; exit 1; }
+          }
+
+          expect /api/health 200 application/json
+          [[ "$(curl --silent "$base/api/health")" == '{"status":"ok"}' ]]
+          expect / 307
+          expect /en 200 text/html
+          expect /es/contact 200 text/html
+          expect /admin 307
+          expect /admin/login 200 text/html
+          grep --quiet 'Staff sign in' <<< "$(curl --silent "$base/admin/login")"
+          expect /images/brand/header-logo-fdhs.webp 200 image/webp
+          home=$(curl --silent "$base/en")
+          stylesheets=$(grep --only-matching '/_next/static/[^"]*\.css' <<< "$home")
+          stylesheet=${stylesheets%%$'\n'*}
+          expect "$stylesheet" 200 text/css
+          # A resized image proves sharp loads inside the image.
+          expect '/_next/image?url=%2Fimages%2Fbrand%2Fheader-logo-fdhs.webp&w=384&q=75' 200 image/webp 'image/webp,*/*'
+
+          [[ "$(docker exec app id -u)" != "0" ]] || { echo "::error::the server runs as root"; exit 1; }
+          ! docker exec app sh -c 'command -v npm' || { echo "::error::npm is present in the image"; exit 1; }
+
+          for _ in $(seq 1 30); do
+            [[ "$(docker inspect --format '{{.State.Health.Status}}' app)" == healthy ]] && break
+            sleep 2
+          done
+          [[ "$(docker inspect --format '{{.State.Health.Status}}' app)" == healthy ]] || { echo "::error::HEALTHCHECK did not report healthy"; exit 1; }
+
+      # Fails on any CRITICAL or HIGH vulnerability that has a fixed version.
+      # The action is pinned to the commit of its immutable v0.36.0 release.
+      - name: Scan the image
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE }}
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
