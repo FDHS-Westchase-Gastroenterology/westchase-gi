@@ -33,8 +33,8 @@ const secretPatterns = [
     regex: /(?<![A-Za-z0-9_])sb_secret_[A-Za-z0-9_-]{20,}/,
   },
   {
-    // Current keys are re_, 8 characters, an underscore and 24 characters;
-    // the second alternative keeps the older unbroken form.
+    // Current keys are re_, 8 characters, an underscore and 24 characters.
+    // The second alternative keeps the older unbroken form.
     label: "Resend API-key prefix",
     regex:
       /(?<![A-Za-z0-9_])re_(?:[A-Za-z0-9]{8}_[A-Za-z0-9]{24}|[A-Za-z0-9]{16,})(?![A-Za-z0-9_])/,
