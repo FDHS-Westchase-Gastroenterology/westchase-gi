@@ -13,9 +13,20 @@ import { defineConfig, devices } from "@playwright/test";
 const publicOnly = process.env.PLAYWRIGHT_PUBLIC === "1";
 const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?.trim();
 
+/* Without these two limits a stuck click or goto waits until the whole test
+   times out. The report then names no step, and the test's own `finally`
+   cleanup is abandoned, so its rows leak into the next test. With a limit,
+   the stuck step throws with its locator and call log, and `finally` runs
+   before the next test starts. The limits are generous on purpose. The
+   slowest whole test on CI is 27s and the first cold test is 19s. A click
+   that starts a navigation waits for it within the click's limit, so 30s
+   also covers a cold route reached by a click. 60s matches the suite's own
+   longest waitForURL. A `timeout` passed to a call still wins. */
 function playwrightUse() {
   const use = {
     baseURL: "http://localhost:3100",
+    actionTimeout: 30_000,
+    navigationTimeout: 60_000,
     screenshot: "off" as const,
     trace: "off" as const,
     video: "off" as const,

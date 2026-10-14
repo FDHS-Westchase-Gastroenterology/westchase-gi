@@ -5,6 +5,8 @@ import type { Page } from "@playwright/test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { StaffRole } from "../../src/lib/portal/contracts";
+import { removedRows } from "./cleanup";
+import type { RemovedRows } from "./cleanup";
 import { seedAdmin, serviceDb } from "./env";
 import type { Credentials } from "./env";
 
@@ -68,6 +70,11 @@ export interface StaffFixture extends Credentials {
   dispose(): Promise<void>;
 }
 
+/* The address createStaffFixture mints: the caller's prefix, a dash, eight hex
+   digits, then the reserved example.test domain. Global setup sweeps stale
+   accounts by this pattern, so the factory refuses any address it misses. */
+export const staffFixtureEmail = /^[a-z0-9-]+-[0-9a-f]{8}@example\.test$/u;
+
 /**
  * An onboarded staff account that exists only for one spec. The address is
  * on the reserved .test TLD so global setup's stale-fixture sweep can never
@@ -78,6 +85,11 @@ export async function createStaffFixture(
   options: Readonly<{ prefix: string; displayName: string; role?: StaffRole }>,
 ): Promise<StaffFixture> {
   const email = `${options.prefix}-${randomUUID().slice(0, 8)}@example.test`;
+  if (!staffFixtureEmail.test(email)) {
+    throw new Error(
+      `Staff fixture prefix must be lowercase letters, digits and dashes: ${options.prefix}`,
+    );
+  }
   const password = `Fx-${randomUUID()}-aA1!`;
   const created = await db.auth.admin.createUser({ email, password, email_confirm: true });
   expect(created.error).toBeNull();
@@ -102,8 +114,29 @@ export async function createStaffFixture(
     password,
     userId,
     async dispose() {
-      await db.from("staff_profiles").delete().eq("user_id", userId);
-      await db.auth.admin.deleteUser(userId);
+      await removeStaffAccount(db, userId);
     },
   };
+}
+
+/**
+ * Removes a staff account's profile, then its Auth user. An Auth user that is
+ * already gone counts as removed, so a second call, or a sweep retrying an
+ * interrupted cleanup, still succeeds.
+ */
+export async function removeStaffAccount(
+  db: SupabaseClient,
+  userId: string,
+): Promise<readonly RemovedRows[]> {
+  const profiles = removedRows(
+    "staff_profiles",
+    await db.from("staff_profiles").delete({ count: "exact" }).eq("user_id", userId),
+  );
+  const removed = await db.auth.admin.deleteUser(userId);
+  if (removed.error !== null && removed.error.status !== 404) {
+    throw new Error(
+      `auth.users cleanup failed: ${removed.error.code ?? String(removed.error.status)}`,
+    );
+  }
+  return [profiles, { table: "auth.users", count: removed.error === null ? 1 : 0 }];
 }

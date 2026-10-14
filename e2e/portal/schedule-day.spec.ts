@@ -5,8 +5,14 @@ import type { Page } from "@playwright/test";
 
 import { resolveAppointmentStart } from "../../src/lib/portal/scheduling/time";
 import { runId, serviceDb } from "../harness/env";
-import { createSchedulingFixture, schedulingFixtureDate } from "../harness/scheduling";
+import {
+  createSchedulingFixture,
+  disposeSchedulingFixturesAfterEach,
+  schedulingFixtureDate,
+} from "../harness/scheduling";
 import { signIn } from "../harness/session";
+
+disposeSchedulingFixturesAfterEach();
 
 /* Issue #351: the Schedule's day view. Every working provider is a lane;
    the lanes, the arrows and the shortcuts move through the day; Day, Week
@@ -139,10 +145,18 @@ test("Schedule day lays out the providers, moves by arrows and shortcuts, and re
     /* Month: a day's preview opens the Day view in place. */
     await page.goto(`/admin/schedule?month=${date.slice(0, 7)}`);
     await markDocument(page);
-    await page
-      .getByRole("gridcell", { name: new RegExp(`^${escaped(monthCellHeading(date))}\\b`, "u") })
-      .hover();
-    await page.getByRole("link", { name: /^Open day/u }).click();
+    const day = page.getByRole("gridcell", {
+      name: new RegExp(`^${escaped(monthCellHeading(date))}\\b`, "u"),
+    });
+    const openDay = page.getByRole("link", { name: /^Open day/u });
+    /* A pointer resting on a day opens its preview; a rest that lands before
+       the grid hydrates is lost, so rest on it again until the preview is up. */
+    await expect(async () => {
+      await page.mouse.move(0, 0);
+      await day.hover();
+      await expect(openDay).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 20_000 });
+    await openDay.click();
     await expect(page).toHaveURL(new RegExp(`view=day&date=${date}`, "u"));
     const title = page.getByRole("heading", { name: dayTitle(date), exact: true });
     await expect(title).toBeVisible();

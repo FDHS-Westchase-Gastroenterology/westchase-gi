@@ -9,10 +9,13 @@ import { serviceDb } from "../harness/env";
 import { createHandoffFixture, readHandoffRequest } from "../harness/handoff";
 import {
   createSchedulingFixture,
+  disposeSchedulingFixturesAfterEach,
   saveSettings,
   schedulingFixtureDate,
   setProviderTypes,
 } from "../harness/scheduling";
+
+disposeSchedulingFixturesAfterEach();
 
 /* The Day view's appointment actions (issue #354): where a dragged card may land, the move
    itself, and a cancel that says what becomes of the request. */
