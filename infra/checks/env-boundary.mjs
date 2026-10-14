@@ -16,9 +16,26 @@
  *      master secret) that nothing in the plan's state or planned values holds.
  *
  * It also refuses ecr:BatchDeleteImage in any Allow (§11): image deletion
- * belongs to the repository's lifecycle policy. An attachment that gives an
- * environment's role a managed policy named for the other environment fails
- * rule 1, because the policy's own statements pass for the environment they name.
+ * belongs to the repository's lifecycle policy. And it fails rule 4 when an
+ * Allow of an action that widens a role (BOUNDED_ROLE_ACTIONS) lacks
+ * StringEquals iam:PermissionsBoundary naming exactly the environment's own
+ * boundary, wgi-<env>-boundary.
+ *
+ * Attachments (policy_arn, policy_arns, managed_policy_arns): each attached
+ * policy is looked up in the plan, by ARN or by path and name in the plan's
+ * own account. An AWS-managed policy, or one the plan does not hold, fails
+ * ("attachment") unless ALLOWED_POLICY_ARNS lists it. An environment's role
+ * that gets a policy named for or belonging to the other environment fails
+ * rule 1. A shared policy attached to an environment's role is checked again,
+ * rules 1 to 4 and ecr:BatchDeleteImage, under that role's environment, so a
+ * shared policy cannot carry one environment's grants to the other's roles.
+ * There, Resource "*" also passes for the METADATA_READS that
+ * wgi-terraform-read grants.
+ *
+ * Trust ("trust"): in an environment root a role may trust only AWS services,
+ * the plan's own account and the GitHub OIDC provider in it. No condition key
+ * on iam:UpdateAssumeRolePolicy reads the trust policy's principals, so this
+ * is the check on the trust an environment's deploy role writes.
  *
  * Usage: node infra/checks/env-boundary.mjs --root <root> plan.json
  *
@@ -138,6 +155,69 @@ export const REQUEST_TAG_STAR_ACTIONS = {
 };
 
 const words = (text) => text.trim().split(/\s+/);
+
+/**
+ * Role actions that widen what a role may do or who may use it. Each one's row
+ * in the IAM Service Authorization Reference
+ * (https://docs.aws.amazon.com/service-authorization/latest/reference/list_awsidentityandaccessmanagementiam.html,
+ * read 2026-10-13) lists iam:PermissionsBoundary, so an Allow of one passes
+ * only with StringEquals iam:PermissionsBoundary holding exactly
+ * arn:<partition>:iam::<plan account>:policy/wgi-<env>-boundary (rule 4).
+ */
+export const BOUNDED_ROLE_ACTIONS = [
+  "iam:AttachRolePolicy",
+  "iam:CreateRole",
+  "iam:PutRolePermissionsBoundary",
+  "iam:PutRolePolicy",
+  "iam:UpdateAssumeRolePolicy",
+];
+
+/**
+ * The reads wgi-terraform-read grants on Resource "*" (shared/github_oidc.tf).
+ * The plan and deploy roles of both environments carry that policy, so a
+ * staging role reads production metadata through it. That is accepted because
+ * none of these reads object, log, secret or finding contents, and S3 object
+ * keys never carry patient data. A shared policy attached to an environment's
+ * role passes Resource "*" when every action is written as one of these or is
+ * a single action one of them covers. A change to wgi-terraform-read changes
+ * this list in the same pull request.
+ */
+export const METADATA_READS = words(`
+  access-analyzer:GetAnalyzer access-analyzer:ListAnalyzers access-analyzer:ListTagsForResource
+  budgets:ListTagsForResource budgets:ViewBudget
+  cloudtrail:DescribeTrails cloudtrail:GetEventSelectors cloudtrail:GetInsightSelectors
+  cloudtrail:GetTrail cloudtrail:GetTrailStatus cloudtrail:ListTags
+  cloudwatch:DescribeAlarms cloudwatch:ListTagsForResource
+  cognito-idp:DescribeUserPool cognito-idp:ListUserPools
+  config:DescribeConfigurationRecorderStatus config:DescribeConfigurationRecorders
+  config:DescribeDeliveryChannels config:ListTagsForResource
+  dynamodb:DescribeContinuousBackups dynamodb:DescribeTable dynamodb:DescribeTimeToLive
+  dynamodb:ListTables dynamodb:ListTagsOfResource
+  ec2:Describe* ec2:GetEbsDefaultKmsKeyId ec2:GetEbsEncryptionByDefault
+  ecr:DescribeRepositories ecr:GetLifecyclePolicy ecr:GetRepositoryPolicy ecr:ListTagsForResource
+  events:DescribeRule events:ListTagsForResource events:ListTargetsByRule
+  guardduty:GetDetector guardduty:ListDetectors guardduty:ListTagsForResource
+  iam:Get* iam:List*
+  kms:DescribeKey kms:GetKeyPolicy kms:GetKeyRotationStatus kms:ListAliases kms:ListResourceTags
+  logs:DescribeLogGroups logs:DescribeMetricFilters logs:DescribeResourcePolicies
+  logs:ListTagsForResource logs:ListTagsLogGroup
+  organizations:DescribeOrganization
+  rds:DescribeDBInstances rds:ListTagsForResource
+  route53:GetChange route53:GetHostedZone route53:ListResourceRecordSets route53:ListTagsForResource
+  s3:GetAccelerateConfiguration s3:GetAccountPublicAccessBlock s3:GetBucket*
+  s3:GetEncryptionConfiguration s3:GetLifecycleConfiguration s3:GetReplicationConfiguration
+  s3:ListAllMyBuckets s3:ListBucket
+  sns:GetSubscriptionAttributes sns:GetTopicAttributes sns:ListSubscriptionsByTopic
+  sns:ListTagsForResource
+`);
+
+/**
+ * Policies an attachment may name although the plan holds no document for
+ * them, each ARN with its reason. AWS-managed policies are written with the
+ * account "aws" (arn:aws:iam::aws:policy/...), so no entry needs an account
+ * ID. Empty: every policy the roots attach is one the plan writes.
+ */
+export const ALLOWED_POLICY_ARNS = {};
 
 /**
  * The tag carve-out (§5.1): resource types an apply role creates before it can
@@ -261,6 +341,16 @@ const GUARDDUTY_AGENT = /^arn:[^:]+:ecr:[^:]*:\*:repository\/aws-guardduty-agent
 
 const FORBIDDEN_ACTIONS = ["ecr:BatchDeleteImage"];
 
+// A managed policy's ARN: account, path, name.
+const POLICY_ARN = /^arn:[^:]+:iam::([^:]*):policy(\/(?:[^/]+\/)*)([^/]+)$/;
+
+// An IAM principal or provider ARN: account, resource.
+const IAM_ARN = /^arn:[^:]+:iam::([^:]*):(.+)$/;
+
+const SERVICE_PRINCIPAL = /^[a-z0-9-]+(?:\.[a-z0-9-]+)*\.amazonaws\.com$/;
+
+const GITHUB_OIDC_PROVIDER = "oidc-provider/token.actions.githubusercontent.com";
+
 const asList = (value) => (value === undefined ? [] : Array.isArray(value) ? value : [value]);
 const lower = (values) => new Set(values.map((value) => value.toLowerCase()));
 
@@ -271,6 +361,14 @@ function globMatches(pattern, value) {
     .replace(/\?/g, ".");
   return new RegExp(`^${source}$`, "i").test(value);
 }
+
+/** An action written as a metadata read, or a single action one of them covers. */
+const isMetadataRead = (action) =>
+  METADATA_READS.some(
+    (read) =>
+      read.toLowerCase() === action.toLowerCase() ||
+      (!/[*?]/.test(action) && globMatches(read, action)),
+  );
 
 function* moduleResources(tree) {
   if (!tree) return;
@@ -289,11 +387,15 @@ function environmentsIn(texts) {
   return found;
 }
 
-/** The environment a resource belongs to: staging, production, shared or conflict. */
+/**
+ * The environment a resource belongs to, from its address, name, role or roles
+ * and env tag: staging, production, shared or conflict.
+ */
 function attribute(resource) {
   const values = resource.values ?? {};
   const tags = [values.tags, values.tags_all].flatMap((set) => [set?.env, set?.environment]);
-  const found = environmentsIn([resource.address, values.name, values.role, ...tags]);
+  const roles = [values.role, values.role_name, ...asList(values.roles)];
+  const found = environmentsIn([resource.address, values.name, ...roles, ...tags]);
   if (found.size > 1) return "conflict";
   return found.size === 1 ? [...found][0] : "shared";
 }
@@ -368,6 +470,84 @@ function traceIdentifiers(plan, rootEnvironment) {
     }
   }
   return owners;
+}
+
+/** The account data.aws_caller_identity reads, or null unless exactly one. */
+function planAccount(plan) {
+  const found = new Set();
+  for (const tree of [plan.prior_state?.values?.root_module, plan.planned_values?.root_module]) {
+    for (const resource of moduleResources(tree)) {
+      const account = resource.type === "aws_caller_identity" && resource.values?.account_id;
+      if (account) found.add(String(account));
+    }
+  }
+  return found.size === 1 ? [...found][0] : null;
+}
+
+/** The managed policies the plan writes, indexed by ARN and by path and name. */
+function planPolicies(plan, rootEnvironment) {
+  const byArn = new Map();
+  const byName = new Map();
+  for (const resource of moduleResources(plan.planned_values?.root_module)) {
+    if (resource.mode !== "managed" || resource.type !== "aws_iam_policy") continue;
+    const values = resource.values ?? {};
+    const policy = {
+      address: resource.address,
+      document: values.policy,
+      environment: rootEnvironment ?? attribute(resource),
+    };
+    if (values.arn) byArn.set(String(values.arn), policy);
+    if (values.name) byName.set(`${values.path ?? "/"}${values.name}`, policy);
+  }
+  return { byArn, byName };
+}
+
+/**
+ * Finds the managed policy the plan writes for an attached ARN: by the ARN the
+ * plan knows, or, while the policy is still to be created, by path and name in
+ * the plan's own account. Returns the policy, "aws" for an AWS-managed policy,
+ * or null.
+ */
+function resolvePolicy(policies, account, value) {
+  const match = POLICY_ARN.exec(value);
+  if (!match) return null;
+  if (match[1] === "aws") return "aws";
+  if (policies.byArn.has(value)) return policies.byArn.get(value);
+  return account !== null && match[1] === account
+    ? (policies.byName.get(`${match[2]}${match[3]}`) ?? null)
+    : null;
+}
+
+/** Whether a value is this plan's ARN for the environment's own boundary. */
+function isOwnBoundary(value, environment, account) {
+  const match = POLICY_ARN.exec(value);
+  return (
+    match !== null &&
+    account !== null &&
+    match[1] === account &&
+    match[2] === "/" &&
+    match[3] === `wgi-${environment}-boundary`
+  );
+}
+
+/** Principals of a trust statement outside this account, its GitHub OIDC provider and AWS. */
+function trustProblems(statement, account) {
+  if ("NotPrincipal" in statement) return ["NotPrincipal"];
+  const principal = statement.Principal;
+  if (!(principal instanceof Object) || Array.isArray(principal)) return ["Principal"];
+  const problems = [];
+  for (const [type, values] of Object.entries(principal)) {
+    for (const [index, value] of asList(values).entries()) {
+      const arnParts = IAM_ARN.exec(String(value));
+      const inAccount = account !== null && arnParts !== null && arnParts[1] === account;
+      const allowed =
+        (type === "Service" && SERVICE_PRINCIPAL.test(String(value))) ||
+        (type === "AWS" && inAccount && /^(?:root|role\/.+)$/.test(arnParts[2])) ||
+        (type === "Federated" && inAccount && arnParts[2] === GITHUB_OIDC_PROVIDER);
+      if (!allowed) problems.push(`Principal ${type} ${index + 1}`);
+    }
+  }
+  return problems;
 }
 
 function hasTrue(value) {
@@ -513,6 +693,20 @@ function checkStatement(context, statement, label) {
     if (field in statement) finding(label, 2, `an Allow with ${field} can reach any environment`);
   }
 
+  const bounded = BOUNDED_ROLE_ACTIONS.filter((name) =>
+    actions.some((action) => globMatches(action, name)),
+  );
+  if (context.grants && bounded.length > 0) {
+    const boundaries = conditionValues(statement, "StringEquals", "iam:PermissionsBoundary");
+    if (boundaries?.length !== 1 || !isOwnBoundary(boundaries[0], environment, context.account)) {
+      finding(
+        label,
+        4,
+        `${bounded.join(", ")} needs StringEquals iam:PermissionsBoundary = wgi-${environment}-boundary in this account`,
+      );
+    }
+  }
+
   /* Everything the statement names: resources, principals and the values of
      conditions that grant rather than exclude. A principal is "*" or a map of
      principal types to one value or a list. */
@@ -553,6 +747,8 @@ function checkStatement(context, statement, label) {
       const creates = actions.filter((action) => action in REQUEST_TAG_STAR_ACTIONS);
       if (principals.length > 0) {
         exception(label, "Resource * in a resource policy is the resource itself");
+      } else if (context.metadataReads && actions.length > 0 && actions.every(isMetadataRead)) {
+        exception(label, "metadata reads a shared policy gives this environment's role");
       } else if (
         actions.length === 0 ||
         !actions.every((action) => action in ONLY_STAR_ACTIONS || creates.includes(action))
@@ -596,13 +792,81 @@ function checkStatement(context, statement, label) {
 /**
  * Checks a plan. Returns findings, exceptions, and the policies checked and
  * skipped, each by address and statement; no attribute values.
+ * `allowedPolicyArns` replaces ALLOWED_POLICY_ARNS.
  */
-export function checkPlan(plan, { root }) {
+export function checkPlan(plan, { root, allowedPolicyArns = ALLOWED_POLICY_ARNS }) {
   if (!(root in ROOTS)) throw new Error(`unknown root: ${root}`);
   const rootEnvironment = ROOTS[root];
   const owners = traceIdentifiers(plan, rootEnvironment);
+  const account = planAccount(plan);
+  const policies = planPolicies(plan, rootEnvironment);
   const changes = new Map((plan.resource_changes ?? []).map((change) => [change.address, change]));
   const result = { root, findings: [], exceptions: [], checked: [], skipped: [] };
+
+  /** Checks a document's Allow statements for an environment, or lists it as skipped. */
+  const checkDocument = (where, document, environment, options) => {
+    (environment ? result.checked : result.skipped).push(where);
+    const context = {
+      environment,
+      owners,
+      account,
+      grants: true,
+      metadataReads: false,
+      ...options,
+      finding: (label, rule, reason) =>
+        result.findings.push({ address: where, label, rule, reason }),
+      exception: (label, reason) => result.exceptions.push({ address: where, label, reason }),
+    };
+    for (const [index, statement] of asList(document.Statement).entries()) {
+      if (statement.Effect !== "Allow") continue;
+      checkStatement(context, statement, statement.Sid || `#${index + 1}`);
+    }
+  };
+
+  /** Resolves one attached policy and checks it for the role's environment. */
+  const checkAttachment = (address, name, value, environment) => {
+    const finding = (rule, reason) => result.findings.push({ address, rule, reason });
+    const named = environment !== null && OTHER_ENVIRONMENT_WORD[environment].test(value);
+    if (named) finding(1, `attaches a policy named for another environment (${name})`);
+
+    const policy = resolvePolicy(policies, account, value);
+    if (policy === null || policy === "aws") {
+      if (Object.hasOwn(allowedPolicyArns, value)) {
+        const reason = `allow-listed policy: ${allowedPolicyArns[value]}`;
+        result.exceptions.push({ address, label: name, reason });
+      } else if (policy === "aws") {
+        finding("attachment", `attaches an AWS-managed policy (${name})`);
+      } else {
+        finding("attachment", `attaches a policy this plan does not write (${name})`);
+      }
+      return;
+    }
+    if (environment === null || policy.environment === environment) return;
+    if (policy.environment !== "shared") {
+      if (!named) finding(1, `attaches a policy that belongs to another environment (${name})`);
+      return;
+    }
+    for (const [path, document] of policyDocuments(policy.document, "policy")) {
+      checkDocument(`${address} -> ${policy.address} ${path}`, document, environment, {
+        metadataReads: true,
+      });
+    }
+  };
+
+  /** In an environment root, a trust names only this account, its GitHub provider or AWS. */
+  const checkTrust = (where, document) => {
+    for (const [index, statement] of asList(document.Statement).entries()) {
+      if (statement.Effect !== "Allow") continue;
+      for (const problem of trustProblems(statement, account)) {
+        result.findings.push({
+          address: where,
+          label: statement.Sid || `#${index + 1}`,
+          rule: "trust",
+          reason: `trusts a principal outside this account, its GitHub OIDC provider and AWS services (${problem})`,
+        });
+      }
+    }
+  };
 
   for (const resource of moduleResources(plan.planned_values?.root_module)) {
     if (resource.mode !== "managed") continue;
@@ -633,17 +897,10 @@ export function checkPlan(plan, { root }) {
       }
     }
 
-    if (environment) {
-      for (const name of ["policy_arn", "policy_arns", "managed_policy_arns"]) {
-        if (!isConfigured(name)) continue;
-        for (const value of asList(resource.values?.[name])) {
-          if (!OTHER_ENVIRONMENT_WORD[environment].test(String(value))) continue;
-          result.findings.push({
-            address: resource.address,
-            rule: 1,
-            reason: `attaches a policy named for another environment (${name})`,
-          });
-        }
+    for (const name of ["policy_arn", "policy_arns", "managed_policy_arns"]) {
+      if (!isConfigured(name)) continue;
+      for (const value of asList(resource.values?.[name])) {
+        if (value) checkAttachment(resource.address, name, String(value), environment);
       }
     }
 
@@ -651,19 +908,10 @@ export function checkPlan(plan, { root }) {
       if (!isConfigured(name)) continue;
       for (const [path, document] of policyDocuments(value, name)) {
         const where = `${resource.address} ${path}`;
-        (environment ? result.checked : result.skipped).push(where);
-        const context = {
-          environment,
-          owners,
+        checkDocument(where, document, environment, {
           grants: resource.type !== "aws_vpc_endpoint",
-          finding: (label, rule, reason) =>
-            result.findings.push({ address: where, label, rule, reason }),
-          exception: (label, reason) => result.exceptions.push({ address: where, label, reason }),
-        };
-        for (const [index, statement] of asList(document.Statement).entries()) {
-          if (statement.Effect !== "Allow") continue;
-          checkStatement(context, statement, statement.Sid || `#${index + 1}`);
-        }
+        });
+        if (name === "assume_role_policy" && rootEnvironment) checkTrust(where, document);
       }
     }
   }

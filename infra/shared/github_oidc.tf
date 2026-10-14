@@ -421,16 +421,25 @@ data "aws_iam_policy_document" "deploy" {
     }
   }
 
-  # iam:PermissionsBoundary is evaluated only on these actions, so a role
-  # without the boundary can be neither created nor given a policy. Roles get
-  # inline policies only; no managed policy is created or attached.
+  # The IAM Service Authorization Reference lists iam:PermissionsBoundary for
+  # each of these actions (list_awsidentityandaccessmanagementiam.html, read
+  # 2026-10-13), so the role can create, change, re-trust or delete only a
+  # wgi-<env>-* role that carries this environment's boundary. Roles get inline
+  # policies only; no managed policy is created or attached. No condition key
+  # reads the principals of a trust policy, so whom a role trusts is checked at
+  # plan time: in an environment root, infra/checks/env-boundary.mjs refuses a
+  # trust outside this account, its GitHub OIDC provider and AWS services.
   statement {
     sid = "CreateBoundedRoles"
     actions = [
       "iam:CreateRole",
+      "iam:DeleteRole",
       "iam:DeleteRolePolicy",
       "iam:PutRolePermissionsBoundary",
       "iam:PutRolePolicy",
+      "iam:UpdateAssumeRolePolicy",
+      "iam:UpdateRole",
+      "iam:UpdateRoleDescription",
     ]
     resources = ["arn:${local.partition}:iam::${local.account_id}:role/wgi-${each.key}-*"]
 
@@ -441,17 +450,11 @@ data "aws_iam_policy_document" "deploy" {
     }
   }
 
-  # These actions take no boundary condition, so the name alone limits them.
+  # The reference lists no iam:PermissionsBoundary for these two actions, so
+  # the name alone limits them.
   statement {
-    sid = "ManageEnvironmentRoles"
-    actions = [
-      "iam:DeleteRole",
-      "iam:TagRole",
-      "iam:UntagRole",
-      "iam:UpdateAssumeRolePolicy",
-      "iam:UpdateRole",
-      "iam:UpdateRoleDescription",
-    ]
+    sid       = "ManageEnvironmentRoles"
+    actions   = ["iam:TagRole", "iam:UntagRole"]
     resources = ["arn:${local.partition}:iam::${local.account_id}:role/wgi-${each.key}-*"]
   }
 

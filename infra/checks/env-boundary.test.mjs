@@ -10,13 +10,13 @@
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { checkPlan, formatReport } from "./env-boundary.mjs";
+import { checkPlan, formatReport, METADATA_READS } from "./env-boundary.mjs";
 
 const ACCOUNT = "0".repeat(12);
 const KEY = "1b2c3d4e-0000-4000-8000-00000000000a";
@@ -79,6 +79,13 @@ const priorKey = (address, id, values = {}) => ({
 });
 
 const rules = (result) => result.findings.map(({ rule }) => rule);
+
+const callerIdentity = () => ({
+  address: "data.aws_caller_identity.current",
+  mode: "data",
+  type: "aws_caller_identity",
+  values: { account_id: ACCOUNT },
+});
 
 test("a staging policy that names a production resource fails rule 1", () => {
   const result = checkPlan(
@@ -395,15 +402,275 @@ test("an attachment that gives a role the other environment's policy fails rule 
     address: `module.github_deploy_${role}.aws_iam_role_policy_attachment.main["apply_edge"]`,
     values: {
       role: `wgi-github-deploy-${role}`,
-      policy_arn: `arn:aws:iam::111122223333:policy/wgi-terraform-apply-${policy}-edge`,
+      policy_arn: `arn:aws:iam::${ACCOUNT}:policy/wgi-terraform-apply-${policy}-edge`,
     },
   });
-  const check = (...resources) => checkPlan(plan({ resources }), { root: "shared" });
+  const check = (...resources) =>
+    checkPlan(
+      plan({
+        resources: [
+          ...["staging", "production"].map((environment) => ({
+            address: `aws_iam_policy.apply["${environment}-edge"]`,
+            values: {
+              name: `wgi-terraform-apply-${environment}-edge`,
+              path: "/",
+              policy: document(
+                allow("logs:PutRetentionPolicy", arn("logs", `log-group:/wgi/${environment}/*`)),
+              ),
+            },
+          })),
+          ...resources,
+        ],
+        prior: [callerIdentity()],
+      }),
+      { root: "shared" },
+    );
   assert.deepEqual(rules(check(attachment("staging", "production"))), [1]);
   assert.deepEqual(rules(check(attachment("production", "staging"))), [1]);
   const own = check(attachment("staging", "staging"), attachment("production", "production"));
   assert.deepEqual(own.findings, []);
   assert.doesNotMatch(formatReport(check(attachment("staging", "production"))), /arn:|\d{12}/);
+});
+
+/** The shared read policy, its role attachments and the plan's account. */
+function sharedPolicyPlan(statements, roles, { identity = true } = {}) {
+  return plan({
+    resources: [
+      {
+        address: "aws_iam_policy.terraform_read",
+        values: { name: "wgi-terraform-read", path: "/", policy: document(...statements) },
+      },
+      ...roles.map((role) => ({
+        address: `module.github_plan_${role}.aws_iam_role_policy_attachment.managed["terraform_read"]`,
+        values: {
+          role: `wgi-github-plan-${role}`,
+          policy_arn: `arn:aws:iam::${ACCOUNT}:policy/wgi-terraform-read`,
+        },
+      })),
+    ],
+    prior: identity ? [callerIdentity()] : [],
+  });
+}
+
+const PRODUCTION_STATE = "arn:aws:s3:::westchase-gi-tfstate-use2/production/*";
+
+test("a shared policy is checked again under each role it is attached to", () => {
+  const reads = [
+    allow(METADATA_READS, "*", { Sid: "RefreshSharedRoot" }),
+    allow("s3:GetObject", PRODUCTION_STATE, { Sid: "ReadProductionState" }),
+  ];
+  const staging = checkPlan(sharedPolicyPlan(reads, ["staging"]), { root: "shared" });
+  assert.deepEqual(rules(staging), [1, 2]);
+  for (const { address, label } of staging.findings) {
+    assert.match(address, /plan_staging.* -> aws_iam_policy\.terraform_read/);
+    assert.equal(label, "ReadProductionState");
+  }
+  assert.ok(staging.exceptions.some(({ reason }) => /metadata reads/.test(reason)));
+
+  const production = checkPlan(sharedPolicyPlan(reads, ["production"]), { root: "shared" });
+  assert.deepEqual(production.findings, []);
+
+  // Unattached, the same policy is shared and skipped.
+  const unattached = checkPlan(sharedPolicyPlan(reads, []), { root: "shared" });
+  assert.deepEqual(unattached.findings, []);
+  assert.equal(unattached.skipped.length, 1);
+});
+
+test("a shared policy's Resource * passes only for the metadata reads", () => {
+  const check = (Action) =>
+    rules(checkPlan(sharedPolicyPlan([allow(Action, "*")], ["staging"]), { root: "shared" }));
+  assert.deepEqual(check(METADATA_READS), []);
+  assert.deepEqual(check(["iam:GetRole", "s3:GetBucketPolicy"]), []);
+  assert.deepEqual(check(["kms:DescribeKey", "s3:GetObject"]), [2]);
+  assert.deepEqual(check("s3:Get*"), [2]);
+  assert.deepEqual(check("logs:GetLogEvents"), [2]);
+});
+
+test("ecr:BatchDeleteImage in a shared policy fails at the policy and at each attachment", () => {
+  const result = checkPlan(
+    sharedPolicyPlan([allow("ecr:*", arn("ecr", "repository/wgi-app"))], ["staging", "production"]),
+    { root: "shared" },
+  );
+  const forbidden = result.findings.filter(({ rule }) => rule === "forbidden");
+  assert.equal(forbidden.length, 3);
+  assert.ok(forbidden.some(({ address }) => address === "aws_iam_policy.terraform_read policy"));
+  assert.ok(forbidden.some(({ address }) => /plan_staging.* -> /.test(address)));
+  assert.ok(forbidden.some(({ address }) => /plan_production.* -> /.test(address)));
+});
+
+test("an attached policy the plan does not write fails unless allow-listed", () => {
+  const adminAccess = "arn:aws:iam::aws:policy/AdministratorAccess";
+  const attach = (policy_arn, { identity = true } = {}) =>
+    plan({
+      resources: [
+        {
+          address: "aws_iam_policy.terraform_read",
+          values: {
+            name: "wgi-terraform-read",
+            path: "/",
+            policy: document(allow("iam:GetRole", "*")),
+          },
+        },
+        {
+          address: 'module.github_deploy_staging.aws_iam_role_policy_attachment.managed["x"]',
+          values: { role: "wgi-github-deploy-staging", policy_arn },
+        },
+      ],
+      prior: identity ? [callerIdentity()] : [],
+    });
+  const check = (policy_arn, options, extra = {}) =>
+    checkPlan(attach(policy_arn, options), { root: "shared", ...extra });
+
+  const aws = check(adminAccess);
+  assert.deepEqual(rules(aws), ["attachment"]);
+  assert.match(aws.findings[0].reason, /AWS-managed/);
+  const listed = check(adminAccess, {}, { allowedPolicyArns: { [adminAccess]: "test only" } });
+  assert.deepEqual(listed.findings, []);
+  assert.ok(listed.exceptions.some(({ reason }) => reason === "allow-listed policy: test only"));
+
+  assert.deepEqual(rules(check(`arn:aws:iam::${ACCOUNT}:policy/wgi-staging-missing`)), [
+    "attachment",
+  ]);
+  const elsewhere = `arn:aws:iam::${"1".repeat(12)}:policy/wgi-terraform-read`;
+  assert.deepEqual(rules(check(elsewhere)), ["attachment"]);
+  const own = `arn:aws:iam::${ACCOUNT}:policy/wgi-terraform-read`;
+  assert.deepEqual(rules(check(own)), []);
+  assert.deepEqual(rules(check(own, { identity: false })), ["attachment"]);
+  assert.deepEqual(rules(check(`arn:aws:iam::${ACCOUNT}:policy/team/wgi-terraform-read`)), [
+    "attachment",
+  ]);
+  assert.doesNotMatch(formatReport(aws), /arn:|\d{12}/);
+});
+
+test("an attached policy the plan knows by ARN resolves without the caller identity", () => {
+  const policyArn = `arn:aws:iam::${ACCOUNT}:policy/wgi-terraform-read`;
+  const result = checkPlan(
+    plan({
+      resources: [
+        {
+          address: "aws_iam_policy.terraform_read",
+          values: {
+            name: "wgi-terraform-read",
+            arn: policyArn,
+            policy: document(allow("s3:GetObject", PRODUCTION_STATE)),
+          },
+        },
+        {
+          address: 'module.github_plan_staging.aws_iam_role_policy_attachment.managed["read"]',
+          values: { role: "wgi-github-plan-staging", policy_arn: policyArn },
+        },
+      ],
+    }),
+    { root: "shared" },
+  );
+  assert.deepEqual(rules(result), [1, 2]);
+});
+
+test("an attached policy that belongs to the other environment fails rule 1 by tag alone", () => {
+  const result = checkPlan(
+    plan({
+      resources: [
+        {
+          address: "aws_iam_policy.reader",
+          values: {
+            name: "wgi-reader",
+            path: "/",
+            tags: { env: "production" },
+            policy: document(allow("s3:GetObject", "arn:aws:s3:::wgi-production-uploads/*")),
+          },
+        },
+        {
+          address: 'module.github_plan_staging.aws_iam_role_policy_attachment.managed["reader"]',
+          values: {
+            role: "wgi-github-plan-staging",
+            policy_arn: `arn:aws:iam::${ACCOUNT}:policy/wgi-reader`,
+          },
+        },
+      ],
+      prior: [callerIdentity()],
+    }),
+    { root: "shared" },
+  );
+  assert.deepEqual(rules(result), [1]);
+  assert.match(result.findings[0].reason, /belongs to another environment/);
+});
+
+test("a role-widening action needs the environment's own boundary (rule 4)", () => {
+  const roles = `arn:aws:iam::${ACCOUNT}:role/wgi-staging-*`;
+  const boundary = (environment) => ({
+    Condition: {
+      StringEquals: {
+        "iam:PermissionsBoundary": `arn:aws:iam::${ACCOUNT}:policy/wgi-${environment}-boundary`,
+      },
+    },
+  });
+  const check = (statement, { identity = true } = {}) =>
+    rules(
+      checkPlan(
+        plan({
+          resources: [policyResource("aws_iam_policy.deploy_staging", statement)],
+          prior: identity ? [callerIdentity()] : [],
+        }),
+        { root: "shared" },
+      ),
+    );
+  const widen = ["iam:CreateRole", "iam:PutRolePolicy"];
+  assert.deepEqual(check(allow(widen, roles)), [4]);
+  assert.deepEqual(check(allow("iam:AttachRolePolicy", roles)), [4]);
+  assert.deepEqual(check(allow("iam:PutRolePermissionsBoundary", roles)), [4]);
+  assert.deepEqual(check(allow("iam:UpdateAssumeRolePolicy", roles)), [4]);
+  assert.deepEqual(check(allow("iam:*", roles)), [4]);
+  assert.deepEqual(check(allow("iam:Put*", roles)), [4]);
+  assert.deepEqual(check(allow(widen, roles, boundary("production"))).sort(), [1, 4]);
+  assert.deepEqual(check(allow(widen, roles, boundary("staging"))), []);
+  assert.deepEqual(check(allow(widen, roles, boundary("staging")), { identity: false }), [4]);
+  assert.deepEqual(check(allow(["iam:TagRole", "iam:UntagRole"], roles)), []);
+});
+
+test("in an environment root a trust names only this account, its GitHub provider or AWS", () => {
+  const trust = (Principal, { identity = true } = {}) =>
+    rules(
+      checkPlan(
+        plan({
+          resources: [
+            {
+              address: "aws_iam_role.app",
+              values: {
+                name: "wgi-staging-app",
+                assume_role_policy: document(allow("sts:AssumeRole", undefined, { Principal })),
+              },
+            },
+          ],
+          prior: identity ? [callerIdentity()] : [],
+        }),
+        { root: "staging" },
+      ),
+    );
+  const github = `arn:aws:iam::${ACCOUNT}:oidc-provider/token.actions.githubusercontent.com`;
+  assert.deepEqual(trust({ Service: "ecs-tasks.amazonaws.com" }), []);
+  assert.deepEqual(trust({ Federated: github }), []);
+  assert.deepEqual(trust({ AWS: `arn:aws:iam::${ACCOUNT}:role/wgi-staging-deploy` }), []);
+  assert.deepEqual(trust({ AWS: `arn:aws:iam::${ACCOUNT}:root` }), []);
+  assert.deepEqual(trust({ AWS: `arn:aws:iam::${"1".repeat(12)}:root` }), ["trust"]);
+  assert.deepEqual(trust({ AWS: "*" }), ["trust"]);
+  assert.deepEqual(trust("*"), ["trust"]);
+  assert.deepEqual(trust({ Federated: "cognito-identity.amazonaws.com" }), ["trust"]);
+  assert.deepEqual(trust({ Federated: `arn:aws:iam::${ACCOUNT}:saml-provider/Okta` }), ["trust"]);
+  assert.deepEqual(trust({ Federated: github }, { identity: false }), ["trust"]);
+  const otherProvider = github.replace(ACCOUNT, "1".repeat(12));
+  assert.deepEqual(trust({ Federated: otherProvider }), ["trust"]);
+  assert.deepEqual(trust({ Service: ["ecs-tasks.amazonaws.com", "evil.example.com"] }), ["trust"]);
+});
+
+test("METADATA_READS is exactly the actions wgi-terraform-read grants", () => {
+  const source = readFileSync(
+    fileURLToPath(new URL("../shared/github_oidc.tf", import.meta.url)),
+    "utf8",
+  );
+  const block = /sid\s*=\s*"RefreshSharedRoot"\s*actions\s*=\s*\[([^\]]*)\]/.exec(source);
+  assert.ok(block, "RefreshSharedRoot statement not found");
+  const granted = [...block[1].matchAll(/"([^"]+)"/g)].map(([, action]) => action);
+  assert.deepEqual([...granted].sort(), [...METADATA_READS].sort());
 });
 
 test("a policy attribute the configuration does not set is not read", () => {

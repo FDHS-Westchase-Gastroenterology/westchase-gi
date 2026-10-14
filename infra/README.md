@@ -274,17 +274,26 @@ Renaming or removing an output breaks every environment root that reads it.
 - The deploy roles carry deploy primitives only. The pull request that adds an environment root
   adds the permissions its `terraform apply` needs, and extends `wgi-terraform-read` with the
   services that root refreshes.
+- Both environments' plan and deploy roles carry `wgi-terraform-read`, so the staging deploy role
+  reads production metadata: names, tags, configuration, policies and S3 object keys, never
+  object, log, secret or finding contents. That rests on one rule: S3 object keys never carry
+  patient data. Cut-over export keys use only the environment, a timestamp and a hash.
 - Every role an environment root creates carries `wgi-<env>-boundary` (`boundaries.tf`): a deploy
-  role can create a `wgi-<env>-*` role, or put or delete its inline policy, only with that
-  boundary attached, and can neither remove a boundary nor change either boundary policy. The
-  boundary caps such a role at its own environment's images, log streams, secret and parameter
+  role can create, re-trust, update or delete a `wgi-<env>-*` role, or put or delete its inline
+  policy, only when the request carries that boundary (`CreateBoundedRoles`; the IAM Service
+  Authorization Reference lists `iam:PermissionsBoundary` for all eight actions). It can tag and
+  untag those roles by name, and can neither remove a boundary nor change either boundary policy.
+  The boundary caps such a role at its own environment's images, log streams, secret and parameter
   reads, tables, bucket objects and one-off tasks, matched by the names in the
   [naming contract](#naming-contract), and at its own database's master secret and logins, its
   own user pool and its own keys, each named by exact ARN (see
   [Environment boundary](#environment-boundary)). It denies every other IAM call, the state
-  bucket, and anything tagged or named for the other environment. It does not limit whom a
-  created role trusts; the saved-plan review and IAM Access Analyzer's findings on new external
-  access are the controls for that.
+  bucket, and anything tagged or named for the other environment. No IAM condition key reads a
+  trust policy's principals, so no policy on the deploy role can limit whom the roles it creates
+  or re-trusts may trust. The controls are the environment-boundary check, which fails an
+  environment root's plan when a role trusts anything but AWS services, this account and its
+  GitHub OIDC provider, and IAM Access Analyzer's findings on new external access for a change
+  made outside a plan.
 - `wgi-github-e2e-staging` serves pull request e2e runs, which use the runner's own Postgres and
   the staging Cognito pool. Fork pull requests get no OIDC token while the repository's "Send
   write tokens to workflows from fork pull requests" setting stays off, so its subject comes only
@@ -571,7 +580,10 @@ DMARC policy. The mirror does not add them; a DMARC record is a later change to 
      `preview` or `pr-` in a production policy; or a key, user pool, database or RDS master
      secret that the plan's state traces to the other environment;
   2. uses a wildcard whose fixed part does not name its own environment;
-  3. names a key, user pool, database or RDS master secret that nothing in the plan holds.
+  3. names a key, user pool, database or RDS master secret that nothing in the plan holds;
+  4. allows `iam:CreateRole`, `PutRolePolicy`, `AttachRolePolicy`, `PutRolePermissionsBoundary`
+     or `UpdateAssumeRolePolicy` without `StringEquals iam:PermissionsBoundary` equal to the
+     environment's own boundary in this account (`BOUNDED_ROLE_ACTIONS`).
 
   Resource `*` passes only for actions that accept nothing else (the `ONLY_STAR_ACTIONS` table,
   each with its Service Authorization Reference page) and in resource policies. `userpool/*`,
@@ -580,10 +592,18 @@ DMARC policy. The mirror does not add them; a DMARC record is a later change to 
   actions, and only when the reference lists that key for every action in the statement (the
   `CARVE_OUT` table). `ecr:BatchDeleteImage` fails in any policy; the repository's lifecycle
   policy deletes images. In `bootstrap/` and `shared/` each policy belongs to the environment its
-  address, name, role or `env` tag carries; a policy with none is shared and is listed as
+  address, name, role or roles, or `env` tag carries; a policy with none is shared and is listed as
   skipped. In an environment root every policy belongs to that environment. A policy the plan
   cannot know yet fails. The output names resource addresses, statement IDs and rule numbers,
   never ARNs.
+
+  Each attached managed policy is looked up in the plan. An AWS-managed policy, or one the plan
+  does not write, fails unless `ALLOWED_POLICY_ARNS` lists it with a reason; the list is empty. A
+  shared policy attached to an environment's role is checked again under that role's environment,
+  rules 1 to 4 and `ecr:BatchDeleteImage` included, so it cannot carry one environment's grants to
+  the other's roles; there `Resource *` also passes for the metadata reads `wgi-terraform-read`
+  grants (`METADATA_READS`, kept equal to that policy). In an environment root a role may trust
+  only AWS services, this account and its GitHub OIDC provider.
 
 Local checks before pushing:
 
