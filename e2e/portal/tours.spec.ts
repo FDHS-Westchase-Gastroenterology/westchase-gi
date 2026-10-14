@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import type { StaffTour } from "../../src/lib/portal/contracts";
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { runId, serviceDb } from "../harness/env";
 import { createStaffFixture, signIn } from "../harness/session";
 import type { StaffFixture } from "../harness/session";
@@ -99,7 +100,7 @@ test.describe("First-sign-in tours", () => {
       await expect.poll(async () => tourRecord(desk?.userId ?? "", "front_desk")).toBe("skipped");
     } finally {
       if (desk !== null) {
-        await db.from("audit_log").delete().eq("actor_email", desk.email);
+        await deleteAuditRows({ actorEmail: desk.email });
         await desk.dispose();
       }
     }
@@ -162,7 +163,7 @@ test.describe("First-sign-in tours", () => {
       await expect.poll(async () => tourRecord(admin?.userId ?? "", "front_desk")).toBe("skipped");
     } finally {
       if (admin !== null) {
-        await db.from("audit_log").delete().eq("actor_email", admin.email);
+        await deleteAuditRows({ actorEmail: admin.email });
         await admin.dispose();
       }
     }

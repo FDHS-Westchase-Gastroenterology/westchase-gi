@@ -82,4 +82,5 @@ next-env.d.ts
 /docs/*
 !/docs/initiatives/
 !/docs/migration/
+!/docs/compliance/
 # END generated from local-only-paths.json
