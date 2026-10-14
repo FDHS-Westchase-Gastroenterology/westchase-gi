@@ -4,8 +4,10 @@
 
 - **Account:** an AWS Organization in the new AWS experience (`FeatureSet: ALL`), with advanced
   features active since 2026-10-06. Jason's management account owns it; AWS added an Identity
-  Delegated Admin account for IAM Identity Center. Agents work in the member project "Whimsical
-  Whiteboard" (Paid plan, $120 in credits). It is non-production, so no patient data goes into it.
+  Delegated Admin account for IAM Identity Center. Agents work in the member project reached
+  with profile `wgi` (Paid plan). It holds every environment, production included (Jason,
+  2026-10-13): production keeps its own Cognito pool, database server and secrets, patient data
+  goes only into production's resources, and staging and previews use fictional data.
 - **BAA:** the AWS Organizations BAA is active (accepted 2026-10-06 by Jason in Artifact; effective
   start 00:53 UTC on 2026-10-07). It covers the management account and every current and future
   member account, all designated HIPAA accounts, and opts them out of AWS using their content for
@@ -51,16 +53,15 @@ If AWS MCP calls still fail after that, reconnect the server from `/mcp` or star
 
 1. **Secure the management account:** done 2026-10-06. Root has a password and one passkey MFA
    device (`jason-root-passkey`), and no access keys. Use root only for root-only tasks.
-2. **Region for INIT-1:** done 2026-10-06. `UsEast1Partitional` is removed, so INIT-1 keeps
-   us-east-1. Probe: `aws ec2 describe-availability-zones --region us-east-1 --profile wgi` lists
-   six zones.
+2. **Region for INIT-1:** done 2026-10-06. `UsEast1Partitional` is removed, so us-east-1 is open
+   for what AWS requires there; INIT-1 runs in us-east-2. Probe:
+   `aws ec2 describe-availability-zones --region us-east-1 --profile wgi` lists six zones.
 3. **BAA:** done 2026-10-06. Probe:
    `aws artifact list-customer-agreements --region us-east-1 --profile wgi` lists the AWS
    Organizations Business Associate Addendum as `ACTIVE`.
-4. **Accounts:** INIT-1's production and non-production accounts. Not needed to start; the INIT-1
-   agent asks for them when it reaches step 2 of its approach ("Stand up the AWS foundation").
+4. **Accounts:** none to add. Production, staging and previews all live in `wgi` (2026-10-13).
+   Production changes reach AWS only through the GitHub Actions pipeline after Jason's approval
+   in the `aws-production` environment, never from a local profile.
 
-Once production exists, add its profiles to `~/.aws/config` and to the AWS MCP's `--profile`
-list, then update the AWS line in `autoMode.environment` and AGENTS.md "AWS access". The
-placeholder `wgi-nonprod`, `wgi-prod-readonly` and `wgi-prod` SSO profiles in `~/.aws/config` are
-unused until then.
+The placeholder `wgi-nonprod`, `wgi-prod-readonly` and `wgi-prod` SSO profiles in `~/.aws/config`
+are unused.

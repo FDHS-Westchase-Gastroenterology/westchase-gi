@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import type { JsonObject } from "@/lib/json";
+import { AUDIT_ACTIONS } from "@/lib/portal/contracts";
 import type { AuditAction } from "@/lib/portal/contracts";
 
 interface AuditWrite {
@@ -16,9 +17,11 @@ interface AuditWrite {
   detail?: JsonObject;
 }
 
+/** The row an outside change began under, and what its outcome row repeats. */
 export interface ExternalAudit {
   id: string;
-  detail: JsonObject;
+  actorEmail: string;
+  correlationId: string;
 }
 
 function isPreProvenanceSchema(error: Readonly<{ code?: string } | null>): boolean {
@@ -57,22 +60,27 @@ export async function recordAudit(
   }
 }
 
+/**
+ * Records an outside change (a GitHub call) before it is made, as `pending`. The log is
+ * append-only, so this row never changes: `finishExternalAudit` records the outcome in a row
+ * of its own that points back here.
+ */
 export async function beginExternalAudit(
   client: SupabaseClient,
   entry: Readonly<AuditWrite>,
 ): Promise<ExternalAudit> {
-  const detail = { ...entry.detail, outcome: "pending" };
+  const correlationId = randomUUID();
   const legacyAuditRow = {
     actor_email: entry.actorEmail,
     action: entry.action,
     entity: entry.entity,
     entity_id: entry.entityId,
-    detail,
+    detail: { ...entry.detail, outcome: "pending" },
   };
   const auditRow = {
     ...legacyAuditRow,
     source: "staff",
-    correlation_id: randomUUID(),
+    correlation_id: correlationId,
   };
   let result = await client.from("audit_log").insert(auditRow).select("id").single();
 
@@ -86,23 +94,38 @@ export async function beginExternalAudit(
       `External audit start failed: ${result.error !== null ? result.error.code : "missing_row"}`,
     );
   }
-  return { id: parsed.data.id, detail };
+  return { id: parsed.data.id, actorEmail: entry.actorEmail, correlationId };
 }
 
+/**
+ * Records how an outside change ended, as an `audit.external_outcome` row whose entity is the
+ * row the change began under. It shares that row's actor and correlation id.
+ */
 export async function finishExternalAudit(
   client: SupabaseClient,
   audit: Readonly<ExternalAudit>,
   outcome: "succeeded" | "failed" | "unconfirmed",
   detail: JsonObject = {},
 ): Promise<void> {
-  const result = await client
-    .from("audit_log")
-    .update({ detail: { ...audit.detail, ...detail, outcome } })
-    .eq("id", audit.id)
-    .select("id")
-    .single();
+  const legacyAuditRow = {
+    actor_email: audit.actorEmail,
+    action: AUDIT_ACTIONS.AUDIT_EXTERNAL_OUTCOME,
+    entity: "audit_log",
+    entity_id: audit.id,
+    detail: { ...detail, outcome },
+  };
+  const auditRow = {
+    ...legacyAuditRow,
+    source: "staff",
+    correlation_id: audit.correlationId,
+  };
+  let { error } = await client.from("audit_log").insert(auditRow);
 
-  if (result.error !== null) {
-    throw new Error(`External audit finish failed: ${result.error.code}`);
+  if (isPreProvenanceSchema(error)) {
+    ({ error } = await client.from("audit_log").insert(legacyAuditRow));
+  }
+
+  if (error !== null) {
+    throw new Error(`External audit finish failed: ${error.code}`);
   }
 }

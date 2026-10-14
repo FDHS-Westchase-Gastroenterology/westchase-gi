@@ -1,5 +1,3 @@
-import "server-only";
-
 /**
  * The root certificate authority the Supabase pooler's certificate chains to. Every remote
  * connection verifies the server against this certificate and only this one; the operating

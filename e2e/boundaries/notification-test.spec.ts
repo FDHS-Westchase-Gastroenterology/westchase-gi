@@ -6,6 +6,7 @@ import { z } from "zod";
 import type { JsonObject } from "../../src/lib/json";
 import { NOTIFICATION_TEST_RATE_LIMIT } from "../../src/lib/portal/contracts";
 import { requireDecoded } from "../harness/assert";
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { serviceDb } from "../harness/env";
 import { signIn } from "../harness/session";
 import { SEED_EMAIL, clearNotificationTestBucket, mutateSettings } from "./support";
@@ -174,7 +175,7 @@ test.describe("The Settings › Notifications test send", () => {
       if (previouslyOn.length > 0) {
         await db.from("notification_recipients").update({ active: true }).in("id", previouslyOn);
       }
-      await db.from("audit_log").delete().eq("action", "recipients.test_send").gte("at", startedAt);
+      await deleteAuditRows({ action: "recipients.test_send", atFrom: startedAt });
       clearNotificationTestBucket(adminUserId);
     }
   });

@@ -6,6 +6,7 @@ import { PDFDocument } from "pdf-lib";
 import { z } from "zod";
 
 import { intakeResponseSchema } from "../../src/lib/portal/contracts";
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { clientIps, runId, seedAdmin, serviceDb } from "../harness/env";
 import { signIn } from "../harness/session";
 
@@ -143,7 +144,7 @@ test.describe("appointment-request print packet", () => {
   test.afterAll(async () => {
     await db.from("requests").delete().like("email", `print-${runId}-%`);
     if (testAuditIds.length > 0) {
-      await db.from("audit_log").delete().in("id", testAuditIds);
+      await deleteAuditRows({ ids: testAuditIds });
     }
   });
 
