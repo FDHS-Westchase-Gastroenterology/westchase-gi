@@ -42,7 +42,7 @@
     "jsqr": "^1.4.0",
     "oxfmt": "^0.72.0",
     "oxlint": "1.87.0",
-    "oxlint-tsgolint": "^7.0.2003",
+    "oxlint-tsgolint": "^7.0.2004",
     "pdf-lib": "^1.17.1",
     "pngjs": "^7.0.0",
     "react-doctor": "^0.9.17",
