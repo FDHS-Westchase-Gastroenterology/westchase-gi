@@ -84,6 +84,11 @@ function removeRequestAfterTest(
  */
 async function pickFirstStart(page: Page, card: Locator, block?: string): Promise<void> {
   const day = card.getByRole("button", { name: /, \d+ open times?$/u }).first();
+  /* The card opens on today's month. Near its end nothing may be left to
+     book, and the strip offers the next month instead of an open day. */
+  const nextMonth = card.getByRole("button", { name: "Next month", exact: true });
+  await expect(day.or(nextMonth).first()).toBeVisible({ timeout: 20_000 });
+  if (!(await day.isVisible())) await nextMonth.click();
   await expect(day).toBeVisible({ timeout: 20_000 });
   const popover = page.locator(".wgi-day-popover");
   const times =
