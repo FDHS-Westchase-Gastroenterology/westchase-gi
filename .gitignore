@@ -79,5 +79,11 @@ next-env.d.ts
 /plans/
 /screenshots/
 /MEMORY.md
-/docs/
+/docs/*
 # END generated from local-only-paths.json
+
+# docs/ stays local-only except these initiative files, which agents must be able to read.
+!/docs/initiatives/
+/docs/initiatives/*
+!/docs/initiatives/INIT-1-aws-migration.md
+!/docs/initiatives/AWS-ACCESS.md

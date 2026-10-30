@@ -194,9 +194,11 @@ stop you, ask; do not route around them with another tool or a split command.
 
 ### AWS access
 
-- AWS is one project in the new AWS experience: Free plan, Region us-east-2, AWS CLI profile
-  `wgi`, signed in with `aws login`. There are no IAM users and no access keys. The project is
-  non-production and has no BAA, so patient data never goes into it.
+- AWS is an Organization in the new AWS experience with advanced features active. Jason's
+  management account owns it, and AWS added an Identity Delegated Admin account for IAM Identity
+  Center. Agents work in the `wgi` project, the one account that holds every environment: Region
+  us-east-2, AWS CLI profile `wgi`, signed in with `aws login`. There are no IAM users and no
+  access keys.
 - Start AWS work with `aws sts get-caller-identity --profile wgi`.
 - Credentials last 12 hours and refresh by themselves for 90 days. When a call fails for expired
   or missing credentials, run `aws login --region us-east-2 --profile wgi` as a background
@@ -204,15 +206,21 @@ stop you, ask; do not route around them with another tool or a split command.
   push notification where the harness has one), and rerun the `sts` check once the command exits
   0. Never ask for access keys, and never create IAM users or keys.
 - If `aws-mcp` still fails after a successful login, use the AWS CLI for the rest of the session.
-- Production does not exist yet. INIT-1's AWS Organization, its production and non-production
-  accounts, us-east-1 and the BAA wait on Jason upgrading this project to the Paid plan and
-  activating advanced features. Until then AWS Organizations, the Artifact BAAs, GuardDuty,
-  Security Hub and IAM Identity Center are unavailable, and other Regions are blocked apart from
-  the global-service exceptions in the rules file. Work that needs them waits; work that does not
-  continues.
-- Once advanced features are active, replace `.claude/rules/aws-starter-rules.md` with AWS's
-  advanced ruleset (`rules/aws-agent-rules.md` in aws/agent-toolkit-for-aws), add the new
-  profiles, and update this section.
+- The Organization's BAA is active. It covers the management account and every current and
+  future member account, and accepting it designated them all as HIPAA accounts.
+  `aws artifact list-customer-agreements --region us-east-1 --profile wgi` lists it as `ACTIVE`.
+  Patient data needs HIPAA-eligible services and encryption in transit and at rest.
+- Production, staging and previews all live in `wgi` (Jason, 2026-10-13; no separate accounts).
+  Production keeps its own Cognito pool, database server and secrets, never shared with staging or
+  previews; patient data goes only into production's resources, and everything else uses fictional
+  data. Accepted trade-off: every agent signed in to `wgi` has full admin rights over the account
+  that holds patient data.
+- The Organization's Region policy allows us-east-1 and us-east-2, limits us-west-2 to Bedrock,
+  and denies every other Region. The us-east-1 check is
+  `aws ec2 describe-availability-zones --region us-east-1 --profile wgi`, which lists its zones.
+- Editing service control policies, securing root users and accepting agreements are Jason's
+  steps in AWS Settings or the management account. When work needs one, tell him exactly what it
+  needs and continue with the work that does not depend on it.
 
 ## GitHub conventions
 
