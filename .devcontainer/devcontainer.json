@@ -1,0 +1,25 @@
+{
+  "name": "Westchase GI",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  // A container-owned node_modules keeps Linux builds of the native tools (oxlint, oxfmt, SWC)
+  // from replacing a macOS install when this folder is opened from a host checkout.
+  "mounts": [
+    "source=${localWorkspaceFolderBasename}-node_modules,target=${containerWorkspaceFolder}/node_modules,type=volume"
+  ],
+  "onCreateCommand": "sudo chown node node_modules",
+  "updateContentCommand": "npm ci --no-audit --no-fund && npx playwright install --with-deps chromium",
+  "forwardPorts": [3000, 3100],
+  "portsAttributes": {
+    "3000": { "label": "npm run dev" },
+    "3100": { "label": "npm run dev:mission" }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["oxc.oxc-vscode"]
+    }
+  },
+  "remoteUser": "node"
+}
