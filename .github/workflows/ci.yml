@@ -41,6 +41,11 @@ jobs:
       - name: Verify .gitignore matches local-only-paths.json
         run: npm run local-only:verify
 
+      # Fails on a clone .jscpd-baseline.json does not list, and when total
+      # duplication passes the cap in .jscpd.json.
+      - name: Check duplicate code
+        run: npm run duplication:check
+
       # Oxlint and anti-slop stay in the local config (`npm run lint`).
       # CI does not run them until a dedicated findings PR lands.
 

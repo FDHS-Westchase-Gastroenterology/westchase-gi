@@ -5,7 +5,7 @@
     "THE single source of truth for which repository paths are machine-local and must",
     "never be committed. Three consumers read this file and none of them keeps its own",
     "copy of the list:",
-    "  1. .githooks/pre-commit          -> node scripts/check-local-only.mjs staged",
+    "  1. .githooks/pre-commit          -> scripts/pre-commit.mjs -> node scripts/check-local-only.mjs staged",
     "  2. .github/workflows/ci.yml      -> node scripts/check-local-only.mjs tracked",
     "  3. .gitignore (managed block)    -> node scripts/check-local-only.mjs write",
     "  4. .claude/rules/local-only-directories.md (managed block, same write command; .claude/ itself is tracked by owner decision on 2026-09-06)",

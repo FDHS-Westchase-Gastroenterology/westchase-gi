@@ -1,0 +1,28 @@
+{
+  "path": ["."],
+  "format": ["javascript", "jsx", "typescript", "tsx", "css"],
+  "ignore": [
+    "**/node_modules/**",
+    "**/*.d.ts",
+    ".agent/**",
+    ".agents/**",
+    ".claude/**",
+    ".codex/**",
+    ".next/**",
+    ".next-e2e/**",
+    ".next-verify/**",
+    "archive/**",
+    "build/**",
+    "out/**",
+    "private/**",
+    "public/**",
+    "src/components/stock/**",
+    "ui-reference/**"
+  ],
+  "gitignore": true,
+  "minTokens": 50,
+  "minLines": 5,
+  "threshold": 2.25,
+  "baseline": ".jscpd-baseline.json",
+  "reporters": ["console"]
+}

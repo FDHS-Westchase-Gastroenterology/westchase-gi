@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * The four standing gates from AGENTS.md "Contribution loop", in order, in one pass.
+ * The standing command gates from AGENTS.md "Contribution loop", in order, in one pass.
  *
  *   npm run gates
  *
@@ -41,6 +41,7 @@ function doctorProblem(output) {
 const GATES = [
   { name: "oxlint", command: "npx", args: ["oxlint", "--deny-warnings"] },
   { name: "oxfmt --check", command: "npx", args: ["oxfmt", "--check"] },
+  { name: "duplication", command: "node", args: ["scripts/check-duplication.mjs"] },
   {
     name: "react-doctor",
     command: "npx",

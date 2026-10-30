@@ -70,18 +70,22 @@ records; operational docs stay present-tense and self-sufficient.
 
 ## Contribution loop
 
-Commits on a worktree are allowed. Use them while you work.
+Commits on a worktree are allowed. Use them while you work. The pre-commit hook
+(`.githooks/pre-commit`, which `npm ci` installs) runs the local-only guard, oxfmt, oxlint and
+the duplicate-code check on the staged files; fix what it reports instead of committing with
+`--no-verify`.
 
 The standing gates are:
 
 - `npx oxlint` reports zero warnings and zero errors under the repository's configured rules. Do not skip rules or narrow the scan to make the gate pass.
 - `npx oxfmt --check` reports that every matched file already matches `.oxfmtrc.json`. Do not skip files or narrow the scan to make the gate pass. If it fails, run `npx oxfmt` and check again.
+- `npm run duplication:check` finds no clone missing from `.jscpd-baseline.json` and keeps total duplication under the cap in `.jscpd.json`; CI's `quality` job runs it. Editing code inside an existing clone makes it new. Extract the shared code, or wrap deliberate duplication in `// jscpd:ignore-start` and `// jscpd:ignore-end` comments. Do not add fingerprints to the baseline, raise the cap, or widen the `ignore` list to make the gate pass; after removing duplication, run `npm run duplication:check -- --update-baseline` and commit the smaller baseline.
 - `npx react-doctor@latest --verbose` reports a score of 100.
 - `npm run build` completes a production compile and typecheck with no errors. Oxlint, oxfmt, and React Doctor can all pass while this fails, so they do not replace it. Do not skip it, narrow it, or substitute `tsc --noEmit`. Use the no-credentials environment in [`CONTRIBUTING.md`](CONTRIBUTING.md#verification) when `.env.local` is absent. If the build cannot run, say so; the loop has not passed.
 - A diff that adds or changes motion (`transition`, `animation`, `@starting-style`, `--motion-*`, `motion/react`) carries a `review-animations` verdict in the turn's report, in the Before / After / Why table from `.claude/rules/design-eng.md`. Lint, format, React Doctor, and the build cannot see motion quality, so they do not replace it.
 - Visual evidence is in the pull-request conversation for every UI-visible change. A single-state change needs before and after screenshots. A new workflow or a feature with more than one authored step needs a video of that path. A clean lint score with no visual evidence is a failed loop.
 
-`npm run gates` runs the four command gates above in order, prints one line for a clean gate and the
+`npm run gates` runs the five command gates above in order, prints one line for a clean gate and the
 full output of a failing one, and exits non-zero when any of them fails. It does not check the
 motion review or the visual evidence.
 

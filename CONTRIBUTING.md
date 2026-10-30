@@ -40,6 +40,14 @@ npm run dev:patients -- inspect  # read-only fixture plan for this checkout
 npm run dev:mission          # the E2E stack's server on :3100
 ```
 
+`npm ci` also runs the `prepare` script (`scripts/install-hooks.mjs`), which points
+`core.hooksPath` at `.githooks/` unless `CI` is set or the setting already names another
+directory; `npm run hooks:install` sets it by hand. The pre-commit hook runs
+`scripts/pre-commit.mjs` on the staged files: the local-only guard, `oxfmt --check`,
+`oxlint --deny-warnings`, and the [duplicate-code check](#what-to-run--without-credentials) for
+clones that touch a staged file. It format-checks a partly staged file as staged; oxlint and jscpd read that file's
+working-tree copy. The standing gates still cover the whole repository.
+
 `npm run dev` and `npm run dev:mission` set `PORTAL_DEV_SIGN_IN=enabled` unless the shell
 already set it, so the shared preview username and password sign in as the seeded admin.
 Playwright sets the same default for its runner and the server it starts. Dev sign-in fails
@@ -294,16 +302,18 @@ Every change must pass these repository-wide checks:
 ```bash
 npx oxlint
 npx oxfmt --check
+npm run duplication:check
 npx react-doctor@latest --verbose
 npm run build
 ```
 
-Oxlint must report zero warnings and errors, oxfmt must report no drift, React Doctor must score
+Oxlint must report zero warnings and errors, oxfmt must report no drift, duplication must stay
+under the `.jscpd.json` cap with no clone missing from `.jscpd-baseline.json`, React Doctor must score
 100 on a clean checkout, and the production build must compile and typecheck. A focused check
 adds coverage for the changed behavior; it does not replace these gates. UI-visible changes also
 require the [visual evidence](#ui-changes) described below.
 
-`npm run gates` runs the four in that order: one line for each clean gate, the full output of a
+`npm run gates` runs the five in that order: one line for each clean gate, the full output of a
 failing one, and a non-zero exit when any fails. In a checkout without `.env.local` it builds
 against the no-credentials placeholders below.
 
@@ -315,6 +325,7 @@ surface available to an agent or contributor working in a clean container:
 
 ```bash
 npm ci --no-audit --no-fund
+npm run duplication:check
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 \
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=ci-public-placeholder \
   SUPABASE_SERVICE_ROLE_KEY=ci-server-placeholder \
@@ -324,7 +335,8 @@ npm run test:e2e:public
 ```
 
 `npm run lint` (`oxlint` from the repository root) is the repository's sole linter command.
-It is local-only until a dedicated findings PR lands; the `quality` job does not run it.
+The pre-commit hook runs it on staged files; the `quality` job does not run it until a
+dedicated findings PR lands.
 Oxlint recursively checks owned JavaScript and TypeScript files in every subdirectory — `src/`,
 `e2e/`, `scripts/`, `.github/scripts/`, and root configs — with the migrated Next.js, React,
 accessibility, import, and TypeScript rules plus the vendored anti-slop rules. Dependencies,
@@ -334,8 +346,25 @@ extension uses the same `.oxlintrc.json` for the whole workspace.
 `npm run fmt` (`oxfmt`) is the repository formatter; `npm run fmt:check` reports drift
 without writing. House rules live in `.oxfmtrc.json`: 100 columns, double quotes, semicolons,
 trailing commas, preserved object wrapping, grouped imports, and Tailwind class order from
-`src/app/globals.css`. Markdown and generated trees are left alone. Like oxlint, format
-check is local-only until a dedicated findings PR lands.
+`src/app/globals.css`. Markdown and generated trees are left alone. Like oxlint, the format
+check runs in the pre-commit hook on staged files and stays out of the `quality` job until a
+dedicated findings PR lands.
+
+`npm run duplication:check` (`scripts/check-duplication.mjs`) runs jscpd over the JavaScript,
+TypeScript and CSS that `.jscpd.json` selects, without registry source, build output or agent
+directories. It fails on any clone whose fingerprint `.jscpd-baseline.json` lacks, listing each
+one, and when duplicated lines pass the `threshold` cap. The committed baseline, not a base
+branch, defines "new", so a long-lived integration pull request into `main` is judged by the
+baseline its own tree carries. Fingerprints follow content: moving or renaming a file keeps its
+clones known, while editing code inside a clone makes it new. The pre-commit hook counts only new
+clones that touch a staged file, and the whole repository when the configuration or baseline is
+staged. Extract the shared code; when duplication is deliberate, wrap it in
+`// jscpd:ignore-start` and `// jscpd:ignore-end` comments. After removing duplication, run
+`npm run duplication:check -- --update-baseline` and commit the smaller baseline, and lower the
+cap as the percentage falls. Adding fingerprints or raising the cap accepts new duplication;
+that is Jason's decision, not a way to pass. When `.jscpd-baseline.json` conflicts in a merge,
+resolve the code first, then regenerate it with `--update-baseline`. `jscpd` is pinned to an exact
+version because a detector change can move fingerprints and the percentage.
 
 `npm run doctor` and `node scripts/verify-no-secrets.mjs` also run with no credentials.
 

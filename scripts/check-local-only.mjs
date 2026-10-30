@@ -5,7 +5,7 @@
  * Every consumer reads local-only-paths.json through this module. Nothing keeps a
  * second copy of the list, so nothing can drift out of sync with it:
  *
- *   .githooks/pre-commit         node scripts/check-local-only.mjs staged
+ *   .githooks/pre-commit         node scripts/check-local-only.mjs staged (via scripts/pre-commit.mjs)
  *   .github/workflows/ci.yml     node scripts/check-local-only.mjs tracked
  *                                node scripts/check-local-only.mjs verify-generated
  *   .gitignore managed block     node scripts/check-local-only.mjs write
