@@ -5,7 +5,7 @@
  * Every consumer reads local-only-paths.json through this module. Nothing keeps a
  * second copy of the list, so nothing can drift out of sync with it:
  *
- *   .githooks/pre-commit         node scripts/check-local-only.mjs staged
+ *   .githooks/pre-commit         node scripts/check-local-only.mjs staged (via scripts/pre-commit.mjs)
  *   .github/workflows/ci.yml     node scripts/check-local-only.mjs tracked
  *                                node scripts/check-local-only.mjs verify-generated
  *   .gitignore managed block     node scripts/check-local-only.mjs write
@@ -58,6 +58,20 @@ export function assertManifestSane(manifest) {
       }
     }
   }
+  for (const entry of manifest.localOnly) {
+    for (const allowed of entry.except ?? []) {
+      if (!allowed.startsWith(entry.path) || allowed === entry.path) {
+        problems.push(`except "${allowed}" is not beneath localOnly entry "${entry.path}"`);
+      }
+      if (entry.gitignore.endsWith("/")) {
+        problems.push(
+          `localOnly entry "${entry.path}" has an except but its gitignore rule ` +
+            `"${entry.gitignore}" ignores the whole directory, so git could never re-include ` +
+            `"${allowed}". Ignore the contents instead (for example "/${entry.path}*").`,
+        );
+      }
+    }
+  }
   const seen = new Set();
   for (const entry of manifest.localOnly) {
     if (seen.has(entry.path)) problems.push(`duplicate localOnly entry "${entry.path}"`);
@@ -90,7 +104,9 @@ export function classifyPath(path, manifest) {
     if (matches(keep.path, normalised)) return null;
   }
   for (const entry of manifest.localOnly) {
-    if (matches(entry.path, normalised)) return entry;
+    if (!matches(entry.path, normalised)) continue;
+    if ((entry.except ?? []).some((allowed) => matches(allowed, normalised))) continue;
+    return entry;
   }
   return null;
 }
@@ -115,26 +131,27 @@ export function renderGitignoreBlock(manifest) {
     "# part of the product and only bloat review. See local-only-paths.json for why each",
     "# entry is here and which paths are deliberately NOT in this list.",
   ];
-  for (const entry of manifest.localOnly) lines.push(entry.gitignore);
+  for (const entry of manifest.localOnly) {
+    lines.push(entry.gitignore);
+    for (const allowed of entry.except ?? []) lines.push(`!/${allowed}`);
+  }
   lines.push(END);
   return lines.join("\n");
 }
 
 export function renderRulesDoc(manifest) {
-  const lines = [DOC_BEGIN, "", "| Path | Why it is local-only |", "| --- | --- |"];
-  for (const e of manifest.localOnly) lines.push(`| \`${e.path}\` | ${e.reason} |`);
-  lines.push("");
-  lines.push("**Not local-only.** These look like tooling but are required; the guard refuses");
-  lines.push("to run if the list above ever overlaps one of them.");
-  lines.push("");
-  lines.push("| Path | Why it must stay tracked |");
-  lines.push("| --- | --- |");
-  for (const e of manifest.loadBearing) {
-    lines.push(`| \`${e.path}\` | ${e.reason}${e.incident ? ` _${e.incident}_` : ""} |`);
-  }
-  lines.push("");
-  lines.push(DOC_END);
-  return lines.join("\n");
+  const list = (entries) => entries.map((e) => `\`${e.path}\``).join(", ");
+  return [
+    DOC_BEGIN,
+    "",
+    `Local-only (gitignored, never committed, even if a branch already carried them): ${list(manifest.localOnly)}.`,
+    "Reasons, first-tracked dates and leak history: `local-only-paths.json`.",
+    "",
+    `**Must stay tracked** (the guard refuses to run if the list above overlaps one): ${list(manifest.loadBearing)}.`,
+    "Reasons and incidents: `local-only-paths.json`.",
+    "",
+    DOC_END,
+  ].join("\n");
 }
 
 /** Replace the managed block in `text`, or append it if no block exists yet. */

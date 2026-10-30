@@ -1,9 +1,10 @@
 # Tests: what runs where, and how to add one
 
-The suite is browser-only, in three tiers. The folder a test lives in says what it needs.
+The suite has four tiers. The folder a test lives in says what it needs.
 
 | Tier | Where | Needs | Runs in | Command |
 | --- | --- | --- | --- | --- |
+| Unit | `test/unit/` | Nothing; the database suites need `POSTGRES_URL` | CI `quality`, and `supabase-integration` with the database | `npm run test:unit` |
 | Public browser | `e2e/public/` | A dev server, no credentials | CI `quality` | `npm run test:e2e:public` |
 | Portal browser | `e2e/portal/` | The Supabase Preview Branch, the seed admin | CI `supabase-integration` | `npm run test:e2e:portal` |
 | Boundaries | `e2e/boundaries/` | The Preview Branch, service and publishable keys | CI `supabase-integration` | `npm run test:e2e:boundaries` |
@@ -29,3 +30,18 @@ before the first database call.
   the boundary specs that use `e2e/boundaries/support.ts` for it) need the branch's direct Postgres
   URL in `POSTGRES_URL` or `POSTGRES_URL_NON_POOLING`; without it they refuse, by design, rather
   than run against the wrong database.
+
+## Unit tier
+
+- `node:test` on Node's own type stripping, loaded through `test/register.mjs`, so a test
+  imports product modules by their `@/` paths. Files are `test/unit/**/*.test.ts`.
+- A suite that needs a database skips unless `POSTGRES_URL` is set, and only reads; the one
+  write is the scrub test's temporary table, which lives in its own session and is dropped when
+  its transaction rolls back. Point it at a local cluster built from the migrations (the way
+  `npm run db:generate` builds one) or at the Preview Branch; the suites that hold a lock run
+  only against a loopback database, and the TLS suite only against the Supavisor pooler.
+- `test/unit/db/sentinel-probe.ts` is not a suite. `failure.test.ts` runs it in a child process
+  so it can read every byte the process writes.
+- `npm run db:parity` (`scripts/verify-drizzle-parity.mjs`) calls the same functions through
+  PostgREST and through the Drizzle `rpc()` helper and requires equal results and errors. It
+  refuses any target but the allowlisted Preview Branch, through `e2e/harness/target-guard.ts`.

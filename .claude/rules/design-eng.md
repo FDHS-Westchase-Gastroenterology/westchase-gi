@@ -1,6 +1,6 @@
 # Design engineering: repo bindings
 
-The craft itself lives in the global skills (apple-design, review-animations, improve-animations, find-animation-opportunities) and in DESIGN.md "Motion"; `.claude/rules/ui-skills.md` says which skill to invoke when. This file holds only what ties that craft to this repository: where the values live, which values are chosen, the mechanisms the code uses, and the conventions a review or summary follows here. The full craft guide this replaced is archived at `.claude/archive/design-eng.full.md`.
+The craft itself lives in the global skills (apple-design, review-animations, improve-animations, find-animation-opportunities) and in DESIGN.md "Motion"; `.claude/rules/ui-skills.md` says which skill to invoke when. This file holds only what ties that craft to this repository: where the values live, which values are chosen, the mechanisms the code uses, and the conventions a review or summary follows here.
 
 ## Where the values live
 

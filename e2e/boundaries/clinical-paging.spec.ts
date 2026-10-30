@@ -2,11 +2,14 @@ import { randomUUID } from "node:crypto";
 
 import { expect, test } from "@playwright/test";
 
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { listClinical, readClinical, removeClinical, saveClinical } from "../harness/clinical";
 import { serviceDb } from "../harness/env";
 import { savePatient } from "../harness/patients";
-import { createSchedulingFixture } from "../harness/scheduling";
+import { createSchedulingFixture, disposeSchedulingFixturesAfterEach } from "../harness/scheduling";
 import { insertRequest } from "./support";
+
+disposeSchedulingFixturesAfterEach();
 
 test("clinical summaries and long histories page completely and survive removal of linked intake", async () => {
   const db = serviceDb();
@@ -95,7 +98,12 @@ test("clinical summaries and long histories page completely and survive removal 
         kind: "document_reference",
       }),
     ).toMatchObject({ ok: true, total: 1 });
-    await insertRequest(db, { id: requestId, name: "TEST clinical retained patient" });
+    /* The address lets global setup sweep a request this test leaves behind when it times out. */
+    await insertRequest(db, {
+      id: requestId,
+      name: "TEST clinical retained patient",
+      email: "clinical-paging@example.test",
+    });
     expect(
       await savePatient(db, actor, {
         kind: "link_request",
@@ -111,7 +119,7 @@ test("clinical summaries and long histories page completely and survive removal 
     });
   } finally {
     expect((await db.from("requests").delete().eq("id", requestId)).error).toBeNull();
-    expect((await db.from("audit_log").delete().eq("entity_id", requestId)).error).toBeNull();
+    await deleteAuditRows({ entityIds: [requestId] });
     await removeClinical(db, fixture.patientIds);
     await fixture.dispose();
   }

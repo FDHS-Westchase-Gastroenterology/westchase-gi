@@ -18,6 +18,7 @@ import {
 import type { PortalSessionUser, PortalStaffAuthState } from "@/lib/portal/auth";
 import { AUDIT_ACTIONS } from "@/lib/portal/contracts";
 import type { PasswordAuthFlow } from "@/lib/portal/contracts";
+import { devSignInEnabled } from "@/lib/portal/dev-sign-in";
 import { portalUrl, serverClient, serviceClient } from "@/lib/portal/server";
 import { landingHref } from "@/lib/portal/tours";
 
@@ -69,7 +70,7 @@ function previewLoginCredentials(
   submittedEmail: string,
   submittedPassword: string,
 ): { email: string; password: string } | null {
-  if (process.env.VERCEL_ENV === "production") return null;
+  if (!devSignInEnabled()) return null;
 
   const username = process.env.PORTAL_PREVIEW_USERNAME?.trim();
   const password = process.env.PORTAL_PREVIEW_PASSWORD;

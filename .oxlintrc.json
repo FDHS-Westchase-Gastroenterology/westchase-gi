@@ -155,6 +155,21 @@
     "nextjs/no-typos": "warn",
     "nextjs/no-unwanted-polyfillio": "warn",
     "no-array-constructor": "error",
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "postgres",
+            "message": "Run statements through Database.transaction from @/lib/db/client, which sets the service_role role, the 8-second limits and the error scrub. Only src/lib/db, its tests and the e2e audit fixtures open the driver."
+          },
+          {
+            "name": "drizzle-orm/postgres-js",
+            "message": "Build Drizzle inside Database.transaction from @/lib/db/client, never on its own pool. Only src/lib/db, its tests and the e2e audit fixtures open the driver."
+          }
+        ]
+      }
+    ],
     "no-unused-expressions": "warn",
     "no-unused-vars": "warn",
     "react/display-name": "error",
@@ -257,6 +272,8 @@
           "NextRequest",
           "NextResponse",
           "Page",
+          "PostgresError",
+          "PostgresJsDatabase",
           "PostgrestError",
           "PostgrestResponse",
           "PostgrestSingleResponse",
@@ -264,9 +281,11 @@
           "ReactNode",
           "RefObject",
           "ServiceClient",
+          "Sql",
           "SupabaseClient",
           "SyntheticEvent",
           "TestInfo",
+          "TransactionSql",
           "ZodError",
           {
             "from": "lib",
@@ -454,6 +473,12 @@
       ],
       "rules": {
         "import/prefer-default-export": "error"
+      }
+    },
+    {
+      "files": ["**/src/lib/db/**", "**/test/unit/db/**", "**/e2e/harness/audit-fixtures.ts"],
+      "rules": {
+        "no-restricted-imports": "off"
       }
     }
   ]

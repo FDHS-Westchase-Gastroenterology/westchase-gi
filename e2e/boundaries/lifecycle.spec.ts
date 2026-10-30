@@ -4,6 +4,7 @@ import { test, expect } from "@playwright/test";
 import { z } from "zod";
 
 import { requireDecoded } from "../harness/assert";
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { serviceDb } from "../harness/env";
 import { idRowSchema, insertRequest, lifecycleRunSchema } from "./support";
 
@@ -46,6 +47,8 @@ test.describe("Data lifecycle boundaries", () => {
     await insertRequest(db, {
       id: oldClosed,
       name: "TEST lifecycle closed",
+      /* The address lets global setup sweep a request this test leaves behind when it times out. */
+      email: "lifecycle@example.test",
       status: "closed",
       closed_at: old180,
       closure_reason: "not_actionable",
@@ -53,6 +56,7 @@ test.describe("Data lifecycle boundaries", () => {
     await insertRequest(db, {
       id: oldBooked,
       name: "TEST lifecycle booked",
+      email: "lifecycle@example.test",
       status: "booked",
       record_handoff_at: oldYear,
       appointment_at: oldYear,
@@ -60,12 +64,14 @@ test.describe("Data lifecycle boundaries", () => {
     await insertRequest(db, {
       id: legacyReview,
       name: "TEST lifecycle review",
+      email: "lifecycle@example.test",
       status: "closed",
       legacy_review_required: true,
     });
     await insertRequest(db, {
       id: heldClosed,
       name: "TEST lifecycle held",
+      email: "lifecycle@example.test",
       status: "closed",
       closed_at: old180,
       closure_reason: "wont_schedule",
@@ -145,7 +151,7 @@ test.describe("Data lifecycle boundaries", () => {
         .from("notification_recipients")
         .delete()
         .in("id", [recipientId, survivingRecipientId]);
-      await db.from("audit_log").delete().in("entity_id", requestIds);
+      await deleteAuditRows({ entityIds: requestIds });
     }
   });
 
@@ -200,6 +206,7 @@ test.describe("Data lifecycle boundaries", () => {
         await insertRequest(db, {
           id: item.id,
           name: `TEST appointment retention ${item.label}`,
+          email: "lifecycle@example.test",
           status: "booked",
           record_handoff_at: item.booking,
           appointment_at: item.appointment,
@@ -243,7 +250,7 @@ test.describe("Data lifecycle boundaries", () => {
       }
     } finally {
       await db.from("requests").delete().in("id", requestIds);
-      await db.from("audit_log").delete().in("entity_id", requestIds);
+      await deleteAuditRows({ entityIds: requestIds });
     }
   });
 });

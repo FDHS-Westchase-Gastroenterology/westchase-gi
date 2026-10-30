@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import { expect } from "@playwright/test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { deleteAuditRows } from "./audit-fixtures";
+
 export async function createWorklistRequests(db: SupabaseClient, count: number) {
   const query = `TEST worklist ${randomUUID().slice(0, 8)}`;
   const rows = Array.from({ length: count }, (_, index) => ({
@@ -20,7 +22,7 @@ export async function createWorklistRequests(db: SupabaseClient, count: number) 
     for (let offset = 0; offset < rows.length; offset += 100) {
       const ids = rows.slice(offset, offset + 100).map((row) => row.id);
       expect((await db.from("requests").delete().in("id", ids)).error).toBeNull();
-      expect((await db.from("audit_log").delete().in("entity_id", ids)).error).toBeNull();
+      await deleteAuditRows({ entityIds: ids });
     }
   };
   try {

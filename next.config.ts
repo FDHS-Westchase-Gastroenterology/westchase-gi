@@ -112,6 +112,24 @@ const legacyEducation: [string, string][] = [
   ["48165", "gerd"],
 ];
 
+/**
+ * Sent on every response. HSTS covers subdomains: only the apex and www
+ * resolve, and both redirect plain HTTP to HTTPS, so a new subdomain must
+ * serve HTTPS from its first day or this drops includeSubDomains first.
+ * X-Frame-Options and the frame-ancestors directive both refuse framing, for
+ * older and current browsers; nothing here frames its own pages. This is not
+ * yet a full Content-Security-Policy. src/proxy.ts runs after these, so the
+ * admin subtree keeps its stricter Referrer-Policy: no-referrer.
+ */
+const securityHeaders = [
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+];
+
 const nextConfig: NextConfig = {
   // Dev-only: lets a phone on the home LAN load the dev server (and its
   // /_next assets and Server Actions) via the Mac's local IP. Ignored in
@@ -124,6 +142,14 @@ const nextConfig: NextConfig = {
     process.env.NEXT_DIST_DIR !== undefined && process.env.NEXT_DIST_DIR !== ""
       ? process.env.NEXT_DIST_DIR
       : ".next",
+  // The container image runs `node server.js` from `.next/standalone`, which
+  // Holds the traced server files and the node_modules they need. The
+  // Dockerfile copies `public/` and `.next/static/` in beside it. Vercel
+  // Deploys from its own build output, not this folder.
+  output: "standalone",
+  headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
+  },
   // The flyer files are read from disk at request time: the page checks
   // Which exist, and the asset and zip routes stream them.
   outputFileTracingIncludes: {

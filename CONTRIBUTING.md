@@ -40,6 +40,21 @@ npm run dev:patients -- inspect  # read-only fixture plan for this checkout
 npm run dev:mission          # the E2E stack's server on :3100
 ```
 
+`npm ci` also runs the `prepare` script (`scripts/install-hooks.mjs`), which points
+`core.hooksPath` at `.githooks/` unless `CI` is set or the setting already names another
+directory; `npm run hooks:install` sets it by hand. The pre-commit hook runs
+`scripts/pre-commit.mjs` on the staged files: the local-only guard, `oxfmt --check`,
+`oxlint --deny-warnings`, and the [duplicate-code check](#what-to-run--without-credentials) for
+clones that touch a staged file. It format-checks a partly staged file as staged; oxlint and jscpd read that file's
+working-tree copy. The standing gates still cover the whole repository.
+
+`npm run dev` and `npm run dev:mission` set `PORTAL_DEV_SIGN_IN=enabled` unless the shell
+already set it, so the shared preview username and password sign in as the seeded admin.
+Playwright sets the same default for its runner and the server it starts. Dev sign-in fails
+closed everywhere else: `src/lib/portal/dev-sign-in.ts` turns it on only for Vercel Preview and
+Development or that flag, and never when `APP_ENV` or `VERCEL_ENV` is `production`. Run
+`PORTAL_DEV_SIGN_IN=off npm run dev` to see the closed sign-in form.
+
 `npm run dev` and `npm run dev:mission` never seed. `DEV_SEED` is retained only as
 an inspection hint for older environments: neither `DEV_SEED=1` nor an unset value
 triggers seeding, and `DEV_SEED=0` does not disable an explicit regeneration command.
@@ -287,14 +302,20 @@ Every change must pass these repository-wide checks:
 ```bash
 npx oxlint
 npx oxfmt --check
+npm run duplication:check
 npx react-doctor@latest --verbose
 npm run build
 ```
 
-Oxlint must report zero warnings and errors, oxfmt must report no drift, React Doctor must score
+Oxlint must report zero warnings and errors, oxfmt must report no drift, duplication must stay
+under the `.jscpd.json` cap with no clone missing from `.jscpd-baseline.json`, React Doctor must score
 100 on a clean checkout, and the production build must compile and typecheck. A focused check
 adds coverage for the changed behavior; it does not replace these gates. UI-visible changes also
 require the [visual evidence](#ui-changes) described below.
+
+`npm run gates` runs the five in that order: one line for each clean gate, the full output of a
+failing one, and a non-zero exit when any fails. In a checkout without `.env.local` it builds
+against the no-credentials placeholders below.
 
 ### What to run — without credentials
 
@@ -304,6 +325,7 @@ surface available to an agent or contributor working in a clean container:
 
 ```bash
 npm ci --no-audit --no-fund
+npm run duplication:check
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 \
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=ci-public-placeholder \
   SUPABASE_SERVICE_ROLE_KEY=ci-server-placeholder \
@@ -313,7 +335,8 @@ npm run test:e2e:public
 ```
 
 `npm run lint` (`oxlint` from the repository root) is the repository's sole linter command.
-It is local-only until a dedicated findings PR lands; the `quality` job does not run it.
+The pre-commit hook runs it on staged files; the `quality` job does not run it until a
+dedicated findings PR lands.
 Oxlint recursively checks owned JavaScript and TypeScript files in every subdirectory — `src/`,
 `e2e/`, `scripts/`, `.github/scripts/`, and root configs — with the migrated Next.js, React,
 accessibility, import, and TypeScript rules plus the vendored anti-slop rules. Dependencies,
@@ -323,8 +346,25 @@ extension uses the same `.oxlintrc.json` for the whole workspace.
 `npm run fmt` (`oxfmt`) is the repository formatter; `npm run fmt:check` reports drift
 without writing. House rules live in `.oxfmtrc.json`: 100 columns, double quotes, semicolons,
 trailing commas, preserved object wrapping, grouped imports, and Tailwind class order from
-`src/app/globals.css`. Markdown and generated trees are left alone. Like oxlint, format
-check is local-only until a dedicated findings PR lands.
+`src/app/globals.css`. Markdown and generated trees are left alone. Like oxlint, the format
+check runs in the pre-commit hook on staged files and stays out of the `quality` job until a
+dedicated findings PR lands.
+
+`npm run duplication:check` (`scripts/check-duplication.mjs`) runs jscpd over the JavaScript,
+TypeScript and CSS that `.jscpd.json` selects, without registry source, build output or agent
+directories. It fails on any clone whose fingerprint `.jscpd-baseline.json` lacks, listing each
+one, and when duplicated lines pass the `threshold` cap. The committed baseline, not a base
+branch, defines "new", so a long-lived integration pull request into `main` is judged by the
+baseline its own tree carries. Fingerprints follow content: moving or renaming a file keeps its
+clones known, while editing code inside a clone makes it new. The pre-commit hook counts only new
+clones that touch a staged file, and the whole repository when the configuration or baseline is
+staged. Extract the shared code; when duplication is deliberate, wrap it in
+`// jscpd:ignore-start` and `// jscpd:ignore-end` comments. After removing duplication, run
+`npm run duplication:check -- --update-baseline` and commit the smaller baseline, and lower the
+cap as the percentage falls. Adding fingerprints or raising the cap accepts new duplication;
+that is Jason's decision, not a way to pass. When `.jscpd-baseline.json` conflicts in a merge,
+resolve the code first, then regenerate it with `--update-baseline`. `jscpd` is pinned to an exact
+version because a detector change can move fingerprints and the percentage.
 
 `npm run doctor` and `node scripts/verify-no-secrets.mjs` also run with no credentials.
 
@@ -370,6 +410,20 @@ map them to the names in `.env.example`, and set `SUPABASE_PREVIEW_BRANCH=1`.
 `e2e/harness/target-guard.ts` binds the project reference to the URL, requires the hosted-branch
 marker, and rejects Production before the first database call. [`test/README.md`](test/README.md)
 describes the test tiers and shared harness.
+
+`npm run e2e -- <playwright arguments>` is the workstation entry point for these runs. It sets
+`SUPABASE_PREVIEW_BRANCH=1` and `NEXT_DIST_DIR=.next-e2e` unless they are already set, stops before
+starting anything when another checkout's server holds :3100 (Playwright reuses whatever answers
+there, so the run would test that checkout's code), and keeps the machine awake until the run ends.
+`--branch-env <path>` loads the branch's variables from a file; a value already in the environment
+wins over the file, and the file wins over `.env.local`. The target guard still decides whether the
+database is safe.
+
+`.next-e2e` is the only alternate build directory. An output directory that is not ignored enters
+Tailwind's source scan and breaks the stylesheet of a dev server already running from the same
+checkout, so do not introduce another one. A worktree installs from the lockfile; `node_modules` is
+never linked or copied between checkouts, because Turbopack rejects a linked tree and `npm ci` can
+follow the link and empty the other checkout's dependencies.
 
 Coordinate use of the database across the entire branch stack. Never run two Playwright
 processes, fixture resets, or conflicting migrations against it concurrently, including CI jobs
@@ -495,6 +549,58 @@ score of 100 on the exact head.
 **Direct push to `main`** is for urgent production hotfixes only (admin), and must carry the
 same verification evidence a PR would (CI green, live spot-check, rollback noted). Normal
 changes never request a bypass.
+
+## shadcn registry procedure
+
+AGENTS.md "shadcn/ui" holds the rules; this section holds the procedure those rules point at. The
+paragraphs below moved here from AGENTS.md unchanged.
+
+Use the package's named exports when separate class joining, merging, or types are needed;
+do not recreate the `clsx` plus `tailwind-merge` wrapper. The project uses Tailwind v4, which
+the `cn` merge engine supports. Dependencies still used by other packages may remain in
+`package-lock.json`; that does not make them direct application dependencies.
+
+For helper migrations, follow `CONTRIBUTING.md` "Class-name helper updates". Apply them to
+both approved components and registry bundle inputs, record mechanical stock-source changes
+in `src/components/stock/MANIFEST.json`, and regenerate the local design bundle. Class merging
+must preserve the existing recipes, brand tokens, and call-site overrides.
+
+`.ds-sync/` is the machine-local toolchain; `.design-sync/` holds project-specific pipeline
+source and previews; `ds-bundle/` is generated output. `local-only-paths.json` governs all three.
+Run `npm run local-only:write` after changing their reasons. First run
+`node .design-sync/ds/build-ds.mjs`, then regenerate the bundle with
+`node .ds-sync/package-build.mjs --config .design-sync/config.json --node-modules node_modules --entry .design-sync/ds/entry.ts --out ds-bundle`,
+then `node .design-sync/ds/copy-assets.mjs`.
+
+Reconciliation procedure — run after **every** CLI operation that touches CSS:
+
+1. Commit or stash a clean checkpoint of `src/app/globals.css` **before** running the command.
+2. Run the command, then `git diff src/app/globals.css` and reject or rewrite anything that:
+   - adds OKLCH color literals to the semantic `:root` / `.dark` blocks — every semantic token
+     must reference a brand `--color-*` token. Light `--destructive` reads the coral ramp
+     (`--color-coral-700`); the single permitted literal is the dark `--destructive`, because
+     dark mode is not a shipped surface;
+   - touches the brand `@theme` block, its comment header, or any brand token value;
+   - re-declares `--radius-*` inside the bridge's `@theme inline` block — the brand `@theme`
+     owns the radius namespace (`--radius` 0.625rem, sm 0.375rem, lg 0.875rem);
+   - injects `@apply` into the base layer (`border-border`, `outline-ring/50`, `font-sans`,
+     `bg-background text-foreground`) — the existing base rules already carry brand values;
+   - changes the font mappings — `--font-sans`/`--font-heading` resolve to the body sans (Lato).
+3. New semantic tokens a component introduces get mapped onto brand tokens in the bridge, with a
+   comment naming the brand pair.
+4. Rerun the full contribution loop and capture before/after screenshots — palette drift is a
+   UI-visible change.
+
+shadcn and the brand share the Tailwind `--color-*` namespace, and the later `@theme` block wins.
+The brand's secondary text ink is `--color-muted-ink`, not `--color-muted`, because shadcn's
+`--color-muted` is a surface tint. Before adopting a component, list the semantic utilities it
+uses (`bg-*`, `text-*`, `border-*`) and check each for a brand-token collision.
+
+Adoption starts with existing repository components and shadcn registry source. If a CLI command is needed to
+supply its behavior, run `add --dry-run` / `--diff` before touching an existing recipe. Review
+all generated changes, meet the repo lint bar, and preserve the token mappings. Add a product
+component when a real surface consumes it. The dependencies of `stock/` remain required by
+the bundle even when they have no product importer; see `src/components/stock/README.md`.
 
 ## Dependency updates
 

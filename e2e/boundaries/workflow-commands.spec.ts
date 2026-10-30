@@ -6,6 +6,7 @@ import { z } from "zod";
 import { jsonSchema } from "../../src/lib/json";
 import { CONTACT_OUTCOMES } from "../../src/lib/portal/workflow/contracts";
 import { requireDecoded, requireText } from "../harness/assert";
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { serviceDb } from "../harness/env";
 import {
   APPOINTMENT_AT,
@@ -132,7 +133,7 @@ test.describe("The workflow command RPC", () => {
       ).toHaveLength(1);
     } finally {
       await db.from("requests").delete().eq("id", requestId);
-      await db.from("audit_log").delete().eq("entity_id", requestId);
+      await deleteAuditRows({ entityIds: [requestId] });
     }
   });
 
@@ -163,6 +164,8 @@ test.describe("The workflow command RPC", () => {
         await insertRequest(db, {
           id: requestId,
           name: `TEST malformed ${item.command} decision`,
+          /* The address lets global setup sweep a request this test leaves behind when it times out. */
+          email: "workflow-semantic-boundary@example.test",
           source_path: "/e2e/workflow-semantic-boundary",
         });
 
@@ -202,7 +205,7 @@ test.describe("The workflow command RPC", () => {
       }
     } finally {
       await db.from("requests").delete().in("id", requestIds);
-      await db.from("audit_log").delete().in("entity_id", requestIds);
+      await deleteAuditRows({ entityIds: requestIds });
     }
   });
 
@@ -271,7 +274,7 @@ test.describe("The workflow command RPC", () => {
       expect(new Date(String(transition.data?.appointment_at)).toISOString()).toBe(APPOINTMENT_AT);
     } finally {
       await db.from("requests").delete().eq("id", requestId);
-      await db.from("audit_log").delete().eq("entity_id", requestId);
+      await deleteAuditRows({ entityIds: [requestId] });
     }
   });
 
@@ -374,7 +377,7 @@ test.describe("The workflow command RPC", () => {
       for (const value of patientValues) expect(serialized).not.toContain(value);
     } finally {
       await db.from("requests").delete().eq("id", requestId);
-      await db.from("audit_log").delete().eq("entity_id", requestId);
+      await deleteAuditRows({ entityIds: [requestId] });
     }
   });
 
@@ -453,7 +456,8 @@ test.describe("The workflow command RPC", () => {
     };
     const insert = async (row: Readonly<RequestInsert>) => {
       requestIds.push(row.id);
-      await insertRequest(db, row);
+      /* The address lets global setup sweep a request this test leaves behind when it times out. */
+      await insertRequest(db, { email: "call-again@example.test", ...row });
     };
     const undo = async (requestId: string, expectedVersion: number, transitionId: string) =>
       execute(
@@ -727,7 +731,7 @@ test.describe("The workflow command RPC", () => {
       }
     } finally {
       await db.from("requests").delete().in("id", requestIds);
-      await db.from("audit_log").delete().in("entity_id", requestIds);
+      await deleteAuditRows({ entityIds: requestIds });
     }
   });
 });

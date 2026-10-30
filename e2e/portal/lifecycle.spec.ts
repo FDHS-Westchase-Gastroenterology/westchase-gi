@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { jsonObjectSchema } from "../../src/lib/json";
 import type { JsonObject } from "../../src/lib/json";
+import { deleteAuditRows } from "../harness/audit-fixtures";
 import { requiredEnv, runId, serviceDb } from "../harness/env";
 
 interface LifecycleFixture {
@@ -90,12 +91,9 @@ test.describe("isolated appointment-request lifecycle", () => {
         .from("requests")
         .delete()
         .in("id", [...requestIds]);
-      await db
-        .from("audit_log")
-        .delete()
-        .in("entity_id", [...requestIds]);
+      await deleteAuditRows({ entityIds: [...requestIds] });
     }
-    await db.from("audit_log").delete().eq("actor_email", lifecycleActor);
+    await deleteAuditRows({ actorEmail: lifecycleActor });
   });
 
   test("the retired generic close path can no longer manufacture an unclassified closure", async () => {
@@ -145,7 +143,7 @@ test.describe("isolated appointment-request lifecycle", () => {
     expect(survivor.data).toEqual([{ id }]);
 
     await db.from("requests").delete().eq("id", id);
-    await db.from("audit_log").delete().eq("entity_id", id);
+    await deleteAuditRows({ entityIds: [id] });
     requestIds.delete(id);
   });
 

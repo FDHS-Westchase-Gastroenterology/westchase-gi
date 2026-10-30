@@ -5,10 +5,13 @@ import { runId, serviceDb } from "../harness/env";
 import { createHandoffFixture } from "../harness/handoff";
 import {
   createSchedulingFixture,
+  disposeSchedulingFixturesAfterEach,
   schedulingFixtureDate,
   setProviderTypes,
 } from "../harness/scheduling";
 import { signIn } from "../harness/session";
+
+disposeSchedulingFixturesAfterEach();
 
 /* Issue #354: a visit on the Day view moves by dragging, and refuses the
    times it cannot take while the card is still in the air; a cancel from its

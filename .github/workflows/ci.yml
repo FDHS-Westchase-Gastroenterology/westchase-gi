@@ -41,8 +41,19 @@ jobs:
       - name: Verify .gitignore matches local-only-paths.json
         run: npm run local-only:verify
 
+      # Fails on a clone .jscpd-baseline.json does not list, and when total
+      # duplication passes the cap in .jscpd.json.
+      - name: Check duplicate code
+        run: npm run duplication:check
+
       # Oxlint and anti-slop stay in the local config (`npm run lint`).
       # CI does not run them until a dedicated findings PR lands.
+
+      # Unit tests need no credentials. The ones that need a database skip
+      # here and run against the Preview Branch in the Supabase-integration
+      # workflow.
+      - name: Run unit tests
+        run: npm run test:unit
 
       - name: Build
         env:
@@ -59,4 +70,6 @@ jobs:
       # Chooser, leak hygiene. Everything that needs a database runs in the
       # Supabase-integration workflow against a Preview Branch.
       - name: Run public browser specs
+        env:
+          PORTAL_DEV_SIGN_IN: enabled
         run: npm run test:e2e:public

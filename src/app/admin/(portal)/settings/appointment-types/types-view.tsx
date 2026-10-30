@@ -83,7 +83,8 @@ export function TypesView({
   const { types, providers, canEdit } = settings;
   const serverKey = types.map((type) => type.id).join(",");
   /* The order on screen: the server's until a row moves, then the moved
-     order until the server's next read lands. */
+     order until a read with a different order lands. An Undo puts the row
+     back itself (commitMove), because its read can match the order last seen. */
   const [order, setOrder] = useState<readonly string[]>(() => types.map((type) => type.id));
   const [seenKey, setSeenKey] = useState(serverKey);
   const [lifted, setLifted] = useState<Lifted | null>(null);
@@ -124,6 +125,17 @@ export function TypesView({
           detail: `${placeIn(to, id)} when booking.`,
           inverse: { ...command, position: before + 1 },
           slot: `order:${id}`,
+          /* A later router update can replace the move's read before it
+             renders. The Undo's read then carries the order seenKey already
+             holds and resyncs nothing, so the row goes back here, where the
+             inverse puts it on the server. */
+          onUndone: () => {
+            setOrder((current) => {
+              const next = current.filter((each) => each !== id);
+              next.splice(before, 0, id);
+              return next;
+            });
+          },
         },
       },
     ).then((outcome) => {

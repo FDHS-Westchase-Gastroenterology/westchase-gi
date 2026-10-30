@@ -11,6 +11,8 @@ import {
 import { serviceDb } from "../harness/env";
 import {
   createSchedulingFixture,
+  disposeSchedulingFixturesAfterEach,
+  holdBookingInterval,
   readSettings,
   restoreBookingInterval,
   saveSettings,
@@ -18,6 +20,8 @@ import {
   setProviderWeek,
 } from "../harness/scheduling";
 import { createStaffFixture } from "../harness/session";
+
+disposeSchedulingFixturesAfterEach();
 
 /* The Settings window's Schedule group (issue #352): its read, and the granular commands that
    change providers, appointment types and locations one fact at a time. */
@@ -189,6 +193,7 @@ test("the booking interval spaces each provider's openings, and only admins chan
     displayName: "TEST Interval Staff",
   });
   const actor = fixture.staff.userId;
+  const restoreInterval = await holdBookingInterval(db, actor);
   const date = schedulingFixtureDate();
   // One provider's openings on the fixture day, as the Day view reads them.
   async function opens() {
@@ -327,7 +332,7 @@ test("the booking interval spaces each provider's openings, and only admins chan
       }),
     ]);
   } finally {
-    await restoreBookingInterval(db, actor);
+    await restoreInterval();
     await staff.dispose();
     await fixture.dispose();
   }

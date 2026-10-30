@@ -10,8 +10,10 @@ import {
 import type { BillingInput } from "../../src/lib/portal/billing/contracts";
 import { removeBilling } from "../harness/billing";
 import { serviceDb } from "../harness/env";
-import { createSchedulingFixture } from "../harness/scheduling";
+import { createSchedulingFixture, disposeSchedulingFixturesAfterEach } from "../harness/scheduling";
 import { signIn } from "../harness/session";
+
+disposeSchedulingFixturesAfterEach();
 
 async function billing(page: Page, input: Readonly<BillingInput>) {
   return page.evaluate(async (body) => {

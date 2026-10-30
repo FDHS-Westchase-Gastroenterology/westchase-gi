@@ -11,8 +11,10 @@ import {
 import type { ClinicalInput } from "../../src/lib/portal/clinical/contracts";
 import { removeClinical } from "../harness/clinical";
 import { serviceDb } from "../harness/env";
-import { createSchedulingFixture } from "../harness/scheduling";
+import { createSchedulingFixture, disposeSchedulingFixturesAfterEach } from "../harness/scheduling";
 import { signIn } from "../harness/session";
+
+disposeSchedulingFixturesAfterEach();
 
 async function clinical(page: Page, input: Readonly<ClinicalInput>) {
   return page.evaluate(async (body) => {

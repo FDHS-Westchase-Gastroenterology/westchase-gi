@@ -1,8 +1,14 @@
 import { expect, test } from "@playwright/test";
 
 import { runId, serviceDb } from "../harness/env";
-import { createSchedulingFixture, schedulingFixtureDate } from "../harness/scheduling";
+import {
+  createSchedulingFixture,
+  disposeSchedulingFixturesAfterEach,
+  schedulingFixtureDate,
+} from "../harness/scheduling";
 import { signIn } from "../harness/session";
+
+disposeSchedulingFixturesAfterEach();
 
 /* Issue #345: the Schedule's week view. The title menu switches the
    provider in place, turns into the compare picker, and compare mode

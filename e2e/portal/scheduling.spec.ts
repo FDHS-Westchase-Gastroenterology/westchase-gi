@@ -11,8 +11,14 @@ import {
   appointmentReadOutcomeSchema,
 } from "../../src/lib/portal/scheduling/read-contracts";
 import { serviceDb } from "../harness/env";
-import { createSchedulingFixture, schedulingFixtureDate } from "../harness/scheduling";
+import {
+  createSchedulingFixture,
+  disposeSchedulingFixturesAfterEach,
+  schedulingFixtureDate,
+} from "../harness/scheduling";
 import { signIn } from "../harness/session";
+
+disposeSchedulingFixturesAfterEach();
 
 async function scheduling(page: Page, input: Readonly<SchedulingInput>) {
   return page.evaluate(async (body) => {

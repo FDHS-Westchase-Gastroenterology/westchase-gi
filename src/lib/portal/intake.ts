@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { asJsonObject, asJsonString } from "@/lib/json";
 import type { Json } from "@/lib/json";
+import { clientAddress } from "@/lib/portal/client-address";
 import {
   HONEYPOT_FIELD,
   INTAKE_RATE_LIMIT,
@@ -147,16 +148,14 @@ export async function consumeRequestReceipt(token: string, locale: Locale): Prom
 }
 
 function clientHash(headers: Headers): string {
-  const forwardedFor = headers.get("x-vercel-forwarded-for") ?? headers.get("x-forwarded-for");
-  const hop = forwardedFor?.split(",", 1)[0]?.trim();
-  const firstHop = hop !== undefined && hop !== "" ? hop : "missing";
+  const address = clientAddress(headers) ?? "missing";
 
-  // Vercel overwrites X-Vercel-Forwarded-For at its edge. Local callers fall
-  // Back to X-Forwarded-For; callers without either header share the
-  // "missing" bucket. HMAC prevents offline address guessing.
+  // The address is the entry our own proxy added (see clientAddress), not
+  // One the client sent. Callers without an address share the "missing"
+  // Bucket. HMAC prevents offline address guessing.
   return createHmac("sha256", serviceRoleKey())
     .update(INTAKE_CLIENT_HASH_DOMAIN)
-    .update(firstHop.toLowerCase())
+    .update(address.toLowerCase())
     .digest("hex");
 }
 

@@ -1,6 +1,7 @@
 import "server-only";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/db/client";
+import { rpc } from "@/lib/db/rpc";
 
 import {
   ACTIVITY_PAGE_SIZE,
@@ -25,7 +26,7 @@ function listOrNull<T>(list: readonly T[] | undefined): T[] | null {
  * database and nowhere else.
  */
 export async function readActivity(
-  db: SupabaseClient,
+  db: Database,
   actorId: string,
   filters: Readonly<ActivityFilters>,
   cursor: Readonly<ActivityCursor>,
@@ -39,8 +40,10 @@ export async function readActivity(
   if (limit < 1 || limit > 100) return { ok: false, code: "invalid_command" };
   const f = parsedFilters.data;
   const query = f.query?.trim() ?? "";
-  const result = await db
-    .rpc("portal_read_activity", {
+  const result = await rpc(
+    db,
+    "portal_read_activity",
+    {
       p_actor_id: actorId,
       p_categories: listOrNull(f.categories),
       p_appointment_actions: listOrNull(f.appointmentActions),
@@ -51,8 +54,9 @@ export async function readActivity(
       p_before_at: parsedCursor.data?.occurredAt ?? null,
       p_before_id: parsedCursor.data?.id ?? null,
       p_limit: limit,
-    })
-    .abortSignal(AbortSignal.timeout(10_000));
+    },
+    AbortSignal.timeout(10_000),
+  );
   if (result.error !== null) return { ok: false, code: "unavailable" };
   const page = activityPageSchema.safeParse(result.data);
   return page.success ? page.data : { ok: false, code: "unavailable" };

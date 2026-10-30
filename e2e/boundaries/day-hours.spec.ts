@@ -3,14 +3,17 @@ import { expect, test } from "@playwright/test";
 import { serviceDb } from "../harness/env";
 import {
   createSchedulingFixture,
+  disposeSchedulingFixturesAfterEach,
   readDayHours,
   saveSettings,
   schedulingFixtureDate,
-  setProviderWeek,
   setDayHours,
+  setProviderWeek,
   undoDayHours,
 } from "../harness/scheduling";
 import { createStaffFixture } from "../harness/session";
+
+disposeSchedulingFixturesAfterEach();
 
 /* The Day view's Hours sheet (issue #353): one provider's hours for one day, or for that weekday
    from the day on, and the toast's undo. The database applies the admin gate, the version check,

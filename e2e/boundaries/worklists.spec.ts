@@ -155,7 +155,8 @@ test("worklist rows carry the linked patient through link, unlink, and relink", 
     return value.items[0].patientId;
   };
   try {
-    await insertRequest(db, { id: requestId, name });
+    /* The address lets global setup sweep a request this test leaves behind when it times out. */
+    await insertRequest(db, { id: requestId, name, email: "worklist-link@example.test" });
     expect(await linked()).toBeNull();
     const created = [];
     for (const label of ["First", "Second"]) {

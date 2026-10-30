@@ -5,7 +5,9 @@ import { z } from "zod";
 
 import { serviceDb } from "../harness/env";
 import { createHandoffFixture, readHandoffRequest } from "../harness/handoff";
-import { schedulingFixtureDate } from "../harness/scheduling";
+import { disposeSchedulingFixturesAfterEach, schedulingFixtureDate } from "../harness/scheduling";
+
+disposeSchedulingFixturesAfterEach();
 
 test("request booking saves both records once and rejects conflicts and stale request versions without a partial save", async () => {
   const db = serviceDb();

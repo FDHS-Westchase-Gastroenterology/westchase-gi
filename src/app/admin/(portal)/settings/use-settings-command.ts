@@ -31,6 +31,8 @@ export interface SettingsUndo {
   /** A run of edits to one thing ("hours:<provider>"): a new toast in the slot replaces the
       last one, whose Undo the new toast's inverse already covers one step back. */
   readonly slot?: string;
+  /** Runs once the inverse is applied, for a view that holds its own copy of what changed. */
+  readonly onUndone?: () => void;
 }
 
 export interface SendOptions {
@@ -134,6 +136,7 @@ export function useSettingsCommand() {
         detail: undo.detail,
         undo: async () => {
           const reversed = await run(undo.inverse);
+          if (reversed.ok) undo.onUndone?.();
           return reversed.ok
             ? { ok: true, message: "Undone." }
             : {
