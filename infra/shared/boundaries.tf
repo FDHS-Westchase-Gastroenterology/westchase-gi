@@ -2,9 +2,9 @@
 # create a wgi-<env>-* role, or change its policies, only when the role carries
 # wgi-<env>-boundary (github_oidc.tf), so whatever an environment root's role
 # policies say, the role can reach no more than its own environment's images,
-# logs, secrets, parameters, Cognito pool, tables, buckets, keys, database
-# users and one-off tasks, and nothing else in IAM, the state bucket or the
-# other environment. A boundary grants nothing on its own; each role's policy
+# logs, secrets, parameters, Cognito pool, tables, buckets, run artifact
+# prefixes, keys, database users and one-off tasks, and nothing else in IAM, the
+# state bucket or the other environment. A boundary grants nothing on its own; each role's policy
 # narrows it further.
 #
 # Every environment shares one account, so no Allow here names a pattern that
@@ -131,6 +131,44 @@ data "aws_iam_policy_document" "environment_boundary" {
       test     = "StringEquals"
       variable = "aws:ResourceAccount"
       values   = [local.account_id]
+    }
+  }
+
+  # Writes only, under this environment's prefixes of the shared run artifacts
+  # bucket (artifacts.tf). Its bucket policy refuses the same prefixes to the
+  # other environment's roles, so neither side alone opens them.
+  statement {
+    sid       = "WriteOwnArtifacts"
+    actions   = ["s3:PutObject"]
+    resources = [for p in values(local.artifact_prefixes) : "${local.artifacts_bucket_arn}/${p.prefix}/*" if p.env == each.key]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceAccount"
+      values   = [local.account_id]
+    }
+  }
+
+  # The artifacts key, through S3 and for that bucket only: with an S3 Bucket
+  # Key the encryption context is the bucket ARN. PutObject needs
+  # GenerateDataKey, and a multipart upload's UploadPart needs Decrypt too
+  # (https://docs.aws.amazon.com/AmazonS3/latest/API/API_UploadPart.html).
+  # Neither boundary grants GetObject on the bucket, so Decrypt reads nothing.
+  statement {
+    sid       = "EncryptOwnArtifacts"
+    actions   = ["kms:Decrypt", "kms:GenerateDataKey"]
+    resources = [module.kms["artifacts"].arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["s3.${local.region}.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "kms:EncryptionContext:aws:s3:arn"
+      values   = [local.artifacts_bucket_arn]
     }
   }
 

@@ -4,9 +4,11 @@
 # key policy that grants the account root no kms:*, so IAM permissions alone
 # never reach a production key; only the principals its policy names do.
 # Administrator and agent shells never create or administer a production key.
-# Staging and production never share a key. Every key here denies direct KMS
-# calls by this account's IAM principals: they reach the key only through the
-# services listed in via_services. The state key lives in infra/bootstrap.
+# Staging and production never share a data or secrets key; both use the
+# shared artifacts key, which encrypts images and run artifacts only. Every
+# key here denies direct KMS calls by this account's IAM principals: they reach
+# the key only through the services listed in via_services. The state key
+# lives in infra/bootstrap.
 
 locals {
   # CloudWatch Logs log groups each environment's data key may encrypt. RDS log
@@ -39,8 +41,8 @@ locals {
     artifacts = {
       name         = "wgi-artifacts"
       env          = "shared"
-      description  = "Encrypts container images in ECR"
-      via_services = ["ecr.${local.region}.amazonaws.com"]
+      description  = "Encrypts container images in ECR and run artifacts in S3"
+      via_services = ["ecr.${local.region}.amazonaws.com", "s3.${local.region}.amazonaws.com"]
       policies     = []
     }
     staging_data = {

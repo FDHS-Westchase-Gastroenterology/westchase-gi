@@ -64,13 +64,14 @@ DynamoDB table.
 - **AWS Config.** Continuous recording of every supported resource in us-east-2 plus global IAM
   resources, delivered to the audit bucket. No rules or conformance packs; see
   [Config and Security Hub](#config-and-security-hub).
-- **KMS keys, one per purpose.** `wgi-audit-logs`, `wgi-alerts`, `wgi-artifacts` (ECR),
-  `wgi-staging-data`, `wgi-staging-secrets`; `wgi-tfstate` is in `bootstrap/`. All rotate yearly
-  and are protected from `terraform destroy`. Each key denies this account's IAM principals any
-  cryptographic call that does not arrive through the services the key is for (`kms:ViaService`),
-  so a role with broad KMS permissions still cannot decrypt directly. Production's data and secrets
-  keys are not here; see [Production keys](#production-keys). Staging and production never share a
-  key.
+- **KMS keys, one per purpose.** `wgi-audit-logs`, `wgi-alerts`, `wgi-artifacts` (ECR images and
+  the run artifacts bucket), `wgi-staging-data`, `wgi-staging-secrets`; `wgi-tfstate` is in
+  `bootstrap/`. All rotate yearly and are protected from `terraform destroy`. Each key denies this
+  account's IAM principals any cryptographic call that does not arrive through the services the
+  key is for (`kms:ViaService`), so a role with broad KMS permissions still cannot decrypt
+  directly. Production's data and secrets keys are not here; see
+  [Production keys](#production-keys). Staging and production never share a data or secrets key;
+  both use the shared `wgi-artifacts` key, which encrypts images and run artifacts only.
 - **Network.** VPC `10.20.0.0/16` across us-east-2a and us-east-2b:
 
   | Tier | Subnets | Route out | Holds |
@@ -405,6 +406,12 @@ the database, the user pool, the capture table or one of their keys, plan and ap
 again; the environment's roles reach the new resource only then. A `shared/` plan that changes
 `wgi-<env>-boundary` after such an apply is this step, not drift. Two pools with the same
 `wgi-<env>-staff` name fail the `shared/` plan rather than letting the boundary name either.
+
+Each boundary also lets its environment's roles put objects under that environment's prefixes of
+the shared `wgi-artifacts` bucket (`WriteOwnArtifacts`: `cutover/<env>/*`, and for staging
+`e2e/staging/*`) and use the `wgi-artifacts` key for it only through S3 and only for that bucket
+(`EncryptOwnArtifacts`: `kms:GenerateDataKey`, and `kms:Decrypt` for multipart uploads). Neither
+boundary can read the bucket.
 
 Every plan in CI also goes through `checks/env-boundary.mjs` (see [CI](#ci)), so a policy that
 reaches across environments fails before anyone applies it.
