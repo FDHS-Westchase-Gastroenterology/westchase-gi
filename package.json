@@ -28,7 +28,7 @@
     "next": "16.4.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "react-zoom-pan-pinch": "^4.0.3",
+    "react-zoom-pan-pinch": "^4.4.0",
     "resend": "6.38.0",
     "zod": "4.6.7"
   },
